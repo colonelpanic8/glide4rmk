@@ -13,7 +13,7 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 5. **Capabilities and `offer()`** for everything a screen offers; any time.
 6. **The doors:** `describe(image)`, then Flows and WebMCP behind flags.
 
-## Cheap
+## Cheap 
 
 7. **The clipboard write on a key click.** During browser checks the page wrote to the clipboard while only keys were clicked. Find out whether selecting a key triggers the copy handler; if so, clicking a key overwrites what you copied.
 8. **Shorter stock Magic layer text** (RGB Lighting → Advanced): it still carries the old Lighting screen's long explanation, and tells you to "finish batch editing".
@@ -45,6 +45,8 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 26. **`DraftKeeper`'s effect** (Live's own send, the kept draft's flush) is untested; only its gate (`liveSendDue`) is.
 
 ## Done recently
+
+- From a side-by-side check with GLIDE: the key editor keeps its shape with no key selected (its picker greyed out); on a phone the layer and the keyboard's status stay in the top bar while the tools scroll beside them, the canvas hint speaks of taps and long presses, and the board takes less height; a combo that matches actions finds its keys through keys that are the same as the layer below (combo cards and Focus Mode).
 
 - The key editor's tabs as GLIDE's: Pick Key, Switch Layer, Other Behaviors (your macros and tap patterns, one-shot modifiers), Key Lighting (with the lighting keys that show their state); Every action is gone from the key and combo editors. Keys read as the name given to their macro or tap pattern. A layer delete, add or move is one entry in Review & send (`model/layer-structure.ts`). Insights is a tab of Layout properties; RGB Effects has the Lights switch.
 - One key picker everywhere: Pick Key, compact, fills tap-hold slots, tap patterns' actions, macro steps and pointing keys; every key RMK has (`model/hid-codes.ts`) is in it, All keys counted; modifiers named for the computer; search finds your macros and tap patterns.
