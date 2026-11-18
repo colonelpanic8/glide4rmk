@@ -31,9 +31,10 @@ import {
   withProfile,
   type Slot,
   type SlotValues,
-} from "../../model/key-slots"; 
+} from "../../model/key-slots";
 
-import { ActionEditor } from "./ActionEditor";
+import { OtherBehaviors } from "./OtherBehaviors";
+import { LightingKeyPresetPanel } from "../lighting/LightingKeyPresetPanel";
 import { EditorHeading, EditorPanel, EditorPlaceholder, EditorPrompt } from "./EditorPanel";
 import { useEditorTabs, type EditorTab } from "./editorTabs";
 import { LayerLighting } from "./LayerLighting";
