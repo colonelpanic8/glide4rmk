@@ -3,7 +3,7 @@ import { renderInWorkbench } from "../../test/workbench";
 import type { MacroOp } from "../../model/action-types";
 import { OtherBehaviors } from "./OtherBehaviors";
 
-const macro = [{ Text: "hi" }] as unknown as MacroOp[];
+const macro: MacroOp[] = [{ Char: 104 }, { Char: 105 }];
 
 describe("Other Behaviors", () => {
   it("lists your macros by the name you gave them, and the one-shot modifiers", () => {
