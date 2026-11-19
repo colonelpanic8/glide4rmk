@@ -22,7 +22,6 @@ export interface Term {
 export const TERMS = {
   "area.layout": { technical: "Keymap", friendly: "Layout" },
   "area.behaviors": { technical: "Behaviors", friendly: "Behaviors" },
-  "area.flows": { technical: "Flows", friendly: "Flows" },
   "area.device": { technical: "Device", friendly: "Keyboard" },
   "section.keymap": { technical: "Keymap", friendly: "Keys" },
   "section.combos": { technical: "Combos", friendly: "Combos" },
@@ -31,7 +30,6 @@ export const TERMS = {
   "section.forks": { technical: "Forks", friendly: "Conditional keys" },
   "section.profiles": { technical: "Profiles", friendly: "Tap timing" },
   "section.transforms": { technical: "Transforms", friendly: "Quick changes" },
-  "section.flows": { technical: "Flows", friendly: "Automations" },
   "section.device": { technical: "Device", friendly: "Keyboard" },
   "section.usage": { technical: "All your behaviors", friendly: "All your behaviors" },
   "section.live": { technical: "Live", friendly: "Live view" },

@@ -68,7 +68,6 @@ export type Mode =
   | "forks"
   | "profiles"
   | "transforms"
-  | "flows"
   | "device"
   | "usage";
 

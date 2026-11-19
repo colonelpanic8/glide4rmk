@@ -21,6 +21,7 @@ import {
   UndoIcon,
   Wordmark,
 } from "./icons";
+import { openFlows, useFlowsOpen } from "./flows/store";
 import { FileMenus } from "./FileMenus";
 import { useTerms } from "./terms";
 import { layerName } from "./layer-names";
@@ -52,7 +53,6 @@ function BatteryReadout({ battery, split }: { battery: BatteryStatus; split: boo
 const AREA_ICON: Record<AreaId, typeof KeymapIcon> = {
   layout: KeymapIcon,
   behaviors: CombinatorIcon,
-  flows: FlowsIcon,
   device: DeviceIcon,
 };
 
@@ -90,8 +90,6 @@ export function TopBar({
   current,
   onArea,
   onKeymap,
-  flowsOpen,
-  onFlows,
   onDrawer,
 }: {
   areas: Area[];
@@ -99,9 +97,6 @@ export function TopBar({
   onArea: (area: Area) => void;
   /** Back to the keymap, the home screen. */
   onKeymap: () => void;
-  /** Flows (ADR 0025): on show, and what its button does. */
-  flowsOpen: boolean;
-  onFlows: () => void;
   /** Opens the side panel on a phone; absent where there is no panel. */
   onDrawer?: () => void;
 }) {
@@ -199,7 +194,7 @@ export function TopBar({
           {!offline && <BatteryReadout battery={state.battery} split={split} />}
           <div className="h-6 w-px bg-line-soft" />
           <SettingsPanel />
-          <FlowsButton open={flowsOpen} onClick={onFlows} />
+          <FlowsButton />
           {offline && (
             <Button variant="ghost" onClick={io.disconnect} title="Close file">
               <PowerIcon size={15} />
@@ -251,14 +246,15 @@ function PropertiesButton({ className }: { className: string }) {
   );
 }
 
-/** Flows, as GLIDE has it: a marquee feature, not a utility, so a text label,
+/** Flows, as GLIDE has it: it opens the Flows window (ADR 0025). A marquee feature, not a utility, so a text label,
  *  a border and the icon in the accent colour keep it from getting lost. */
-function FlowsButton({ open, onClick }: { open: boolean; onClick: () => void }) {
+function FlowsButton() {
+  const open = useFlowsOpen();
   return (
     <button
       type="button"
       data-testid="flows-open"
-      onClick={onClick}
+      onClick={openFlows}
       aria-pressed={open}
       title="Flows Automations"
       className={cx(

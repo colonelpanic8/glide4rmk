@@ -21,8 +21,8 @@ const everything: AreaFacts = {
 const ids = (facts: AreaFacts) => areasFor(facts).map((area) => area.id);
 
 describe("areas", () => {
-  it("shows a plain RMK board every area, Flows too; lighting lives on the keys and in Layout properties (ADR 0016)", () => {
-    expect(ids(plainRmk)).toEqual(["layout", "behaviors", "flows", "device"]);
+  it("shows a plain RMK board every area; lighting lives on the keys and in Layout properties (ADR 0016)", () => {
+    expect(ids(plainRmk)).toEqual(["layout", "behaviors", "device"]);
     expect(areasFor(plainRmk).find((a) => a.id === "behaviors")?.sections).toEqual(["transforms"]);
   });
 
@@ -40,7 +40,7 @@ describe("areas", () => {
 
   it("drops Device and Insights (Live) for a file opened without a keyboard", () => {
     const offline = { ...everything, connected: false };
-    expect(ids(offline)).toEqual(["layout", "behaviors", "flows"]);
+    expect(ids(offline)).toEqual(["layout", "behaviors"]);
   });
 
   it("lists All your behaviors only when the keyboard stores a kind of behavior", () => {

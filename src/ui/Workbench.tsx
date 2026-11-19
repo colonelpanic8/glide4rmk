@@ -29,7 +29,8 @@ import { useEditorBeside } from "./keymap/EditorPanel";
 import { PREFERENCES, usePreference } from "./preferences";
 import { AdvancedSection } from "./advanced/AdvancedMode";
 import { ProfilesMode } from "./ProfilesMode";
-import { FlowsScreen } from "./flows/FlowsScreen";
+import { FlowsWindow } from "./flows/FlowsWindow";
+import { useFlowsOpen } from "./flows/store";
 import { DeviceMode } from "./device/DeviceMode";
 import { SidePanel } from "./sidepanel/SidePanel";
 import { LIBRARY_ORDER } from "./behaviors/library";
@@ -141,8 +142,6 @@ function SectionView({ section }: { section: SectionId }) {
     case "transforms":
     case "usage":
       return <AdvancedSection section={section} />;
-    case "flows":
-      return <FlowsScreen />;
     case "profiles":
       return <ProfilesMode />;
     case "device":
@@ -200,6 +199,7 @@ export function Workbench({
   const area = currentArea ?? areas[0];
   // The phone's side-panel drawer, and the side panel's width elsewhere.
   const [drawer, setDrawer] = useState(false);
+  const flowsOpen = useFlowsOpen();
   const sidePane = usePaneSize(SETTING_KEYS.sidePanelWidth, 300, 220, 440);
   const panelRight = usePreference(PREFERENCES.sidePanelSide) === "right";
   // Each area remembers the section last shown in it.
@@ -314,15 +314,13 @@ export function Workbench({
         )}
         <TopBar
           // The keymap is home and the Behavior Library opens the Behaviors area: neither needs a button.
-          // Flows has a button of its own, as in GLIDE.
-          areas={areas.filter((one) => one.id !== "layout" && one.id !== "behaviors" && one.id !== "flows")}
+          areas={areas.filter((one) => one.id !== "layout" && one.id !== "behaviors")}
           current={area.id}
           onArea={(next) => (next.id === area.id ? dispatch({ type: "mode", mode: "keymap" }) : showArea(next))}
           onKeymap={() => dispatch({ type: "mode", mode: "keymap" })}
-          flowsOpen={area.id === "flows"}
-          onFlows={() => dispatch({ type: "mode", mode: area.id === "flows" ? "keymap" : "flows" })}
           onDrawer={section === "keymap" ? () => setDrawer(true) : undefined}
         />
+        {flowsOpen && <FlowsWindow />}
         <div className="flex min-h-0 flex-1">
           {section === "keymap" && (
             <div
