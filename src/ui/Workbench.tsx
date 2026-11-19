@@ -29,6 +29,8 @@ import { useEditorBeside } from "./keymap/EditorPanel";
 import { PREFERENCES, usePreference } from "./preferences";
 import { AdvancedSection } from "./advanced/AdvancedMode";
 import { ProfilesMode } from "./ProfilesMode";
+import { FlowsScreen } from "./flows/FlowsScreen";
+import { flagOn } from "./flags";
 import { DeviceMode } from "./device/DeviceMode";
 import { SidePanel } from "./sidepanel/SidePanel";
 import { LIBRARY_ORDER } from "./behaviors/library";
@@ -140,6 +142,8 @@ function SectionView({ section }: { section: SectionId }) {
     case "transforms":
     case "usage":
       return <AdvancedSection section={section} />;
+    case "flows":
+      return <FlowsScreen />;
     case "profiles":
       return <ProfilesMode />;
     case "device":
@@ -183,6 +187,7 @@ export function Workbench({
       macros: capabilities.has("behaviors.macros"),
       forks: capabilities.has("behaviors.forks"),
       tapProfiles: capabilities.has("behaviors.profiles"),
+      flows: flagOn("flows"),
     });
   }, [bundle]);
   // The Behavior Library lists the behavior sections this keyboard has.

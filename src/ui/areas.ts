@@ -23,6 +23,7 @@ export const ALL_SECTIONS: readonly SectionId[] = [
   "forks",
   "profiles",
   "transforms",
+  "flows",
   "device",
 ];
 
@@ -36,6 +37,8 @@ export interface AreaFacts {
   forks: boolean;
   /** Tap-hold profiles (morse profile slots). */
   tapProfiles: boolean;
+  /** Flows are turned on (ui/flags.ts, ADR 0025). */
+  flows: boolean;
 }
 
 export interface Area {
@@ -69,6 +72,7 @@ export function areasFor(facts: AreaFacts): Area[] {
         ["forks", facts.forks],
         ["profiles", facts.tapProfiles],
         ["transforms", true],
+        ["flows", facts.flows],
       ]),
     },
     { id: "device", term: "area.device", sections: pick([["device", facts.connected]]) },

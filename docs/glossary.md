@@ -3,6 +3,7 @@
 One word, one meaning. Code, docs and screens use these terms.
 
 - **Keyboard instance:** one connected keyboard or opened file, with its own capabilities, model, draft, history and snapshots.
+- **Flow:** a `.flows` file (`flows/`): a jq script with a title and choices that reads the keyboard's description and gives back operations, run as one change. See ADR 0025.
 - **Capability:** a declared unit of keyboard functionality (for example `lighting.rules`) with limits and semantics. See ADR 0002.
 - **Board spec:** declarative data describing one board: how to recognize it, geometry, presets, firmware channel, file formats.
 - **Feature set:** what one keyboard instance offers after merging firmware advertisement, board spec and environment.

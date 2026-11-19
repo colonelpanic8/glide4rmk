@@ -30,6 +30,10 @@ import { LightingSection } from "./properties/LightingSection";
 import { initialWorkbenchState } from "../workbench";
 import { getWording, termFor } from "./terms";
 import { Workbench } from "./Workbench";
+import { flagOn, flagsFromAddress } from "./flags";
+
+// Every screen, those behind a flag too.
+flagsFromAddress("?flags=flows");
 
 // The workbench opens on the keymap; the section to open instead is set here
 // before each drawing. Nothing else about the starting state changes.
@@ -70,6 +74,7 @@ function areasOf(bundle: ConnectedBundle) {
     macros: bundle.caps.macro_space_size > 0,
     forks: bundle.caps.max_forks > 0,
     tapProfiles: bundle.morseProfileCapacity > 0,
+    flows: flagOn("flows"),
   });
 }
 

@@ -8,6 +8,7 @@ const plainRmk: AreaFacts = {
   macros: false,
   forks: false,
   tapProfiles: false,
+  flows: false,
 };
 const everything: AreaFacts = {
   connected: true,
@@ -16,6 +17,7 @@ const everything: AreaFacts = {
   macros: true,
   forks: true,
   tapProfiles: true,
+  flows: true,
 };
 
 const ids = (facts: AreaFacts) => areasFor(facts).map((area) => area.id);
@@ -35,6 +37,7 @@ describe("areas", () => {
       "forks",
       "profiles",
       "transforms",
+      "flows",
     ]);
   });
 
