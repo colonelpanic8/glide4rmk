@@ -1,7 +1,7 @@
 // How layers light up, in Layout properties' RGB Lighting tab under Advanced:
 // how many scene cells the keyboard holds and how many are used, whether only
 // the top layer lights or every active one (top wins), and which layers wake
-// the lights while they are off. Lights a pre-scene Rynkbench kept in this
+// the lights while they are off. Lights a pre-scene GLIDE4RMK kept in this
 // browser can be added to the layout (into the draft).
 
 import { useState } from "react";
@@ -20,7 +20,7 @@ const POLICIES: Array<{ id: LightingLayerPolicy; label: string; hint: string }> 
   { id: "ActiveStack", label: "Every active layer", hint: "Every active layer lights, the top one wins" },
 ];
 
-/** What a pre-scene Rynkbench kept in this browser: each layer's lights. */
+/** What a pre-scene GLIDE4RMK kept in this browser: each layer's lights. */
 function localPresets(serial: string): Record<number, { cells: LightingOverlayCell[] }> {
   try {
     const raw = readSetting(SETTING_KEYS.layerLighting(serial));

@@ -7,7 +7,7 @@
 
 import { sameValue } from "../model/deep-equal";
 
-// Values come from two places: built by Rynkbench, and read back from the
+// Values come from two places: built by GLIDE4RMK, and read back from the
 // keyboard. Their key order and unset fields mean nothing, so they never
 // count as a difference (a check after writing that does fails forever).
 const same = sameValue;

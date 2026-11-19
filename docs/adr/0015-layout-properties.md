@@ -1,9 +1,9 @@
 # 0015. Layout properties, as in GLIDE
 
-**Status:** Accepted (asked by the project owner: GLIDE's Layout properties with what Rynkbench has, GLIDE's icons for it and for Settings).
+**Status:** Accepted (asked by the project owner: GLIDE's Layout properties with what GLIDE4RMK has, GLIDE's icons for it and for Settings).
 
 ## Context
-GLIDE has one Layout properties window (sliders by the layout's name): Details (name, made by, tags, keyboard and Convert), Notes, Firmware options, Lighting, and two code texts. Rynkbench's layout files (RMK TOML, the keyboard's own storage) carry no title, tags, notes or custom code, and its keyboard-wide settings were spread over a Behaviors section (global timing), the Save menu (convert to the other MoErgo board) and the Lighting screen.
+GLIDE has one Layout properties window (sliders by the layout's name): Details (name, made by, tags, keyboard and Convert), Notes, Firmware options, Lighting, and two code texts. GLIDE4RMK's layout files (RMK TOML, the keyboard's own storage) carry no title, tags, notes or custom code, and its keyboard-wide settings were spread over a Behaviors section (global timing), the Save menu (convert to the other MoErgo board) and the Lighting screen.
 
 ## Decision
 - **One window, GLIDE's frame** (`ui/properties/`): tabs on the left, opened from the sliders by the layout's name or from links elsewhere (`openProperties(tab)`, `properties/store.ts`). Settings keeps GLIDE's cog.

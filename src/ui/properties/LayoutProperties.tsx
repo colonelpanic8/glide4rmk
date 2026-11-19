@@ -1,5 +1,5 @@
 // Layout properties, as GLIDE's (ui/layoutProperties.jsx there): one large
-// window with its parts as tabs on the left. Rynkbench's parts: Details (name,
+// window with its parts as tabs on the left. GLIDE4RMK's parts: Details (name,
 // keyboard, what it holds), Firmware options (keyboard-wide timings), RGB
 // Lighting (the lights as a whole; Advanced: status setups and rules), RGB
 // Effects (ADR 0016) and, with a keyboard attached, Insights (what it does now). Each part saves the way it does elsewhere (the draft, or

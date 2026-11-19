@@ -284,7 +284,7 @@ export function WarningIcon(props: IconProps) {
   );
 }
 
-/** Rynkbench Guard's mark: a shield. */
+/** GLIDE4RMK Guard's mark: a shield. */
 export function ShieldIcon(props: IconProps) {
   return (
     <svg {...base(props)}>
@@ -420,7 +420,7 @@ export function BatteryGlyph({
   );
 }
 
-/** The Rynkbench mark: a keycap with a signal dot. */
+/** The GLIDE4RMK mark: a keycap with a signal dot. */
 export function Wordmark({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 28 28" fill="none" aria-hidden>

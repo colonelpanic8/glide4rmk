@@ -1,4 +1,4 @@
-// What Rynkbench knows a keyboard stores: one record per kind of stored item.
+// What GLIDE4RMK knows a keyboard stores: one record per kind of stored item.
 // The planner compares two of these (what the keyboard holds, what you want);
 // a part that is missing on either side is simply not compared (ADR 0012).
 

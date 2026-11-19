@@ -5,7 +5,7 @@ export function same(a: unknown, b: unknown): boolean {
   return a === b || JSON.stringify(a) === JSON.stringify(b);
 }
 
-/** Structural equality for values built in different places (by Rynkbench,
+/** Structural equality for values built in different places (by GLIDE4RMK,
  *  and read back from the keyboard): key order and unset fields do not
  *  matter; array order does. */
 export function sameValue(a: unknown, b: unknown): boolean {

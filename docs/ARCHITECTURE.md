@@ -1,10 +1,10 @@
 # Architecture
 
-One map of Rynkbench: why it is built this way, the layers, where a piece of code goes, and how a change travels from a click to the keyboard and back. The decisions behind it are in `docs/adr/`; this page links them and does not repeat them.
+One map of GLIDE4RMK: why it is built this way, the layers, where a piece of code goes, and how a change travels from a click to the keyboard and back. The decisions behind it are in `docs/adr/`; this page links them and does not repeat them.
 
 ## Why it is built this way
 
-A keyboard configurator has one job it must never get wrong: what you see is what the keyboard does. Most get there by trust; Rynkbench gets there by construction. Five ideas carry it, and each one removes a whole class of bugs instead of fixing them one at a time.
+A keyboard configurator has one job it must never get wrong: what you see is what the keyboard does. Most get there by trust; GLIDE4RMK gets there by construction. Five ideas carry it, and each one removes a whole class of bugs instead of fixing them one at a time.
 
 **1. Two pictures, and a change is the difference between them** (ADR 0018). The workbench holds what the keyboard holds (`base`) and what you want (`want`), both as a `KeyboardImage`. Every edit, one key or a hundred, changes only `want`. Everything else follows from comparing the two: the draft is their difference, Review & send lists it, Send writes only it, the read-back moves `base`, and a crash or a closed tab loses nothing because the difference is kept. There is no second bookkeeping to drift out of step, because there is nothing to keep but two images.
 

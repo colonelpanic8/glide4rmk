@@ -1,4 +1,4 @@
-// Rynkbench Guard: what keeps a layout from being broken (ADR 0011). It
+// GLIDE4RMK Guard: what keeps a layout from being broken (ADR 0011). It
 // compares a change before and after on the reference graph and reports only
 // what the change itself breaks, so a layout that was already odd is never
 // blamed on the next edit. Every key write passes it, in Live and in Draft;

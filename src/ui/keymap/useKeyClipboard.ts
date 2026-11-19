@@ -1,5 +1,5 @@
 // Copy and paste of one key's binding, on the system clipboard when the
-// browser allows it and inside Rynkbench otherwise. The Ctrl/⌘ C and V
+// browser allows it and inside GLIDE4RMK otherwise. The Ctrl/⌘ C and V
 // shortcuts and the key quick menu run the same steps; the planning itself is
 // pure (keyManipulation.ts).
 
@@ -56,7 +56,7 @@ export function useKeyClipboard(
       localClipboardRef.current = structuredClone(action);
       if (!navigator.clipboard?.writeText) {
         report(
-          "Copied within Rynkbench; system clipboard access is unavailable.",
+          "Copied within GLIDE4RMK; system clipboard access is unavailable.",
         );
         return true;
       }
@@ -67,7 +67,7 @@ export function useKeyClipboard(
           ),
         () =>
           report(
-            "Copied within Rynkbench; the browser did not allow system clipboard access.",
+            "Copied within GLIDE4RMK; the browser did not allow system clipboard access.",
           ),
       );
       return true;
@@ -76,7 +76,7 @@ export function useKeyClipboard(
     const paste = async (pasted: KeyAction | null) => {
       if (!pasted) {
         report(
-          "The clipboard does not contain a Rynkbench key binding.",
+          "The clipboard does not contain a GLIDE4RMK key binding.",
         );
         return;
       }

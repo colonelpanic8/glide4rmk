@@ -9,6 +9,7 @@ import type { AnyBehavior } from "./behavior-slots";
 /** One copied behavior: its kind, value and label. */
 export type CopiedBehavior = AnyBehavior & { name: string; description: string };
 
+// The app's former name: a format already copied and pasted, never renamed.
 const MARK = "rynkbench.behaviors";
 
 export function behaviorsAsText(items: readonly CopiedBehavior[]): string {

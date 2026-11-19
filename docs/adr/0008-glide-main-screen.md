@@ -4,7 +4,7 @@
 
 ## Context
 
-GLIDE, the MoErgo layout editor by the same author, is organized and drawn in a way people find clearer: a top bar with Open and Save, a side panel of layers and combos, the keyboard in the middle; its colours and keys look better. Rynkbench follows it.
+GLIDE, the MoErgo layout editor by the same author, is organized and drawn in a way people find clearer: a top bar with Open and Save, a side panel of layers and combos, the keyboard in the middle; its colours and keys look better. GLIDE4RMK follows it.
 
 ## Decision
 

@@ -48,7 +48,7 @@ describe("the planner", () => {
 
   it("compares scene tables by their cells, not their order, as the keyboard keeps its own", () => {
     const cell = (layer: number, led_id: number, r = 9) => ({ layer, led_id, effect: { Solid: { color: { r, g: 0, b: 0 } } } });
-    // What Rynkbench wants after editing layer 0 (its cells last) and what RMK reads back (grouped by layer).
+    // What GLIDE4RMK wants after editing layer 0 (its cells last) and what RMK reads back (grouped by layer).
     const wanted = [cell(1, 4), cell(0, 7), cell(0, 2)];
     const stored = [cell(0, 2), cell(0, 7), cell(1, 4)];
     expect(planSync(image({ scenes: stored }), image({ scenes: wanted }))).toEqual([]);

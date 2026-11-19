@@ -1,6 +1,6 @@
 # Writing to the keyboard
 
-How Rynkbench gets your changes onto an RMK keyboard: one write path for a draft, an operation, a layer move, an import, Undo and the bulk changes GLIDE Flows will bring, and the Live writes that do not use it yet. The decisions are ADR 0012, 0018, 0021, 0022 and 0023; this page is the full description. Code: `src/sync/`, `src/workbench/draft/`, `src/workbench/apply.ts`.
+How GLIDE4RMK gets your changes onto an RMK keyboard: one write path for a draft, an operation, a layer move, an import, Undo and the bulk changes GLIDE Flows will bring, and the Live writes that do not use it yet. The decisions are ADR 0012, 0018, 0021, 0022 and 0023; this page is the full description. Code: `src/sync/`, `src/workbench/draft/`, `src/workbench/apply.ts`.
 
 ## Why it works this way
 
@@ -15,7 +15,7 @@ What is efficient is decided by the firmware. Read in RMK (`colonelpanic8/rmk`):
 | Keymap writes have no transaction. | | A dropped link can leave a change half-done; it must be resumable. |
 | A key is only applied once it is written; there is no "try it in RAM". | | Live must write keys at once to let you try them. |
 
-Other firmware: QMK compares before every EEPROM write (`eeprom_update_*`) and its wear-leveling layer skips unchanged writes; ZMK delays settings writes (60 s by default) and ZMK Studio holds keymap changes in RAM until Save. Rynkbench does the comparing and the gathering on the browser side. The pinned firmware also skips a row segment equal to the stored one.
+Other firmware: QMK compares before every EEPROM write (`eeprom_update_*`) and its wear-leveling layer skips unchanged writes; ZMK delays settings writes (60 s by default) and ZMK Studio holds keymap changes in RAM until Save. GLIDE4RMK does the comparing and the gathering on the browser side. The pinned firmware also skips a row segment equal to the stored one.
 
 Firmware that stores one item per key still works: it gets every cell of a changed row written. No capability tells the two storage models apart.
 

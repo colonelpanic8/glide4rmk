@@ -8,7 +8,7 @@ function report(...bytes: number[]): Uint8Array {
 }
 
 describe("RynkFrameBuffer", () => {
-  /// The regression that stopped rynkbench talking to current firmware: this
+  /// The regression that stopped GLIDE4RMK talking to current firmware: this
   /// buffer used to trim each report to a length it read out of bytes 3..4,
   /// from a pre-COBS wire format whose header was 5 bytes. Against a
   /// COBS-encoded stream with a 3-byte header those bytes are payload, so the

@@ -1,4 +1,4 @@
-# Rynkbench
+# GLIDE4RMK
 
 A browser configurator for [RMK](https://github.com/rmk-rs/rmk) keyboards that
 speak the **Rynk** protocol (Glove80, Go60 and plain RMK boards). Connect over
@@ -19,7 +19,7 @@ GLIDE.
   keycaps show the characters keys type, and where the key editor and layers
   panel sit. Nothing there changes the keyboard.
 - **Draft and Live.** The connection chip in the top bar switches between
-  **Draft**, where changes stay in Rynkbench until **Review & send**, and
+  **Draft**, where changes stay in GLIDE4RMK until **Review & send**, and
   **Live**, where each change goes to the keyboard as you make it. A keyboard
   starts in Draft. Review & send lists the changes by area and layer, each
   group with its own Discard, then sends only what differs from a fresh read
@@ -29,7 +29,7 @@ GLIDE.
   explicit Send. The draft is kept in this browser per keyboard and offered
   back on the next connect. See `docs/sync.md`.
 - **Flash memory is spent only on purpose.** The keyboard keeps its layout in
-  flash, which lasts for a limited number of writes. Rynkbench writes only
+  flash, which lasts for a limited number of writes. GLIDE4RMK writes only
   what changed, once: in Live a key change is written as you make it, and
   painted lights and other waiting changes go together once you pause; RGB
   Lighting and RGB Effects wait for Apply, so dragging a slider writes
@@ -37,7 +37,7 @@ GLIDE.
   Planning many changes? Stay in Draft: Send writes them all in one go.
 - **Undo and Redo** cover every change, in Draft and Live (Ctrl/⌘+Z,
   Ctrl/⌘+Shift+Z or Ctrl+Y); in Live the keyboard follows.
-- **Rynkbench Guard** stops or asks before a change that breaks the layout,
+- **GLIDE4RMK Guard** stops or asks before a change that breaks the layout,
   such as cutting a layer off from every key that reaches it.
 - **The key editor.** Click a key on the Keymap; the panel below the board has
   **Pick Key**, **Switch Layer**, **RGB Lighting** (on boards with layer
@@ -337,7 +337,7 @@ generic device discovery.
 
 ### Troubleshooting a disconnected configuration import
 
-Rynkbench parses configuration files before writing them and checks changed
+GLIDE4RMK parses configuration files before writing them and checks changed
 lighting tables against the connected firmware's capacity and advertised
 tagged predicates before applying any part of the import. Layer-set,
 maintenance, and split-transport conditions survive TOML import and export;
@@ -353,9 +353,9 @@ after writes begin can leave earlier changes applied. The import is not lost:
 it stays in the draft, which is kept for the keyboard; after reconnecting,
 Restore it and Send writes only what is left.
 
-For a failing import, retain the TOML, firmware build, Rynkbench build, and
+For a failing import, retain the TOML, firmware build, GLIDE4RMK build, and
 transport used. After reconnecting, copy **Device → Session diagnostics**. A
 request marked `timeout` identifies the unanswered operation; `device unplugged`
 records a transport disconnect notification. Note whether ordinary typing also
-stopped. Firmware updates alone do not update a cached Rynkbench page or its
+stopped. Firmware updates alone do not update a cached GLIDE4RMK page or its
 protocol client; reload the current site too.

@@ -19,7 +19,7 @@ ADR 0016 moved each key's light to the key editor's RGB Lighting tab and removed
 ## Consequences
 
 - Drag-select relies on `pointerenter` while a button is held. A touch pointer stays captured by the key it started on, so touch has no drag-select; touch can still select with Select on, one tap per key. Not tried on a device.
-- An older Rynkbench stored a new blink at duty 128 (of 255). The firmware plays 100 or more as always on, and the layout-file reader in its config crate (`rmk-config`) refuses a duty above 100. Exports now clamp it; a file saved with 128 before that is refused by that reader.
+- An older GLIDE4RMK stored a new blink at duty 128 (of 255). The firmware plays 100 or more as always on, and the layout-file reader in its config crate (`rmk-config`) refuses a duty above 100. Exports now clamp it; a file saved with 128 before that is refused by that reader.
 - The overlay is held in the keyboard's memory, not flash (as the io's comment states; not measured here), so trying out costs no wear.
 - The pick, the lit view and trying out live in module stores that end with the workbench (`ui/workbench-end.ts`).
 - None of this has been tried in a browser or on a keyboard; the screen tests render static markup only.

@@ -1,5 +1,5 @@
 import type { MacroOp } from "../vendor/rynk-wasm/rynk_wasm";
-// The Rynkbench session seam.
+// The GLIDE4RMK session seam.
 //
 // Everything above this interface is backend-neutral UI; everything below it
 // is one of the pluggable backends: the in-memory mock engine (which also

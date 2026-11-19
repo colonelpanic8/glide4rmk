@@ -190,7 +190,7 @@ export function useDocumentTransfer(): DocumentTransfer {
           .replace(/[^a-z0-9]+/gi, "-")
           .replace(/^-|-$/g, "")
           .toLowerCase() || "keyboard";
-      link.download = `${stem}-rynkbench.${FORMAT_EXTENSION[format]}`;
+      link.download = `${stem}-glide4rmk.${FORMAT_EXTENSION[format]}`;
       link.click();
       URL.revokeObjectURL(url);
       setReport({

@@ -1,4 +1,4 @@
-// Rynkbench Guard at the one door every key write goes through: the io. A
+// GLIDE4RMK Guard at the one door every key write goes through: the io. A
 // change is judged as a whole before it is made, in Live and in Draft; Send
 // checks the draft again, so nothing broken reaches the keyboard (ADR 0011).
 // A key the keyboard already holds is not sent at all (ADR 0012). An
