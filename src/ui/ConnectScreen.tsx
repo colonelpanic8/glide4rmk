@@ -191,7 +191,7 @@ export function ConnectScreen({
             <Wordmark size={38} />
           </div>
           <h1 className="text-display font-semibold leading-none tracking-[-0.02em] text-ink">
-            Rynkbench
+            GLIDE4RMK
           </h1>
           <p className="mt-2.5 text-ui text-mute">Set up your RMK keyboard</p>
         </div>

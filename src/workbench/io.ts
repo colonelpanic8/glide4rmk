@@ -35,6 +35,8 @@ import { applyOperation, passEverything, type Judge } from "./apply";
 import type { LayoutImport } from "../config/transfer";
 import type { BehaviorLabels } from "../model/behavior-labels";
 import { importLayout, type LayoutImported } from "./io-import";
+import { runFlow, type FlowEnvironment, type FlowRun } from "./flows";
+import type { Flow } from "../operations/flows";
 import { keyIo } from "./io-keys";
 import { layerIo } from "./io-layers";
 import { lightingIo } from "./io-lighting";
@@ -56,6 +58,8 @@ export interface WorkbenchIo {
   /** A layout file over what you want, committed as an operation's result is;
    *  `labels`: the file's names for its behaviors (ADR 0020). */
   importLayout(file: LayoutImport, labels?: BehaviorLabels): Promise<LayoutImported>;
+  /** A Flow (ADR 0025): its script on what you want, its operations committed as one. */
+  runFlow(flow: Flow, values: Readonly<Record<string, unknown>>, env: FlowEnvironment): Promise<FlowRun>;
   /** Resolves once realtime lighting has nothing waiting or being written. */
   realtimeSettled(): Promise<void>;
   setKey(layer: number, row: number, col: number, action: KeyAction): Promise<IoWriteResult>;
@@ -219,6 +223,7 @@ export function makeIo(
   return {
     apply: (name, input) => applyOperation(context, name, input),
     importLayout: (file, labels) => importLayout(context, file, labels),
+    runFlow: (flow, values, env) => runFlow(context, flow, values, env),
     realtimeSettled: () => realtime.settled(),
     ...keyIo(context),
     ...layerIo(context),

@@ -1,5 +1,5 @@
 // Layout properties → Details, as GLIDE's: the layout's name and its keyboard
-// (with Convert to the other MoErgo board). Rynkbench adds what the keyboard
+// (with Convert to the other MoErgo board). GLIDE4RMK adds what the keyboard
 // can hold, from its capabilities; layout files here carry no title, tags or notes.
 
 import { useState } from "react";

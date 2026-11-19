@@ -15,7 +15,7 @@ export interface ConfirmRequest {
   cancelLabel?: string;
   /** The action destroys something: the button is drawn in the danger colour. */
   danger?: boolean;
-  /** Rynkbench Guard asks (ADR 0011): its label on top, Reject and Approve. */
+  /** GLIDE4RMK Guard asks (ADR 0011): its label on top, Reject and Approve. */
   guard?: boolean;
   /** Names and places, behind Show details rather than in the message. */
   details?: string[];
@@ -34,7 +34,7 @@ export interface Toast {
   tone: Tone;
   /** One button on the toast, such as Undo. */
   action?: { label: string; run: () => void };
-  /** Rynkbench Guard stopped or fixed something: the toast carries its label. */
+  /** GLIDE4RMK Guard stopped or fixed something: the toast carries its label. */
   guard?: boolean;
 }
 

@@ -99,7 +99,7 @@ const MIN_PERIOD_MS = 100;
 export const BLINK_DUTY_MAX = 100;
 
 /** The duty a blink runs at on the keyboard, in percent: a stored 100 or more
- *  (as an older Rynkbench stored on a scale of 255) is lit throughout, 100. */
+ *  (as an older GLIDE4RMK stored on a scale of 255) is lit throughout, 100. */
 export function blinkDuty(duty: number): number {
   return Math.min(duty, BLINK_DUTY_MAX);
 }

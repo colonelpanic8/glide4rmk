@@ -101,7 +101,7 @@ export function FirmwareUpdateCard() {
 
       {!automatic && release && (
         <div className="mt-3 text-body text-faint">
-          One-click flashing requires the Rynkbench desktop app, which can wait for and write the UF2 volume.
+          One-click flashing requires the GLIDE4RMK desktop app, which can wait for and write the UF2 volume.
         </div>
       )}
 

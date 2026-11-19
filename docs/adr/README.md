@@ -14,7 +14,7 @@ One short page per decision that shapes the code, so the reason survives the peo
 | [0008](0008-glide-main-screen.md) | GLIDE's main screen and look | Accepted |
 | [0009](0009-key-slots-on-rmk.md) | GLIDE's key slots on RMK bindings | Accepted |
 | [0010](0010-draft-and-live.md) | Draft and Live: when changes reach the keyboard | Accepted; Live's own send amended by 0022 |
-| [0011](0011-guard.md) | Rynkbench Guard: one gate for every key write | Accepted |
+| [0011](0011-guard.md) | GLIDE4RMK Guard: one gate for every key write | Accepted |
 | [0012](0012-sync.md) | One write path: plan the difference, write only that | Accepted; key runs replaced by 0021 |
 | [0013](0013-one-history-one-gate.md) | One document, one history, one gate: adopted module by module | Accepted; its end state designed in 0018 |
 | [0014](0014-themes-preferences-key-faces.md) | GLIDE's themes, Settings and key faces | Accepted |
@@ -28,5 +28,6 @@ One short page per decision that shapes the code, so the reason survives the peo
 | [0022](0022-base-basis-and-lives-own-send.md) | The base is the last read; what a draft was based on; Live's own send | Accepted |
 | [0023](0023-a-file-import-is-a-commit.md) | A file import is a commit | Accepted |
 | [0024](0024-lighting-tools-on-the-keymap.md) | Lighting tools on the keymap | Accepted |
+| [0025](0025-flows.md) | Flows: jq over a description, operations out | Accepted |
 
 The glossary is in [../glossary.md](../glossary.md).

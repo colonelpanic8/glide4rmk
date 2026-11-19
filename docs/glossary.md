@@ -3,13 +3,14 @@
 One word, one meaning. Code, docs and screens use these terms.
 
 - **Keyboard instance:** one connected keyboard or opened file, with its own capabilities, model, draft, history and snapshots.
+- **Flow:** a `.flows` file (`flows/`): a jq script with a title and choices that reads the keyboard's description and gives back operations, run as one change. See ADR 0025.
 - **Capability:** a declared unit of keyboard functionality (for example `lighting.rules`) with limits and semantics. See ADR 0002.
 - **Board spec:** declarative data describing one board: how to recognize it, geometry, presets, firmware channel, file formats.
 - **Feature set:** what one keyboard instance offers after merging firmware advertisement, board spec and environment.
 - **Offer:** the policy engine's answer to "is this feature shown here, and how far does it reach", with the reason (proposed in ADR 0002; not built).
 - **Sync:** bringing the keyboard to the layout you want by writing only what differs from a fresh read of it (ADR 0012, docs/sync.md).
 - **Three-way check:** before writing, each changed item is compared with what it was based on and with what the keyboard holds now; a change made on both sides is shown first.
-- **Rynkbench Guard:** what keeps a layout from being broken: one gate every key write passes, which stops or asks only when a change breaks something. See ADR 0011.
+- **GLIDE4RMK Guard:** what keeps a layout from being broken: one gate every key write passes, which stops or asks only when a change breaks something. See ADR 0011.
 - **Reach:** how far a change goes: `device` (live), `build` (needs a firmware build), `file` (only in the file).
 - **Edge table:** the one list of places a reference can live. The graph is derived from it.
 - **Integrity gate:** the check that refuses a change which adds a broken reference, loop, duplicate or over-capacity table.

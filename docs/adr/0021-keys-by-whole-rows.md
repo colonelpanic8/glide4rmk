@@ -4,7 +4,7 @@
 
 ## Context
 
-ADR 0012 planned keys as runs of neighbouring changed cells and wrote them in pages of four with the bulk command, on the reading that RMK stores one flash item per key. The firmware Rynkbench is built for (`colonelpanic8/rmk`) now stores the keymap as one flash item per row segment of up to 16 keys (`KEYMAP_SEGMENT_KEYS`, `rmk-types/src/constants.rs`). Any write that touches a segment stores the whole segment again (`set_actions`, `host/context.rs`), still without comparing it with what is stored. A run of three keys in one row and a single key in that row cost the same item; three keys in three rows cost three.
+ADR 0012 planned keys as runs of neighbouring changed cells and wrote them in pages of four with the bulk command, on the reading that RMK stores one flash item per key. The firmware GLIDE4RMK is built for (`colonelpanic8/rmk`) now stores the keymap as one flash item per row segment of up to 16 keys (`KEYMAP_SEGMENT_KEYS`, `rmk-types/src/constants.rs`). Any write that touches a segment stores the whole segment again (`set_actions`, `host/context.rs`), still without comparing it with what is stored. A run of three keys in one row and a single key in that row cost the same item; three keys in three rows cost three.
 
 ## Decision
 
@@ -17,5 +17,5 @@ ADR 0012 planned keys as runs of neighbouring changed cells and wrote them in pa
 
 - Moving a layer with three keys on one row stores two segments: the row it leaves and the row it arrives on (`io-layers.test.ts`).
 - A Live edit of one key (`io.setKey`) still sends one cell; the firmware stores its segment.
-- Firmware that still stores one item per key gets every cell of a changed row written, so a scattered change costs more there than before. No capability tells the two storage models apart; Rynkbench assumes row segments.
-- The pinned firmware skips a segment equal to the stored one, so a resent row costs no flash there. Rynkbench still compares first: older firmware stores whatever it is sent, and an unsent row costs no round trip.
+- Firmware that still stores one item per key gets every cell of a changed row written, so a scattered change costs more there than before. No capability tells the two storage models apart; GLIDE4RMK assumes row segments.
+- The pinned firmware skips a segment equal to the stored one, so a resent row costs no flash there. GLIDE4RMK still compares first: older firmware stores whatever it is sent, and an unsent row costs no round trip.

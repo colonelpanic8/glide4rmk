@@ -13,3 +13,5 @@ export type { BehaviorValues } from "./behavior-slots";
 export { freeSlot, KIND_WORD, PROFILE_NAME_MAX, slotsOf, valueOf } from "./behavior-slots";
 export type { CopiedBehavior } from "./behavior-text";
 export { behaviorsAsText, behaviorsFromText } from "./behavior-text";
+export type { Board, DescribedLayer, Description } from "./describe";
+export { describe } from "./describe";

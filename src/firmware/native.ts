@@ -7,7 +7,7 @@ interface PreparedFirmware {
 
 function invoke<T>(command: string, args: Record<string, unknown>): Promise<T> {
   const tauri = typeof window === "undefined" ? undefined : window.__TAURI__;
-  if (!tauri) throw new Error("Automatic firmware installation requires the Rynkbench desktop app");
+  if (!tauri) throw new Error("Automatic firmware installation requires the GLIDE4RMK desktop app");
   return tauri.core.invoke<T>(command, args);
 }
 

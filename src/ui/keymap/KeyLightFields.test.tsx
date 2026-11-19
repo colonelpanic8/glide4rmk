@@ -13,7 +13,7 @@ const RED = { r: 255, g: 0, b: 0 };
 const OWN: LightingEffect = { Blink: { color: RED, period_ms: 750, phase_ms: 120, duty: 30 } };
 const FAST: LightingEffect = { Blink: { color: RED, period_ms: 500, phase_ms: 0, duty: 50 } };
 const STEADY: LightingEffect = { Solid: { color: RED } };
-/** A duty an older Rynkbench stored out of 255: the keyboard lights it throughout. */
+/** A duty an older GLIDE4RMK stored out of 255: the keyboard lights it throughout. */
 const OLD: LightingEffect = { Blink: { color: RED, period_ms: 500, phase_ms: 0, duty: 128 } };
 
 const draw = (ledId: number) =>

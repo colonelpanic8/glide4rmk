@@ -1,4 +1,4 @@
-// What Rynkbench Guard says about its findings: consequence first, with
+// What GLIDE4RMK Guard says about its findings: consequence first, with
 // counts; names and places go behind Show details (ADR 0011).
 
 import type { GuardFinding, Ref } from "../../domain";

@@ -1,4 +1,4 @@
-# Rynkbench working notes
+# GLIDE4RMK working notes
 
 A browser workbench for RMK/Rynk keyboards (Glove80, Go60 and plain RMK boards): edit the keymap, lighting and device settings live or in a file. The look and organization follow GLIDE: its colours, key drawing, top bar, side panel and key editor.
 
@@ -18,7 +18,7 @@ A browser workbench for RMK/Rynk keyboards (Glove80, Go60 and plain RMK boards):
 - Which screens and sections exist: `ui/areas.ts`. Keyboard-wide settings (name, keyboard, firmware options, lighting output): Layout properties, `ui/properties/` (ADR 0015). The app's words, in both voices: `ui/terms.ts`.
 - When changes reach the keyboard: Draft or Live (ADR 0010, 0022; `workbench/draft/`; the hooks and Live's own send in `ui/draft/`). Something new the keyboard stores joins `KeyboardImage` (`sync/image.ts`) with a planner and a writer entry, and what you want reads it through `wantOf`/`withWant` (`workbench/draft/want.ts`, ADR 0018); never a separate Apply.
 - How anything reaches the keyboard: the write path, `sync/` (ADR 0012, `docs/sync.md`): read fresh, `planSync` only the difference (keys by whole row), `syncTo` writes and reads back. A bulk change is an operation (`operations/`, `io.apply`) or another image committed with `commitImage` (`workbench/apply.ts`), as imports are; in Live it goes through Send's path. Never write a whole table or keymap "to be sure", never send an unchanged item. Single-value Live writes in `workbench/io-*.ts` and the whole-table rule and scene writes still bypass it (`docs/ARCHITECTURE.md`); do not add more.
-- What protects a layout: Rynkbench Guard (ADR 0011). Rules in `domain/guard.ts` (stop or ask, only what a change breaks); every key and slot write passes `io` (`ui/guard/guardIo.ts`), and a commit (operation, import) is judged once, whole (`guardJudge`); several keys that form one change go through `io.writeKeys`. Guard speaks with its label: `askConfirm({ guard: true })`, `showToast(…, { guard: true })`.
+- What protects a layout: GLIDE4RMK Guard (ADR 0011). Rules in `domain/guard.ts` (stop or ask, only what a change breaks); every key and slot write passes `io` (`ui/guard/guardIo.ts`), and a commit (operation, import) is judged once, whole (`guardJudge`); several keys that form one change go through `io.writeKeys`. Guard speaks with its label: `askConfirm({ guard: true })`, `showToast(…, { guard: true })`.
 - A question before something that cannot be undone: `askConfirm`; a note that something happened: `showToast` (`ui/messages/store.ts`). Never `window.confirm`/`alert`.
 - A greyed-out button says why: `<Button disabled reason="…">`.
 - Lists with row actions: `ui/RowMenu.tsx` (right-click, long press, ⋮). Resizable panes: `ui/panes.tsx`.

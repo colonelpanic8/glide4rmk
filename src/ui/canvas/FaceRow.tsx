@@ -1,5 +1,5 @@
 // A row of key pictures and short text centred on a cap (legend.ts faceLayout).
-// The pictures are Rynkbench's own static set (keyface/keyIconData.ts), drawn
+// The pictures are GLIDE4RMK's own static set (keyface/keyIconData.ts), drawn
 // in the given colour (currentColor).
 
 import { KEY_ICON_DATA } from "../keyface/keyIconData";

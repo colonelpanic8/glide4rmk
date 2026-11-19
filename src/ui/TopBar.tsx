@@ -113,7 +113,7 @@ export function TopBar({
           className="flex shrink-0 cursor-pointer items-center gap-2 rounded-lg px-1.5 -mx-1.5 py-1 transition-colors hover:bg-hover max-sm:hidden"
         >
           <Wordmark size={22} />
-          <span className="text-title font-bold uppercase tracking-widest text-ink max-md:hidden">Rynkbench</span>
+          <span className="text-title font-bold uppercase tracking-widest text-ink max-md:hidden">GLIDE4RMK</span>
         </button>
         {onDrawer && (
           <button

@@ -3,6 +3,7 @@ import type { PendingInfo, Selection } from "../../workbench";
 import { keyPendingId } from "../../workbench";
 import { same } from "../../model/deep-equal";
 
+// The app's former name: a format others have on their clipboard, never renamed.
 const CLIPBOARD_KIND = "rynkbench/key-action";
 const CLIPBOARD_VERSION = 1;
 

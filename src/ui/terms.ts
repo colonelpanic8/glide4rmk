@@ -30,6 +30,7 @@ export const TERMS = {
   "section.forks": { technical: "Forks", friendly: "Conditional keys" },
   "section.profiles": { technical: "Profiles", friendly: "Tap timing" },
   "section.transforms": { technical: "Transforms", friendly: "Quick changes" },
+  "section.flows": { technical: "Flows", friendly: "Automations" },
   "section.device": { technical: "Device", friendly: "Keyboard" },
   "section.usage": { technical: "All your behaviors", friendly: "All your behaviors" },
   "section.live": { technical: "Live", friendly: "Live view" },

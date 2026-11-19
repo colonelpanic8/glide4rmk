@@ -1,6 +1,6 @@
 // KeyboardModel: the render-ready view of a device, assembled entirely from
 // what the device reports — LayoutInfo (key outlines, rotation, encoders) and
-// the lighting topology (LED identity/routes/zones). Rynkbench has no
+// the lighting topology (LED identity/routes/zones). GLIDE4RMK has no
 // board-specific code above this module; a "Glove80" is just whatever a
 // session reports. Optional enrichment (static labels, display names) may be
 // layered on top when known, but never replaces device-reported geometry.

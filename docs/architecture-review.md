@@ -6,7 +6,7 @@ Before more UI work: is the architecture ready for WebMCP, other keyboards, stoc
 
 ## The numbers
 
-| | Rynkbench | GLIDE |
+| | GLIDE4RMK | GLIDE |
 |---|---|---|
 | Core (no screens) | 5,000 lines in `model/ domain/ sync/ capabilities/ session/ config/ layers/ firmware/`, plus about 4,800 lines of domain logic that lives in `ui/` (3,400 in pure files, 1,400 of reducer and `io` in `ui/state.tsx`) | 13,500 lines in `core/` |
 | Screens | 26,000 lines in `ui/` (including the domain logic above) | 14,000 lines in `ui/` |
@@ -23,10 +23,10 @@ What is right: the reducer is pure (`makeWorkbenchReducer`); `makeIo` is a facto
 
 What is missing:
 
-- **No named operations.** GLIDE's WebMCP plan stands on `core/operations.js`: `runOperation(layout, name, args)` returns a new layout, judged by GLIDE Guard, and the screen applies it. Rynkbench's `io` methods write to the keyboard (`setKey`, `setSlot`, `writeMacros` …); there is no "image in, image out" operation an assistant could call and preview.
+- **No named operations.** GLIDE's WebMCP plan stands on `core/operations.js`: `runOperation(layout, name, args)` returns a new layout, judged by GLIDE Guard, and the screen applies it. GLIDE4RMK's `io` methods write to the keyboard (`setKey`, `setSlot`, `writeMacros` …); there is no "image in, image out" operation an assistant could call and preview.
 - **Draft operations exist only as hooks.** Send, Discard and Undo are reachable only through `useDraft` and `useDraftHistory`, so code without React (a WebMCP tool, a Flow runner, a test) cannot drive them.
 - **Logic in the wrong layer.** About 3,400 lines of pure domain logic sit under `ui/`: transforms, usage, status presets, the stock Magic layer, firmware rules, key manipulation, key lights, the draft history. (Another 3,500 lines of pure files there are presentation, such as words, themes and key pictures, and rightly stay.) The boundaries guard forbids core layers to import `ui/`, so none of it can be reused by an operations layer as it stands.
-- **No layout as text.** GLIDE's `core/describe.js` turns a layout into text an assistant can read; Rynkbench has `labels.ts`, made for screens.
+- **No layout as text.** GLIDE's `core/describe.js` turns a layout into text an assistant can read; GLIDE4RMK has `labels.ts`, made for screens.
 
 ### 2. Capabilities per keyboard, ready for other boards: mostly
 
@@ -42,7 +42,7 @@ What is missing:
 
 Every lighting surface is a capability, and a keyboard without them shows every area (`areas.test.ts`). Two caveats:
 
-- **Rynk only.** Rynk is now upstream RMK's own protocol, but experimental and off by default (Vial is the default). Stock RMK works with Rynkbench when built with the `rynk` feature; there is no Vial transport, and none is planned.
+- **Rynk only.** Rynk is now upstream RMK's own protocol, but experimental and off by default (Vial is the default). Stock RMK works with GLIDE4RMK when built with the `rynk` feature; there is no Vial transport, and none is planned.
 - **No simulated board without lighting.** All three simulated boards (Glove80, Ortho 60, Stub 48) have RGB, so no test opens every screen on a board without it.
 
 ### 4. Modular, built for growth: the frame is, the core is not yet
@@ -63,19 +63,19 @@ The substrate is better than GLIDE's: `KeyboardImage` (`sync/image.ts`) is the w
 What is missing is the path a Flow's result takes:
 
 - **operations** to write Flows with (point 1);
-- **one judgement for any result:** close already. Rynkbench Guard (`judgeChange(before, after)`, `domain/guard.ts`) compares two whole layouts, like GLIDE's `judgeFlowResult`; only the `io` wrapper feeds it one write at a time, so it needs an adapter from an image;
+- **one judgement for any result:** close already. GLIDE4RMK Guard (`judgeChange(before, after)`, `domain/guard.ts`) compares two whole layouts, like GLIDE's `judgeFlowResult`; only the `io` wrapper feeds it one write at a time, so it needs an adapter from an image;
 - **one way to apply a whole image:** as a proposal with a preview, then Apply as one undo step, in Draft and Live alike;
 - **a runner** (GLIDE runs jq in a Web Worker with a time limit). That waits until we decide what Flows look like on RMK: jq over a JSON form of the image, or TypeScript.
 
 ### 6. At least as good as GLIDE: in the foundations yes, in the core not yet
 
-| Where Rynkbench is ahead | Where GLIDE is ahead |
+| Where GLIDE4RMK is ahead | Where GLIDE is ahead |
 |---|---|
 | Strict TypeScript everywhere | Named operations (`core/operations.js`), the base for WebMCP and Flows |
 | Capabilities from the firmware, board profiles optional | `offer()` and a feature catalog: one place decides what a screen offers |
 | One write path with read-back checks against a live keyboard | Flows: runner, contract, run log, links |
 | Layer boundaries enforced by tests | Half the code is core; the screens stay thin |
-| ADR discipline (16 ADRs) | `ARCHITECTURE.md`: one map of how a change flows; Rynkbench's is a README section |
+| ADR discipline (16 ADRs) | `ARCHITECTURE.md`: one map of how a change flows; GLIDE4RMK's is a README section |
 | | Twice the test files, and UI specs checked by tests |
 
 ### 7. Would a critical engineering manager be proud?
@@ -99,10 +99,10 @@ No conflicting work is in flight: the only other branch (`foundation`) is alread
 Each step keeps every test green, ships on its own, and has a test that says it is done. Decisions go in ADR 0017 (the core and operations) and an update of ADR 0002 (`offer()`).
 
 0. **A safety net** (one session). Render tests for the RGB screens; a simulated board without RGB or Bluetooth; a test that opens every area and section on each simulated board. *Done when* every screen renders on all four boards in CI.
-1. **A core for the workbench** (one session). `workbench/` gets the reducer and `io` from `ui/state.tsx`, which keeps only the React context; the 3,400 lines of domain logic move to `model/`, `domain/` or `workbench/`, with `git mv` to keep their history; `docs/ARCHITECTURE.md` maps how a change flows. *Done when* the boundaries guard forbids `workbench/` to import `ui/`, `ui/state.tsx` is off the size exemption list, and nothing behaves differently (same tests, no test changed but imports). Done in one go, with no other session on Rynkbench meanwhile: a move conflicts with everything.
+1. **A core for the workbench** (one session). `workbench/` gets the reducer and `io` from `ui/state.tsx`, which keeps only the React context; the 3,400 lines of domain logic move to `model/`, `domain/` or `workbench/`, with `git mv` to keep their history; `docs/ARCHITECTURE.md` maps how a change flows. *Done when* the boundaries guard forbids `workbench/` to import `ui/`, `ui/state.tsx` is off the size exemption list, and nothing behaves differently (same tests, no test changed but imports). Done in one go, with no other session on GLIDE4RMK meanwhile: a move conflicts with everything.
 2. **The draft holds the whole keyboard** (two or three sessions). ADR 0017 decides between two designs: more kinds of staged items (macros, layer names and moves, settings), or the draft as a wanted image beside its base, from which the staged list is computed. The second is simpler and is what operations need; the review favours it. *Done when* any `KeyboardImage` can be staged and shows in Review & send, and Undo covers it in Draft and Live (one history, ADR 0013's end).
 3. **Operations** (one or two sessions). `operations/`: named operations, image in, image out (`set_keys`, `swap_keys`, `move_layer`, `apply_transform`, `set_key_light`, `install_preset` …), each result judged by Guard through the adapter, and applied in one way: staged in Draft, sent through `syncTo` in Live, one undo step either way. Transforms, presets and the rule panels move onto them (todo: the rule path, atomic status setups). *Done when* no screen writes through `io` for a bulk change.
 4. **Capabilities and `offer()`** (one session, any time after step 0). Capabilities for what a screen offers (combos, macros, morse, forks, Bluetooth, split, encoders, layer names); limits stay as table slots; board presets become offers with their conditions; the probing guard covers `caps.*` in screens. *Done when* no screen reads a raw firmware field to decide what it shows.
 5. **The doors** (later). `describe(image)`; WebMCP behind a flag (still a Chrome origin trial that no mainstream assistant calls, so last); Flows once a first real Flow is chosen to decide their language (jq over the image's JSON, as GLIDE does, or TypeScript).
 
-After step 3, Rynkbench is ahead of GLIDE on every row of the table but Flows; after step 5, on that one too.
+After step 3, GLIDE4RMK is ahead of GLIDE on every row of the table but Flows; after step 5, on that one too.

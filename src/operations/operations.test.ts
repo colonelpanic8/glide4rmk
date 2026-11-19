@@ -91,6 +91,12 @@ describe("keys", () => {
     expect(run("set_keys", { keys: [{ layer: 9, row: 0, col: 0, action: "No" }] })).toEqual({ ok: false, message: "Layer 9 does not exist" });
   });
 
+  it("refuses a key whose place or action the keyboard cannot store, changing nothing", () => {
+    const refused = { ok: false, message: "set_keys: keys[1] is not { layer, row, col, action } with an action the keyboard can store" };
+    expect(run("set_keys", { keys: [{ layer: 0, row: 0, col: 0, action: "No" }, { layer: 0, row: 0, col: 1, action: { Single: { Key: { Hid: "Banana" } } } }] })).toEqual(refused);
+    expect(run("set_keys", { keys: [{ layer: 0, row: 0, col: 0, action: "No" }, { layer: "0", row: 0, col: 1, action: "No" }] })).toEqual(refused);
+  });
+
   it("swaps two keys, across layers too", () => {
     const result = run("swap_keys", { a: { layer: 0, row: 0, col: 1 }, b: { layer: 2, row: 0, col: 0 } });
     expect(result.ok && result.image.layers[0][1]).toEqual(key("C"));

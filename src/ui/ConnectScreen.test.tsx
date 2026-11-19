@@ -29,7 +29,7 @@ describe("connect screen", () => {
 
   it("lists the ways that cannot work here with what they need, not as cards", () => {
     const html = screen([provider("native", "USB (native)", false), provider("webhid", "USB (WebHID)", true)]);
-    expect(html).toContain("USB (native) needs the Rynkbench desktop app");
+    expect(html).toContain("USB (native) needs the GLIDE4RMK desktop app");
     expect(html).not.toContain("USB (native) description");
   });
 

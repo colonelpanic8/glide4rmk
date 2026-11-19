@@ -12,7 +12,7 @@ const documentTools = (id: string, name: string): BoardDocumentTools => ({
 const releaseSource = {
   kind: "github-latest-release" as const,
   repository: "colonelpanic8/moergo-config",
-  label: "Rynkbench MoErgo releases",
+  label: "GLIDE4RMK MoErgo releases",
 };
 
 const bleUserActions = [

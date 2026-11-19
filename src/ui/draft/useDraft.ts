@@ -1,5 +1,5 @@
 // The draft, as the status chip and the review window use it. In Draft mode
-// changes stay in Rynkbench until Send writes them all to the keyboard in one
+// changes stay in GLIDE4RMK until Send writes them all to the keyboard in one
 // go; in Live mode each change goes at once. RMK stores every write, so the
 // draft is held here, not on the keyboard (docs/adr/0010-draft-and-live.md).
 

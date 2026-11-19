@@ -3,7 +3,7 @@
 **Status:** Accepted. Enforced by `src/architecture/boundaries.test.ts`.
 
 ## Context
-Rynkbench's screens import the protocol's wire types directly (49 production files under `src/ui` when the guard was introduced), and `src/config` and `src/session/mock` imported from `src/ui`. Logic that should run without a screen could not, and a second protocol or board family would touch most of the UI.
+GLIDE4RMK's screens import the protocol's wire types directly (49 production files under `src/ui` when the guard was introduced), and `src/config` and `src/session/mock` imported from `src/ui`. Logic that should run without a screen could not, and a second protocol or board family would touch most of the UI.
 
 ## Decision
 From the bottom: protocol clients and transports, capabilities, adapters, domain model and policy, application services, UI. A layer imports only from layers below it. Today's folders map onto this as they are migrated; the rules in `src/architecture/boundaries.ts` are the executable form.

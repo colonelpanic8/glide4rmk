@@ -4,7 +4,7 @@
 
 ## Context
 
-GLIDE has one layout document: every edit is a new version of it, passes one commit gate, and is one undo step (`pushHistory`). Rynkbench has two histories (Live undo replays old key values to the keyboard, keys only; the draft has its own history, reset after Send) and Guard (ADR 0011) at only some of the io's writes. ADR 0012 already describes the wanted layout as the one thing edits change, but only Send and layer operations go through it.
+GLIDE has one layout document: every edit is a new version of it, passes one commit gate, and is one undo step (`pushHistory`). GLIDE4RMK has two histories (Live undo replays old key values to the keyboard, keys only; the draft has its own history, reset after Send) and Guard (ADR 0011) at only some of the io's writes. ADR 0012 already describes the wanted layout as the one thing edits change, but only Send and layer operations go through it.
 
 ## Decision
 

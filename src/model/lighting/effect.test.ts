@@ -57,7 +57,7 @@ describe("a blink's duty", () => {
   it("runs as stored up to 100 percent, and lit throughout from there", () => {
     expect(blinkDuty(30)).toBe(30);
     expect(blinkDuty(100)).toBe(100);
-    // An older Rynkbench stored a duty out of 255: its 128 already lit the key throughout.
+    // An older GLIDE4RMK stored a duty out of 255: its 128 already lit the key throughout.
     expect(blinkDuty(128)).toBe(100);
   });
 

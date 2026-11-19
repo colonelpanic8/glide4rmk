@@ -1,4 +1,4 @@
-// The preferences that change how Rynkbench looks and reads, as GLIDE's
+// The preferences that change how GLIDE4RMK looks and reads, as GLIDE's
 // Settings has them (ui/settingsPanel.jsx there), and whether lighting goes to
 // the keyboard at once: browser-local, never written to the keyboard. Theme and wording have their own homes (theme/, terms.ts);
 // the rest live here, each a small store with a hook (ADR 0014).

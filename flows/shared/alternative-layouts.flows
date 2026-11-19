@@ -1,0 +1,165 @@
+uid = "alt_layout"
+
+runs_on = "glide4rmk"
+
+title = "Different typing layout"
+
+subtitle = "Colemak-DH, Engram and more"
+
+description = '''
+Switches your base layer to another typing layout, such as Colemak-DH, Aptmak Blue or Engram.
+
+- Home-row mods stay with your fingers: each keeps its modifier and its timing, only the letter it types changes.
+- Autoshift keys type the new key, and the new key shifted when held.
+- Other layers whose home row types letters (a Typing or Autoshift layer) change with it; Gaming, Numbers, Navigation, Media, Keypad, Mouse and Magic layers are left alone.
+- Shortcuts such as Ctrl+C, thumb keys and combos are left alone.'''
+
+category = "QWERTY alternatives"
+
+script = '''
+# ==============================================================================
+# Different typing layout
+#
+# Puts another typing layout's keys on the 36 letter keys (three rows of six on
+# each hand). It goes by key position, not by letter: whatever a position typed,
+# it now types what the new layout has there. Inside a key only what it types
+# changes: a home-row mod keeps its modifier and tap timing profile, an
+# Autoshift key types the new key on tap and the new key shifted on hold, and
+# a shortcut (Ctrl, Alt or GUI held with the key) is left as it is.
+#
+# Changed: the base layer (the default layer), and every other layer whose
+# home row types two or more letters, unless its name is in $excluded.
+# Not changed: thumb keys, the function and number rows, combos, behaviors.
+# ==============================================================================
+
+["Gaming","Numbers","Navigation","Media","Keypad","Mouse","Magic"] as $excluded |
+
+# The layouts, as GLIDE has them: 36 keys, row by row, left hand then right
+# hand: the top letter row, the home row, the bottom letter row. "" leaves that
+# position as it is.
+def layouts: {
+  "aptmak": ["", "V", "W", "F", "P", "B", "J", "L", "U", "Y", "SQT", "", "", "R", "S", "T", "H", "K", "X", "N", "A", "I", "O", "", "", "C", "G", "D", "M", "COMMA", "DOT", "FSLH", "SEMI", "Z", "Q", ""],
+  "aptmak_blue": ["", "Q", "J", "U", "L", "SEMI", "B", "P", "F", "W", "X", "BSLH", "ESC", "A", "O", "I", "N", "Y", "K", "H", "T", "S", "R", "SQT", "", "Z", "DOT", "COMMA", "M", "E", "V", "D", "G", "C", "FSLH", ""],
+  "azerty": ["", "A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P", "", "", "Q", "S", "D", "F", "G", "H", "J", "K", "L", "M", "", "", "W", "X", "C", "V", "B", "N", "M", "COMMA", "DOT", "FSLH", ""],
+  "canary": ["", "W", "L", "Y", "P", "B", "Z", "F", "O", "U", "SQT", "", "", "C", "R", "S", "T", "G", "M", "N", "E", "I", "A", "", "", "Q", "J", "V", "D", "K", "X", "H", "FSLH", "COMMA", "DOT", ""],
+  "colemak-dh": ["", "Q", "W", "F", "P", "B", "J", "L", "U", "Y", "SEMI", "", "", "A", "R", "S", "T", "G", "M", "N", "E", "I", "O", "", "", "Z", "X", "C", "D", "V", "K", "H", "COMMA", "DOT", "FSLH", ""],
+  "dvorak": ["", "SQT", "COMMA", "DOT", "P", "Y", "F", "G", "C", "R", "L", "", "", "A", "O", "E", "U", "I", "D", "H", "T", "N", "S", "", "", "SEMI", "Q", "J", "K", "X", "B", "M", "W", "V", "Z", ""],
+  "engram": ["", "B", "Y", "O", "U", "SQT", "DQT", "L", "D", "W", "V", "Z", "", "C", "I", "E", "A", "COMMA", "DOT", "H", "T", "S", "N", "Q", "", "G", "X", "J", "K", "MINUS", "QMARK", "R", "M", "F", "P", ""],
+  "engrammer": ["", "B", "Y", "O", "U", "SQT", "SEMI", "L", "D", "W", "V", "Z", "", "C", "I", "E", "A", "COMMA", "DOT", "H", "T", "S", "N", "Q", "", "G", "X", "J", "K", "MINUS", "FSLH", "R", "M", "F", "P", ""],
+  "enthium_v14": ["", "Q", "Y", "O", "U", "EQUAL", "X", "L", "D", "P", "Z", "", "B", "C", "I", "A", "E", "MINUS", "K", "H", "T", "N", "S", "W", "", "SQT", "COMMA", "DOT", "SEMI", "FSLH", "J", "M", "G", "F", "V", ""],
+  "enthium_v15": ["", "Q", "Y", "U", "O", "SEMI", "X", "L", "D", "P", "Z", "", "B", "C", "I", "E", "A", "COMMA", "K", "H", "T", "N", "S", "W", "", "SQT", "MINUS", "EQUAL", "DOT", "FSLH", "J", "M", "G", "F", "V", ""],
+  "gallium": ["", "B", "L", "D", "C", "V", "J", "F", "O", "U", "COMMA", "", "", "N", "R", "T", "S", "G", "Y", "H", "A", "E", "I", "", "", "X", "Q", "M", "W", "Z", "K", "P", "SQT", "SEMI", "DOT", ""],
+  "graphite": ["", "B", "L", "D", "W", "Z", "SQT", "F", "O", "U", "J", "", "", "N", "R", "T", "S", "G", "Y", "H", "A", "E", "I", "", "", "Q", "X", "M", "C", "V", "K", "P", "DOT", "COMMA", "FSLH", ""],
+  "hands-down-neu": ["", "W", "F", "M", "P", "V", "FSLH", "DOT", "Q", "DQT", "SQT", "Z", "", "R", "S", "N", "T", "B", "COMMA", "A", "E", "I", "H", "J", "", "X", "C", "L", "D", "G", "MINUS", "U", "O", "Y", "K", ""],
+  "maltron": ["", "Q", "P", "Y", "C", "B", "V", "M", "U", "Z", "L", "", "", "A", "N", "S", "I", "F", "D", "T", "H", "O", "R", "", "", "COMMA", "DOT", "J", "G", "SEMI", "FSLH", "W", "K", "MINUS", "X", ""],
+  "qwerty": ["", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "", "", "A", "S", "D", "F", "G", "H", "J", "K", "L", "SEMI", "", "", "Z", "X", "C", "V", "B", "N", "M", "COMMA", "DOT", "FSLH", ""],
+  "workman": ["", "Q", "D", "R", "W", "B", "J", "F", "U", "P", "SEMI", "", "", "A", "S", "H", "T", "G", "Y", "N", "E", "O", "I", "", "", "Z", "X", "M", "C", "V", "K", "L", "COMMA", "DOT", "FSLH", ""]
+};
+
+# Where the 36 keys are on each keyboard (matrix rows and columns), and which
+# of them are the home-row keys that tell a letter layer from the others.
+def boards: {
+  "glove80": {rows: [2, 3, 4], home: [[3, 0], [3, 1], [3, 2], [3, 3], [3, 4], [3, 5], [3, 8], [3, 9], [3, 10], [3, 11], [3, 12], [3, 13]]},
+  "go60": {rows: [1, 2, 3], home: [[2, 1], [2, 2], [2, 3], [2, 4], [2, 9], [2, 10], [2, 11], [2, 12]]}
+};
+def columns: [0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13];
+
+# A layout's key name as the key the keyboard sends, and whether it is shifted.
+def target: {
+  "SQT": {hid: "Quote"}, "DQT": {hid: "Quote", shift: true}, "COMMA": {hid: "Comma"}, "DOT": {hid: "Dot"},
+  "FSLH": {hid: "Slash"}, "QMARK": {hid: "Slash", shift: true}, "SEMI": {hid: "Semicolon"}, "MINUS": {hid: "Minus"},
+  "EQUAL": {hid: "Equal"}, "BSLH": {hid: "Backslash"}, "ESC": {hid: "Escape"}
+}[.] // {hid: .};
+
+# The keys a position may type and so takes from the new layout: letters,
+# punctuation and Escape (some layouts put a letter where Escape is).
+def typable: test("^([A-Z]|Escape|Equal|Minus|Quote|Slash|Semicolon|Comma|Dot|LeftBracket|RightBracket|Grave|Backslash)$");
+
+# Shift alone, on one side or both: the key typed shifted, not a shortcut.
+def shift_only:
+  (.left_shift or .right_shift) and ([.left_ctrl, .left_alt, .left_gui, .right_ctrl, .right_alt, .right_gui] | any | not);
+def shifted: {left_ctrl: false, left_shift: true, left_alt: false, left_gui: false, right_ctrl: false, right_shift: false, right_alt: false, right_gui: false};
+
+# What an action types: [] for a modifier, a layer, a shortcut or anything else.
+def types:
+  if type != "object" then []
+  elif .Key.Hid then [.Key.Hid]
+  elif .KeyWithModifier then (if (.KeyWithModifier[1] | shift_only) then [.KeyWithModifier[0]] else [] end)
+  else [] end | map(select(typable));
+def key_types:
+  if type != "object" then []
+  elif .Single then .Single | types
+  elif .Tap then .Tap | types
+  elif .TapHold then (.TapHold[0] | types) + (.TapHold[1] | types)
+  elif .LayerModTap then [.LayerModTap[2]] | map(select(typable))
+  else [] end;
+
+# An action with what it types replaced by $t; anything else stays.
+def retype($t):
+  if type != "object" then .
+  elif (.Key.Hid // "" | typable) then (if $t.shift then {KeyWithModifier: [$t.hid, shifted]} else {Key: {Hid: $t.hid}} end)
+  elif .KeyWithModifier and (.KeyWithModifier[0] | typable) and (.KeyWithModifier[1] | shift_only) then .KeyWithModifier[0] = $t.hid
+  else . end;
+def key_retype($t):
+  if type != "object" then .
+  elif .Single then .Single |= retype($t)
+  elif .Tap then .Tap |= retype($t)
+  elif .TapHold then .TapHold[0] |= retype($t) | .TapHold[1] |= retype($t)
+  elif .LayerModTap and (.LayerModTap[2] | typable) and ($t.shift | not) then .LayerModTap[2] = $t.hid
+  else . end;
+
+# A home-row mod: a tap-hold that holds a modifier.
+def home_row_mod: type == "object" and .TapHold != null and .TapHold[1].Modifier != null;
+
+boards[.keyboard // ""] as $board |
+(if $board == null then error("This automation knows where the letter keys are on the Glove80 and Go60 only, so nothing was changed.") else . end) |
+(layouts[$layout_name] // error("There is no typing layout called \($layout_name), so nothing was changed.")) as $layout |
+.default_layer as $base |
+(if (.layers | map(.index) | index($base)) == null then error("Your base layer is not in use, so nothing was changed.") else . end) |
+
+# Each of the 36 positions with the key it takes.
+[range(0; 36) as $i | select($layout[$i] != "") |
+  {row: $board.rows[($i / 12 | floor)], col: columns[$i % 12], to: ($layout[$i] | target)}] as $places |
+
+# The layers to change.
+[.layers[] |
+  select(.index == $base or (
+    (.name | ascii_downcase) as $n | ($excluded | map(ascii_downcase) | index($n)) == null
+    and ([.keys as $k | $board.home[] | $k[.[0]][.[1]] | key_types[] | select(test("^[A-Z]$"))] | length) >= 2
+  ))] as $layers |
+
+# Every key that changes, as set_keys wants it.
+[$layers[] as $layer | $places[] |
+  . as $p | $layer.keys[$p.row][$p.col] as $old | ($old | key_retype($p.to)) as $new |
+  select($new != $old) |
+  {layer: $layer.index, row: $p.row, col: $p.col, action: $new, name: $layer.name, mod: ($old | home_row_mod)}] as $changes |
+
+[$layers[].name as $n | select(any($changes[]; .name == $n)) | $n] as $names |
+if ($changes | length) == 0 then
+  {operations: [], report: {changed: false,
+    message: "Nothing was changed: your letter layers already type \($layout_name) on these keys.",
+    log: ["layout \($layout_name), no key differs"]}}
+else
+  {operations: [{name: "set_keys", input: {keys: [$changes[] | {layer, row, col, action}]}}],
+   report: {
+     message: "Your base layer now types \($layout_name).",
+     lines: ([{ok: true, text: "Retyped \($changes | length) keys to \($layout_name) on \($names | length) \(if ($names | length) == 1 then "layer" else "layers" end): \($names | join(", "))"}]
+       + (([$changes[] | select(.mod)] | length) as $mods | if $mods > 0 then [{ok: true, text: "\($mods) home-row mods kept their modifier and timing; only the letter changed"}] else [] end)
+       + [{ok: true, text: "Thumb keys, shortcuts, combos and layers like Navigation or Gaming were left alone"}]),
+     log: (["\(.keyboard), layout \($layout_name)"] + [$names[] as $n | "\($n): \([$changes[] | select(.name == $n)] | length) keys"])
+   }}
+end
+'''
+
+[manifest]
+author = "moosyresearch"
+keyboards = ["glove80", "go60"]
+icon = "🔠"
+keywords = ["colemak", "dvorak", "engram", "workman", "aptmak", "enthium", "qwerty", "alpha"]
+
+[[param]]
+id = "layout_name"
+label = "Target Layout"
+type = "select"
+options = ["aptmak", "aptmak_blue", "azerty", "canary", "colemak-dh", "dvorak", "engram", "engrammer", "enthium_v14", "enthium_v15", "gallium", "graphite", "hands-down-neu", "maltron", "qwerty", "workman"]
+default = "colemak-dh"

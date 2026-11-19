@@ -2,6 +2,7 @@
 
 import type { KeyAction } from "../vendor/rynk-wasm/rynk_wasm";
 import type { KeyboardImage } from "../sync/image";
+import { isKeyAction } from "../model/key-action-shape";
 import { failed, type Operation } from "./types";
 
 export interface KeyPlace {
@@ -40,6 +41,9 @@ export const setKeys: Operation<{ keys: readonly KeySet[] }> = {
   description: "Sets keys to actions, as one change: a paste, a move, a whole layer.",
   inputs: [{ name: "keys", kind: "value", list: true, description: "Each key: { layer, row, col, action }." }],
   run(image, { keys }, facts) {
+    // A caller that is not TypeScript (a Flow, an assistant) may send anything.
+    const bad = keys.findIndex((key) => ![key.layer, key.row, key.col].every(Number.isInteger) || !isKeyAction(key.action));
+    if (bad >= 0) return failed(`set_keys: keys[${bad}] is not { layer, row, col, action } with an action the keyboard can store`);
     const next = withKeys(image, facts.cols, keys);
     return typeof next === "string" ? failed(next) : { ok: true, image: next };
   },

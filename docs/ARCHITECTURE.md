@@ -1,16 +1,16 @@
 # Architecture
 
-One map of Rynkbench: why it is built this way, the layers, where a piece of code goes, and how a change travels from a click to the keyboard and back. The decisions behind it are in `docs/adr/`; this page links them and does not repeat them.
+One map of GLIDE4RMK: why it is built this way, the layers, where a piece of code goes, and how a change travels from a click to the keyboard and back. The decisions behind it are in `docs/adr/`; this page links them and does not repeat them.
 
 ## Why it is built this way
 
-A keyboard configurator has one job it must never get wrong: what you see is what the keyboard does. Most get there by trust; Rynkbench gets there by construction. Five ideas carry it, and each one removes a whole class of bugs instead of fixing them one at a time.
+A keyboard configurator has one job it must never get wrong: what you see is what the keyboard does. Most get there by trust; GLIDE4RMK gets there by construction. Five ideas carry it, and each one removes a whole class of bugs instead of fixing them one at a time.
 
 **1. Two pictures, and a change is the difference between them** (ADR 0018). The workbench holds what the keyboard holds (`base`) and what you want (`want`), both as a `KeyboardImage`. Every edit, one key or a hundred, changes only `want`. Everything else follows from comparing the two: the draft is their difference, Review & send lists it, Send writes only it, the read-back moves `base`, and a crash or a closed tab loses nothing because the difference is kept. There is no second bookkeeping to drift out of step, because there is nothing to keep but two images.
 
 **2. One way to the keyboard** (ADR 0012, `docs/sync.md`). Every write, from every screen, goes the same way: read the keyboard fresh, check that nobody changed the same thing meanwhile, write only what differs, read it back. Nothing is written "to be sure", nothing unchanged is sent, and a change made on the keyboard elsewhere is noticed instead of overwritten. One path means one place to make right, and it is.
 
-**3. A change is a named, pure function** (ADR 0019, ADR 0020). A swap, a layer move, a transform, a new macro, a rename: each is an operation, image in, image out, with typed inputs described as data. It cannot touch the keyboard, ask a question or depend on a screen, so it is tested in milliseconds without a board. Applying it is always the same: Guard judges the result, it becomes one commit and one Undo step, and the mode decides when it is written; in Live it is all or nothing. Because operations are listed in a catalog, a Flow or an assistant (WebMCP) will call exactly what a person's click calls, through the same Guard and the same Undo, with no second implementation to trust.
+**3. A change is a named, pure function** (ADR 0019, ADR 0020). A swap, a layer move, a transform, a new macro, a rename: each is an operation, image in, image out, with typed inputs described as data. It cannot touch the keyboard, ask a question or depend on a screen, so it is tested in milliseconds without a board. Applying it is always the same: Guard judges the result, it becomes one commit and one Undo step, and the mode decides when it is written; in Live it is all or nothing. Because operations are listed in a catalog, a Flow (ADR 0025) calls exactly what a person's click calls, through the same Guard and the same Undo, with no second implementation to trust; an assistant (WebMCP) will too.
 
 **4. A guard that understands the layout** (ADR 0011). Guard reads the reference graph (`domain/`: which key, combo, fork or tap pattern refers to which layer or slot) and judges the change as a whole, before it is made. It stops what would break a reference and asks about what would cut a layer off, and it says nothing otherwise. It sees an operation's result, not the clicks that led there, so a bulk change is judged like a single key.
 
@@ -30,7 +30,7 @@ What this buys, concretely:
    │
  workbench/     the open workbench without a screen: state, reducer, io, draft
    │
- operations/    named changes, image in, image out: the catalog Flows and WebMCP will call
+ operations/    named changes, image in, image out: the catalog Flows call (and WebMCP will); `describe`; `flows/`, the .flows contract
    │
  sync/          the write path: read, plan the difference, write, read back
  layers/        layer structure: rewrite plans for move, delete, duplicate
@@ -58,7 +58,7 @@ The layers from `sync/` down to `session/` are not ordered among themselves, and
 |---|---|---|---|
 | `ui/` | 22,300 | Screens (`Workbench.tsx`, areas in `areas.ts`), the context (`state.tsx`), hooks, words (`terms.ts`, `labels.ts`), themes, key faces, the canvas, Guard's questions (`guard/`), module stores for a pick of keys, the lit view and Layout properties (ended by `workbench-end.ts`) | a transport or simulated board, the wire package |
 | `workbench/` | 2,800 | `initial-state`, `reducer` (+ `reduce-lighting`, `reduce-settings`), `pending`, `lighting-drafts`, `io` (+ `io-keys`, `io-layers`, `io-lighting`, `io-settings`, `io-import`, `io-try-out`), `apply` (`commitImage`), `labels`, `draft/`, `usage`, `layer-impact` | `ui/`, a transport |
-| `operations/` | 1,000 | Each operation (`keys`, `layers`, `lighting`, `transform`, `behaviors` with their slots and Copy text), the `catalog` with `runOperation`, input checks, Guard's view of an image (ADR 0019, 0020) | a session, a reader or writer, `config/`, `workbench/`, `ui/` |
+| `operations/` | 1,000 | Each operation (`keys`, `layers`, `lighting`, `transform`, `behaviors` with their slots and Copy text), the `catalog` with `runOperation`, input checks, Guard's view of an image (ADR 0019, 0020); `describe` and `flows/`: the .flows file, choices, jq contract, the fold of a script's calls (ADR 0025) | a session, a reader or writer, `config/`, `workbench/`, `ui/` |
 | `sync/` | 780 | `image`, `items`, `patch`, `plan`, `read`, `write`, `conflicts` (ADR 0012, 0021, `docs/sync.md`) | `operations/`, `workbench/`, `ui/`, a transport |
 | `layers/`, `config/`, `domain/`, `firmware/` | 2,000 | Layer rewrites; layout files (`transfer`, `import-layout`, `document`); the graph and Guard (ADR 0011); firmware releases | `operations/`, `workbench/`, `ui/` |
 | `model/` | 5,300 | Key slots, the key selection, combos, macros, morse, pointing, history, transforms, `lighting/` (key lights, effects and timing, try-out, key picks, presets), `boards/`, the workbench state's types | `operations/`, `workbench/`, `ui/` |
