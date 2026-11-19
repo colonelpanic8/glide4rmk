@@ -1,24 +1,12 @@
-// Transforms: the Ctrl ↔ GUI swap and the switch between alpha layouts, over
-// keys, combos, morse, forks and macros (model/transforms.ts plans them). Pure.
+// Transforms: the Ctrl ↔ GUI swap over keys, combos, morse, forks and macros
+// (model/transforms.ts plans it). Switching typing layouts is a Flow. Pure.
 
 import type { KeyboardImage } from "../sync/image";
-import {
-  planLayoutSwitch,
-  planOsSwap,
-  type AlphaLayout,
-  type LayerMigration,
-  type TransformInput,
-  type TransformPlan,
-} from "../model/transforms";
+import { planOsSwap, type TransformInput, type TransformPlan } from "../model/transforms";
 import { withKeys } from "./keys";
 import { failed, type Operation } from "./types";
 
-export type TransformChoice =
-  | { transform: "ctrl-gui-swap" }
-  | { transform: "alpha-layout"; from: AlphaLayout; to: AlphaLayout; migrations: readonly LayerMigration[] };
-
-const ALPHA_LAYOUTS = ["qwerty", "colemak", "colemak-dh", "dvorak"] as const satisfies readonly AlphaLayout[];
-const MIGRATIONS = ["positional", "alphas", "mnemonic"] as const satisfies readonly LayerMigration[];
+export type TransformChoice = { transform: "ctrl-gui-swap" };
 
 /** What a transform reads of an image. */
 export function transformInputOf(image: KeyboardImage, cols: number): TransformInput {
@@ -26,11 +14,8 @@ export function transformInputOf(image: KeyboardImage, cols: number): TransformI
 }
 
 /** What a transform would change, for a preview. */
-export function planTransform(image: KeyboardImage, cols: number, choice: TransformChoice): TransformPlan {
-  const input = transformInputOf(image, cols);
-  return choice.transform === "ctrl-gui-swap"
-    ? planOsSwap(input)
-    : planLayoutSwitch(input, choice.from, choice.to, [...choice.migrations], image.defaultLayer);
+export function planTransform(image: KeyboardImage, cols: number): TransformPlan {
+  return planOsSwap(transformInputOf(image, cols));
 }
 
 /** The image with a transform's plan done. */
@@ -53,25 +38,10 @@ export function withPlan(image: KeyboardImage, cols: number, plan: TransformPlan
 
 export const applyTransform: Operation<TransformChoice> = {
   name: "apply_transform",
-  description: "Rewrites every binding: swaps Ctrl and GUI, or switches the letters from one alpha layout to another.",
-  inputs: [
-    { name: "transform", kind: "choice", values: ["ctrl-gui-swap", "alpha-layout"], description: "Which transform." },
-    { name: "from", kind: "choice", values: ALPHA_LAYOUTS, optional: true, description: "For alpha-layout: the layout now." },
-    { name: "to", kind: "choice", values: ALPHA_LAYOUTS, optional: true, description: "For alpha-layout: the layout wanted." },
-    {
-      name: "migrations",
-      kind: "choice",
-      values: MIGRATIONS,
-      list: true,
-      optional: true,
-      description: "For alpha-layout, per layer: positional (left alone), alphas (letters swapped) or mnemonic (bindings follow their letter).",
-    },
-  ],
-  run(image, choice, facts) {
-    if (choice.transform === "alpha-layout" && (!choice.from || !choice.to || !choice.migrations)) {
-      return failed("An alpha-layout switch needs from, to and a migration per layer");
-    }
-    const next = withPlan(image, facts.cols, planTransform(image, facts.cols, choice));
+  description: "Rewrites every binding: swaps Ctrl and GUI on keys, combos, tap patterns, forks and macros.",
+  inputs: [{ name: "transform", kind: "choice", values: ["ctrl-gui-swap"], description: "Which transform." }],
+  run(image, _choice, facts) {
+    const next = withPlan(image, facts.cols, planTransform(image, facts.cols));
     return typeof next === "string" ? failed(next) : { ok: true, image: next };
   },
 };
