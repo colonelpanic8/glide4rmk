@@ -90,11 +90,14 @@ export function TopBar({
   areas,
   current,
   onArea,
+  onKeymap,
   onDrawer,
 }: {
   areas: Area[];
   current: AreaId;
   onArea: (area: Area) => void;
+  /** Back to the keymap, the home screen. */
+  onKeymap: () => void;
   /** Opens the side panel on a phone; absent where there is no panel. */
   onDrawer?: () => void;
 }) {
@@ -111,7 +114,7 @@ export function TopBar({
       <div className="flex min-w-0 shrink-0 items-center gap-3">
         <button
           type="button"
-          onClick={() => onArea(areas[0])}
+          onClick={onKeymap}
           title="Back to the keymap"
           className="flex shrink-0 cursor-pointer items-center gap-2 rounded-lg px-1.5 -mx-1.5 py-1 transition-colors hover:bg-hover max-sm:hidden"
         >

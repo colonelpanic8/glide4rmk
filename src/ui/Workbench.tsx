@@ -317,6 +317,7 @@ export function Workbench({
           areas={areas.filter((one) => one.id !== "layout" && one.id !== "behaviors")}
           current={area.id}
           onArea={(next) => (next.id === area.id ? dispatch({ type: "mode", mode: "keymap" }) : showArea(next))}
+          onKeymap={() => dispatch({ type: "mode", mode: "keymap" })}
           onDrawer={section === "keymap" ? () => setDrawer(true) : undefined}
         />
         <div className="flex min-h-0 flex-1">
