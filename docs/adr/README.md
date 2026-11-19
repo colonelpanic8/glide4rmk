@@ -28,5 +28,6 @@ One short page per decision that shapes the code, so the reason survives the peo
 | [0022](0022-base-basis-and-lives-own-send.md) | The base is the last read; what a draft was based on; Live's own send | Accepted |
 | [0023](0023-a-file-import-is-a-commit.md) | A file import is a commit | Accepted |
 | [0024](0024-lighting-tools-on-the-keymap.md) | Lighting tools on the keymap | Accepted |
+| [0025](0025-flows.md) | Flows: jq over a description, operations out | Accepted |
 
 The glossary is in [../glossary.md](../glossary.md).
