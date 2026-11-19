@@ -28,6 +28,15 @@ export function KeymapIcon(props: IconProps) {
   );
 }
 
+/** Flows: a box of ready-made changes, GLIDE's Flows icon. */
+export function FlowsIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M13.3 4.7L8 2 2.7 4.7M13.3 4.7L8 7.3M13.3 4.7v6.6L8 14M8 7.3L2.7 4.7M8 7.3V14M2.7 4.7v6.6L8 14" />
+    </svg>
+  );
+}
+
 export function LightingIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

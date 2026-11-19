@@ -11,7 +11,7 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 3. ~~**The draft holds the whole keyboard** (the rest of ADR 0013): macros, layer names and moves, settings; one history in Draft and Live.~~ ADR 0018.
 4. **Operations.** ~~Image in, image out, judged by Guard, applied as one undo step; transforms onto them.~~ `85884ce`, ADR 0019; imports as a commit, ADR 0023. Left: the rule panels and the lighting presets (items 11 and 12).
 5. **Capabilities and `offer()`** for everything a screen offers; any time.
-6. **The doors:** `describe(image)`, then Flows and WebMCP behind flags. Flows: ADR 0025. Left: WebMCP; `describe` grows with its readers.
+6. **The doors:** `describe(image)`, then Flows and WebMCP. Flows: ADR 0025, in the top bar. Left: WebMCP behind a flag; `describe` grows with its readers; one-time setups (the RGB status setups, lighting key presets, stock Magic layer) as Flows, which also settles items 11 and 12.
 
 ## Cheap 
 

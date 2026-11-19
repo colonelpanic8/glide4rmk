@@ -22,6 +22,7 @@ export interface Term {
 export const TERMS = {
   "area.layout": { technical: "Keymap", friendly: "Layout" },
   "area.behaviors": { technical: "Behaviors", friendly: "Behaviors" },
+  "area.flows": { technical: "Flows", friendly: "Flows" },
   "area.device": { technical: "Device", friendly: "Keyboard" },
   "section.keymap": { technical: "Keymap", friendly: "Keys" },
   "section.combos": { technical: "Combos", friendly: "Combos" },

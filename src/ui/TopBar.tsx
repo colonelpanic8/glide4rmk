@@ -13,6 +13,7 @@ import {
   BatteryGlyph,
   CombinatorIcon,
   DeviceIcon,
+  FlowsIcon,
   KeymapIcon,
   MenuIcon,
   PowerIcon,
@@ -51,6 +52,7 @@ function BatteryReadout({ battery, split }: { battery: BatteryStatus; split: boo
 const AREA_ICON: Record<AreaId, typeof KeymapIcon> = {
   layout: KeymapIcon,
   behaviors: CombinatorIcon,
+  flows: FlowsIcon,
   device: DeviceIcon,
 };
 
@@ -74,7 +76,8 @@ function ScreenNav({ areas, current, onArea }: { areas: Area[]; current: AreaId;
               active ? "bg-raised text-accent" : "text-ink hover:bg-hover",
             )}
           >
-            <Icon size={15} />
+            {/* Flows is a marquee feature, as in GLIDE: its icon in the accent colour. */}
+            <Icon size={15} className={area.id === "flows" ? "text-accent" : undefined} />
             <span className="max-xl:hidden">{term(area.term)}</span>
           </button>
         );
