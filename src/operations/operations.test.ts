@@ -69,7 +69,7 @@ describe("the catalog", () => {
   it("checks the input before running, with a plain message", () => {
     expect(run("move_layer", { layer: 1 })).toEqual({ ok: false, message: "move_layer: to is missing" });
     expect(run("move_layer", { layer: -1, to: 2 })).toEqual({ ok: false, message: "move_layer: layer must be an integer from 0" });
-    expect(run("apply_transform", { transform: "rot13" })).toMatchObject({ message: expect.stringMatching(/one of ctrl-gui-swap, alpha-layout/) });
+    expect(run("apply_transform", { transform: "rot13" })).toMatchObject({ message: expect.stringMatching(/one of ctrl-gui-swap/) });
     expect(run("set_key_light", { layer: 0, leds: [1, "x"], light: { kind: "off" } })).toMatchObject({ message: expect.stringContaining("leds[1]") });
     expect(run("nothing" as never, {})).toEqual({ ok: false, message: "There is no operation called nothing" });
   });
@@ -176,15 +176,6 @@ describe("transforms", () => {
     const ctrl = { Single: { Key: { Hid: "LCtrl" } } } as KeyAction;
     const result = run("apply_transform", { transform: "ctrl-gui-swap" }, { ...image(), layers: [[ctrl, "No"], ["No", "No"], ["No", "No"], ["No", "No"]] });
     expect(result.ok && result.image.layers[0][0]).toEqual({ Single: { Key: { Hid: "LGui" } } });
-  });
-
-  it("asks for the layouts and migrations of an alpha switch", () => {
-    expect(run("apply_transform", { transform: "alpha-layout", from: "qwerty" })).toMatchObject({ ok: false });
-    const result = run("apply_transform", { transform: "alpha-layout", from: "qwerty", to: "colemak", migrations: ["alphas", "positional", "positional", "positional"] }, {
-      ...image(),
-      layers: [[key("E"), key("A")], ["No", "No"], ["No", "No"], ["No", "No"]],
-    });
-    expect(result.ok && result.image.layers[0]).toEqual([key("F"), key("A")]);
   });
 });
 

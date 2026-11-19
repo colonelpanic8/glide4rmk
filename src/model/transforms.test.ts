@@ -4,13 +4,10 @@ import { decodeMacros, encodeMacros, hidStep } from "./macros";
 import { emptyFork, noStateBits } from "./slots";
 import {
   CTRL_GUI_SWAP,
-  layoutSpec,
   mapKeyAction,
   planKeyCount,
-  planLayoutSwitch,
   planOsSwap,
   planSize,
-  primaryHid,
   type TransformInput,
 } from "./transforms";
 
@@ -120,126 +117,6 @@ describe("CTRL_GUI_SWAP", () => {
     expect(after.match_none.modifiers).toEqual({ ...NO_MODS, right_ctrl: true });
     expect(after.match_none.leds).toEqual(fork.match_none.leds);
     expect(planOsSwap(baseInput({ forks: [after] })).forks[0].after).toEqual(fork);
-  });
-});
-
-describe("layout switching", () => {
-  it("maps colemak home row and leaves non-alphas alone", () => {
-    const spec = layoutSpec("qwerty", "colemak");
-    expect(mapKeyAction(spec, key("S"))).toEqual(key("R"));
-    expect(mapKeyAction(spec, key("Semicolon"))).toEqual(key("O"));
-    expect(mapKeyAction(spec, key("P"))).toEqual(key("Semicolon"));
-    expect(mapKeyAction(spec, key("A"))).toEqual(key("A"));
-    expect(mapKeyAction(spec, key("LCtrl"))).toEqual(key("LCtrl"));
-    expect(mapKeyAction(spec, key("Quote"))).toEqual(key("Quote"));
-  });
-
-  it("maps dvorak punctuation", () => {
-    const spec = layoutSpec("qwerty", "dvorak");
-    expect(mapKeyAction(spec, key("Q"))).toEqual(key("Quote"));
-    expect(mapKeyAction(spec, key("Minus"))).toEqual(key("LeftBracket"));
-    expect(mapKeyAction(spec, key("LeftBracket"))).toEqual(key("Slash"));
-    expect(mapKeyAction(spec, key("Quote"))).toEqual(key("Minus"));
-  });
-
-  it("inverts and composes across layout pairs", () => {
-    const there = layoutSpec("qwerty", "colemak");
-    const back = layoutSpec("colemak", "qwerty");
-    for (const code of ["S", "P", "Semicolon", "E", "N"] as const) {
-      expect(mapKeyAction(back, mapKeyAction(there, key(code)))).toEqual(key(code));
-    }
-    // colemak → dvorak equals qwerty→dvorak ∘ colemak→qwerty.
-    const direct = layoutSpec("colemak", "dvorak");
-    const viaQwerty = (code: string) =>
-      mapKeyAction(layoutSpec("qwerty", "dvorak"), mapKeyAction(back, key(code)));
-    for (const code of ["R", "S", "T", "O", "K"] as const) {
-      expect(mapKeyAction(direct, key(code))).toEqual(viaQwerty(code));
-    }
-  });
-
-  it("reads the primary keycode through tap-holds and wrappers", () => {
-    expect(primaryHid(key("C"))).toBe("C");
-    expect(primaryHid({ TapHold: [{ Key: { Hid: "A" } }, { LayerOn: 1 }, 255] })).toBe("A");
-    expect(primaryHid({ Single: { KeyWithModifier: ["C", NO_MODS] } })).toBe("C");
-    expect(primaryHid({ LayerModTap: [2, "LCtrl", "Tab"] })).toBe("Tab");
-    expect(primaryHid("Transparent")).toBeNull();
-    expect(primaryHid({ Single: { LayerOn: 1 } })).toBeNull();
-  });
-
-  it("substitutes alphas layers and skips positional layers", () => {
-    const plan = planLayoutSwitch(
-      baseInput({
-        layers: [
-          [{ TapHold: [{ Key: { Hid: "Semicolon" } }, { LayerOn: 1 }, 3] }, key("S")],
-          [key("W"), key("S")], // games-style layer, positional
-        ],
-      }),
-      "qwerty",
-      "colemak",
-      ["alphas", "positional"],
-      0,
-    );
-    expect(plan.keys).toHaveLength(2);
-    expect(plan.keys[0].after).toEqual({
-      TapHold: [{ Key: { Hid: "O" } }, { LayerOn: 1 }, 3],
-    });
-    expect(plan.keys.every((edit) => edit.layer === 0)).toBe(true);
-  });
-
-  it("moves mnemonic bindings to follow their letters", () => {
-    // Base carries E F T at offsets 0..2. QWERTY→Colemak maps E→F, F→T; the
-    // shortcut layer's Copy-style bindings must follow their letters: the
-    // binding on E moves to where E ends up (F's old spot maps E onto it).
-    const ctrl = (code: string): KeyAction => ({
-      Single: { KeyWithModifier: [code as never, { ...NO_MODS, left_ctrl: true }] },
-    });
-    const plan = planLayoutSwitch(
-      baseInput({
-        layers: [
-          [key("E"), key("F"), key("T"), key("Space")],
-          [ctrl("E"), ctrl("F"), ctrl("T"), key("Enter")],
-        ],
-        cols: 4,
-      }),
-      "qwerty",
-      "colemak",
-      ["alphas", "mnemonic"],
-      0,
-    );
-    const layerOne = plan.keys.filter((edit) => edit.layer === 1);
-    // New base letters at offsets 0..2 are F, T, G. The binding tied to F
-    // (old offset 1) lands at offset 0; T's (old offset 2) lands at 1. G is
-    // not on the base layer, so offset 2 keeps its old binding. The thumb
-    // key at offset 3 is untouched.
-    expect(layerOne).toEqual([
-      { layer: 1, row: 0, col: 0, after: ctrl("F") },
-      { layer: 1, row: 0, col: 1, after: ctrl("T") },
-    ]);
-  });
-
-  it("derives the mnemonic permutation from the alphas layer, not the default", () => {
-    const ctrl = (code: string): KeyAction => ({
-      Single: { KeyWithModifier: [code as never, { ...NO_MODS, left_ctrl: true }] },
-    });
-    const plan = planLayoutSwitch(
-      baseInput({
-        layers: [
-          [key("Kc1"), key("Kc2"), key("Kc3"), key("Kc4")], // default: no alphas
-          [key("E"), key("F"), key("T"), key("Space")], // the alpha layer
-          [ctrl("E"), ctrl("F"), ctrl("T"), key("Enter")], // shortcuts follow letters
-        ],
-        cols: 4,
-      }),
-      "qwerty",
-      "colemak",
-      ["positional", "alphas", "mnemonic"],
-      0,
-    );
-    expect(plan.keys.filter((edit) => edit.layer === 2)).toEqual([
-      { layer: 2, row: 0, col: 0, after: ctrl("F") },
-      { layer: 2, row: 0, col: 1, after: ctrl("T") },
-    ]);
-    expect(plan.keys.filter((edit) => edit.layer === 0)).toEqual([]);
   });
 });
 

@@ -21,8 +21,6 @@ export const SETTING_KEYS = {
   keyEditorSide: "rynk:key-editor-side",
   sidePanelSide: "rynk:side-panel-side",
   realtimeLighting: "rynk:realtime-lighting",
-  /** Features still being built, turned on by hand (ui/flags.ts). */
-  flags: "rynk:flags",
   /** Changes not yet sent to a keyboard, kept per device (ADR 0010). */
   draft: (serial: string) => `rynk:draft:${serial || "unknown"}`,
   /** Behavior names and descriptions, per device (ADR 0020). */

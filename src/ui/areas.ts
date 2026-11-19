@@ -8,7 +8,7 @@
 import type { Mode } from "../model/workbench-state";
 import type { TermId } from "./terms";
 
-export type AreaId = "layout" | "behaviors" | "device";
+export type AreaId = "layout" | "behaviors" | "flows" | "device";
 
 /** A section is one screen; the workbench state names the one on show. */
 export type SectionId = Mode;
@@ -37,8 +37,6 @@ export interface AreaFacts {
   forks: boolean;
   /** Tap-hold profiles (morse profile slots). */
   tapProfiles: boolean;
-  /** Flows are turned on (ui/flags.ts, ADR 0025). */
-  flows: boolean;
 }
 
 export interface Area {
@@ -72,9 +70,10 @@ export function areasFor(facts: AreaFacts): Area[] {
         ["forks", facts.forks],
         ["profiles", facts.tapProfiles],
         ["transforms", true],
-        ["flows", facts.flows],
       ]),
     },
+    // Flows (ADR 0025): every keyboard, in the top bar as in GLIDE.
+    { id: "flows", term: "area.flows", sections: ["flows"] },
     { id: "device", term: "area.device", sections: pick([["device", facts.connected]]) },
   ];
   return areas.filter((area) => area.sections.length > 0);

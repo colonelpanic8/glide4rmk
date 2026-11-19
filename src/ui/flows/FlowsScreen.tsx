@@ -1,4 +1,4 @@
-// Flows (ADR 0025), behind the `flows` flag: the shipped Flows this keyboard
+// Flows (ADR 0025), in the top bar for every keyboard: the shipped Flows this keyboard
 // can run, one Flow's choices, and what the last run did. The run itself is
 // io.runFlow: one change, judged by Guard, one Undo step, Draft or Live.
 
