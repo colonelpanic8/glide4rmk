@@ -139,3 +139,40 @@ export function comboTwins(combos: readonly ComboDefinition[], index: number): n
       : [],
   );
 }
+
+/** What a combo is apart from its layer: its kind, its keys in any order and its action. */
+function comboShape(definition: ComboDefinition): string {
+  const keys = comboIsActions(definition)
+    ? definition.Actions.actions.map((action) => JSON.stringify(action))
+    : definition.Positions.positions.map((p) => `${p.row}:${p.col}`);
+  return JSON.stringify([comboIsActions(definition), [...keys].sort(), comboOutput(definition)]);
+}
+
+/** The combos as a person sees them: one combo on several layers, as GLIDE
+ *  shows a combo with its layers. RMK stores a combo per layer (a layout file
+ *  repeats it for each), so slots with the same keys and action, each on a
+ *  layer of its own, are one group; a combo on every layer stays alone. Each
+ *  group lists its slots in order, the first leading. Empty slots are left out. */
+export function comboGroups(combos: readonly ComboDefinition[]): number[][] {
+  const groups: number[][] = [];
+  const byShape = new Map<string, number[]>();
+  combos.forEach((combo, index) => {
+    if (comboIsEmpty(combo)) return;
+    const layer = comboLayer(combo);
+    const shape = layer === undefined ? null : comboShape(combo);
+    const group = shape === null ? undefined : byShape.get(shape);
+    if (group && !group.some((slot) => comboLayer(combos[slot]) === layer)) {
+      group.push(index);
+      return;
+    }
+    const fresh = [index];
+    groups.push(fresh);
+    if (shape !== null && !group) byShape.set(shape, fresh);
+  });
+  return groups;
+}
+
+/** The other slots of the combo at `index` (its copies on other layers). */
+export function comboCopies(combos: readonly ComboDefinition[], index: number): number[] {
+  return (comboGroups(combos).find((group) => group.includes(index)) ?? []).filter((slot) => slot !== index);
+}

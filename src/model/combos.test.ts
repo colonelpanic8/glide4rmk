@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ComboDefinition, KeyAction } from "../vendor/rynk-wasm/rynk_wasm";
-import { actionThrough, comboHasKey, comboNeeds, comboTwins, newPositionCombo, toggleComboKey } from "./combos";
+import { actionThrough, comboCopies, comboGroups, comboHasKey, comboNeeds, comboTwins, newPositionCombo, toggleComboKey } from "./combos";
 import { emptyCombo } from "./slots";
 
 const A = { Single: { Key: { Hid: "A" } } } as unknown as KeyAction;
@@ -72,5 +72,35 @@ describe("what a key does for a combo", () => {
   it("marks an action combo's keys on a layer that only passes them through", () => {
     const combo: ComboDefinition = { Actions: { actions: [J], output: "No", layer: undefined } } as ComboDefinition;
     expect(comboHasKey(combo, { row: 0, col: 0 }, actionThrough(layers, 1, 0))).toBe(true);
+  });
+});
+
+describe("comboGroups", () => {
+  const combo = (positions: { row: number; col: number }[], output: string, layer: number | undefined) =>
+    ({ Positions: { positions, output: { Single: { Key: { Hid: output } } }, layer } }) as ComboDefinition;
+  const none = { Actions: { actions: [], output: "No", layer: undefined } } as ComboDefinition;
+
+  it("shows a combo stored once per layer as one combo, its slots in order", () => {
+    const combos = [
+      combo([at(0, 12), at(1, 12)], "F11", 0),
+      combo([at(1, 12), at(0, 12)], "F11", 2),
+      combo([at(0, 13), at(1, 13)], "F12", 0),
+      none,
+      combo([at(0, 13), at(1, 13)], "F12", 2),
+    ];
+    expect(comboGroups(combos)).toEqual([[0, 1], [2, 4]]);
+    expect(comboCopies(combos, 4)).toEqual([2]);
+    expect(comboCopies(combos, 3)).toEqual([]);
+  });
+
+  it("keeps apart combos with another action, kind, a combo on every layer, and one on a layer already in the group", () => {
+    const combos = [
+      combo([at(0, 1), at(0, 2)], "A", 0),
+      combo([at(0, 1), at(0, 2)], "B", 1),
+      combo([at(0, 1), at(0, 2)], "A", undefined),
+      combo([at(0, 1), at(0, 2)], "A", 0),
+      { Actions: { actions: [], output: { Single: { Key: { Hid: "A" } } }, layer: 1 } } as ComboDefinition,
+    ];
+    expect(comboGroups(combos)).toEqual([[0], [1], [2], [3], [4]]);
   });
 });

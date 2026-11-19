@@ -1,10 +1,10 @@
 // The side panel's combo list, as in GLIDE: Create Combo, a search and a
 // layer filter, then the combos as cards (a small keyboard with their keys)
-// or as a list. Clicking one (or Create) opens it in Focus Mode; its ⋮ menu
+// or as a list. A combo stored once per layer shows once, with its layers. Clicking one (or Create) opens it in Focus Mode; its ⋮ menu
 // edits or deletes it.
 
 import { useState, useSyncExternalStore } from "react";
-import { comboIsEmpty, comboLayer, comboOutput, comboTriggerCount, comboTwins } from "../../model/combos";
+import { comboGroups, comboIsEmpty, comboLayer, comboOutput, comboTriggerCount, comboTwins } from "../../model/combos";
 import { emptyCombo } from "../../model/slots";
 
 import { layerName } from "../layer-names";
@@ -55,25 +55,28 @@ export function ComboList() {
   const used = state.combos.filter((combo) => !comboIsEmpty(combo)).length;
   const free = state.combos.findIndex(comboIsEmpty);
   const needle = query.trim().toLowerCase();
-  const rows = state.combos
-    .map((combo, index) => ({ combo, index }))
-    .filter(({ combo, index }) => comboTriggerCount(combo) > 0 || index === editing)
-    .filter(({ combo }) => {
-      const layer = comboLayer(combo);
-      return layerFilter === null || layer === undefined || layer === layerFilter;
+  const groups = comboGroups(state.combos);
+  if (editing !== null && !groups.some((group) => group.includes(editing))) groups.push([editing]);
+  const rows = groups
+    .map((slots) => ({ slots, index: slots[0], combo: state.combos[slots[0]] }))
+    .filter(({ combo, slots }) => comboTriggerCount(combo) > 0 || (editing !== null && slots.includes(editing)))
+    .filter(({ slots }) => {
+      const layers = slots.map((slot) => comboLayer(state.combos[slot]));
+      return layerFilter === null || layers.includes(undefined) || layers.includes(layerFilter);
     })
     .filter(
-      ({ combo, index }) =>
-        !needle || `c${index} ${keyText.describe(comboOutput(combo))}`.toLowerCase().includes(needle),
+      ({ combo, slots }) =>
+        !needle || `${slots.map((slot) => `c${slot}`).join(" ")} ${keyText.describe(comboOutput(combo))}`.toLowerCase().includes(needle),
     );
   const focus = (index: number) => dispatch({ type: "select", selection: { type: "combo", index } });
 
+  /** Deletes the combo on every layer it is on, as one change. */
   const remove = (index: number) => {
-    const before = state.combos[index];
-    if (!before) return;
-    if (editing === index) dispatch({ type: "select", selection: null });
-    void io.setSlot("combos", index, emptyCombo());
-    showToast(`Combo C${index} deleted`, { action: { label: "Undo", run: () => void io.setSlot("combos", index, before) } });
+    const slots = groups.find((group) => group.includes(index)) ?? [index];
+    const before = slots.map((slot) => ({ slot, combo: state.combos[slot] }));
+    if (editing !== null && slots.includes(editing)) dispatch({ type: "select", selection: null });
+    void io.apply("set_combos", { combos: slots.map((slot) => ({ slot, combo: emptyCombo() })) });
+    showToast(`Combo C${index} deleted`, { action: { label: "Undo", run: () => void io.apply("set_combos", { combos: before }) } });
   };
 
   if (capacity === 0) {
@@ -122,14 +125,15 @@ export function ComboList() {
         </p>
       )}
       {used > 0 && rows.length === 0 && <p className="px-1 pt-2 text-small text-faint">No combos match.</p>}
-      {rows.map(({ combo, index }) => (
+      {rows.map(({ combo, index, slots }) => (
         <ComboCard
           key={index}
           index={index}
           combo={combo}
+          layers={slots.map((slot) => comboLayer(state.combos[slot]))}
           twins={comboTwins(state.combos, index).length}
           view={view}
-          open={editing === index}
+          open={editing !== null && slots.includes(editing)}
           menuOpen={menu.openFor === index}
           onOpen={() => focus(index)}
           onMenu={(event) => menu.openFrom(event, index)}
