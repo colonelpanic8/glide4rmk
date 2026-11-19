@@ -314,10 +314,13 @@ export function Workbench({
         )}
         <TopBar
           // The keymap is home and the Behavior Library opens the Behaviors area: neither needs a button.
-          areas={areas.filter((one) => one.id !== "layout" && one.id !== "behaviors")}
+          // Flows has a button of its own, as in GLIDE.
+          areas={areas.filter((one) => one.id !== "layout" && one.id !== "behaviors" && one.id !== "flows")}
           current={area.id}
           onArea={(next) => (next.id === area.id ? dispatch({ type: "mode", mode: "keymap" }) : showArea(next))}
           onKeymap={() => dispatch({ type: "mode", mode: "keymap" })}
+          flowsOpen={area.id === "flows"}
+          onFlows={() => dispatch({ type: "mode", mode: area.id === "flows" ? "keymap" : "flows" })}
           onDrawer={section === "keymap" ? () => setDrawer(true) : undefined}
         />
         <div className="flex min-h-0 flex-1">

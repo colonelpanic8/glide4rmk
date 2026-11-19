@@ -76,8 +76,7 @@ function ScreenNav({ areas, current, onArea }: { areas: Area[]; current: AreaId;
               active ? "bg-raised text-accent" : "text-ink hover:bg-hover",
             )}
           >
-            {/* Flows is a marquee feature, as in GLIDE: its icon in the accent colour. */}
-            <Icon size={15} className={area.id === "flows" ? "text-accent" : undefined} />
+            <Icon size={15} />
             <span className="max-xl:hidden">{term(area.term)}</span>
           </button>
         );
@@ -91,6 +90,8 @@ export function TopBar({
   current,
   onArea,
   onKeymap,
+  flowsOpen,
+  onFlows,
   onDrawer,
 }: {
   areas: Area[];
@@ -98,6 +99,9 @@ export function TopBar({
   onArea: (area: Area) => void;
   /** Back to the keymap, the home screen. */
   onKeymap: () => void;
+  /** Flows (ADR 0025): on show, and what its button does. */
+  flowsOpen: boolean;
+  onFlows: () => void;
   /** Opens the side panel on a phone; absent where there is no panel. */
   onDrawer?: () => void;
 }) {
@@ -195,6 +199,7 @@ export function TopBar({
           {!offline && <BatteryReadout battery={state.battery} split={split} />}
           <div className="h-6 w-px bg-line-soft" />
           <SettingsPanel />
+          <FlowsButton open={flowsOpen} onClick={onFlows} />
           {offline && (
             <Button variant="ghost" onClick={io.disconnect} title="Close file">
               <PowerIcon size={15} />
@@ -242,6 +247,27 @@ function PropertiesButton({ className }: { className: string }) {
       className={cx("-ml-1.5 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-ink hover:bg-hover max-sm:ml-0", className)}
     >
       <SlidersIcon size={16} />
+    </button>
+  );
+}
+
+/** Flows, as GLIDE has it: a marquee feature, not a utility, so a text label,
+ *  a border and the icon in the accent colour keep it from getting lost. */
+function FlowsButton({ open, onClick }: { open: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      data-testid="flows-open"
+      onClick={onClick}
+      aria-pressed={open}
+      title="Flows Automations"
+      className={cx(
+        "flex shrink-0 cursor-pointer items-center gap-x-1.5 rounded-xl border px-3 py-1.5 text-body font-semibold text-ink transition-all max-sm:px-2",
+        open ? "border-accent bg-raised" : "border-line-strong hover:border-mute hover:bg-hover",
+      )}
+    >
+      <FlowsIcon size={16} className="shrink-0 text-accent" />
+      <span className="max-sm:hidden">Flows</span>
     </button>
   );
 }
