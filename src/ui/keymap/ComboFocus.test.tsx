@@ -96,6 +96,13 @@ describe("the combo list", () => {
     expect(html).toContain('aria-label="Search combos"');
   });
 
+  it("edits a combo stored once per layer as one combo, naming its layers", () => {
+    const on = (layer: number): ComboDefinition => ({ Positions: { positions: [{ row: 1, col: 0 }, { row: 1, col: 1 }], output: ESC, layer } });
+    const html = render(<Focus />, [on(0), emptyCombo(), on(1)], 2);
+    expect(html).toMatch(/<option value="several" disabled="" selected="">[^<]+, [^<]+<\/option>/);
+    expect(render(<ComboList />, [on(0), emptyCombo(), on(1)], 2).match(/data-testid="combo-row"/g)).toHaveLength(1);
+  });
+
   it("explains why Create is unavailable when every combo is in use", () => {
     const full = Array.from({ length: bundle.caps.max_combos }, () => combo(2));
     expect(render(<ComboList />, full, null)).toContain(`All ${bundle.caps.max_combos} combos are in use`);

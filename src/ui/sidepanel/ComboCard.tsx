@@ -1,6 +1,7 @@
 // One combo in the side panel, as in GLIDE: its number and action, then (as a
 // card) a small keyboard with its keys marked and the layers it works on, or
-// (as a list row) how many keys it has. A warning says what it lacks.
+// (as a list row) how many keys it has. A warning says what it lacks. A combo
+// stored once per layer is one card with a chip per layer.
 
 import type { ReactNode } from "react";
 import type { ComboDefinition, KeyAction } from "../../model/action-types";
@@ -27,6 +28,7 @@ function LayerChip({ children }: { children: ReactNode }) {
 export function ComboCard({
   index,
   combo,
+  layers,
   twins,
   view,
   open,
@@ -37,6 +39,8 @@ export function ComboCard({
 }: {
   index: number;
   combo: ComboDefinition;
+  /** The layers it works on, one per slot; undefined is every layer. */
+  layers: readonly (number | undefined)[];
   twins: number;
   view: "cards" | "list";
   open: boolean;
@@ -48,6 +52,7 @@ export function ComboCard({
   const keyText = useKeyText();
   const { bundle, state } = useWorkbench();
   const layer = comboLayer(combo);
+  const sorted = [...layers].sort((a, b) => (a ?? -1) - (b ?? -1));
   const warning = warningOf(combo, twins);
   const action = keyText.glyph(comboOutput(combo)).text || "No action";
   // A combo of actions is matched on its own layer, else the default one.
@@ -113,9 +118,8 @@ export function ComboCard({
       )}
       {(view === "cards" || warning) && (
         <div className="flex flex-wrap items-center gap-1.5 pl-1">
-          {view === "cards" && (
-            <LayerChip>{layer === undefined ? "All Layers" : layerName(state.layerMetadata, layer)}</LayerChip>
-          )}
+          {view === "cards" &&
+            sorted.map((one) => <LayerChip key={one ?? "all"}>{one === undefined ? "All Layers" : layerName(state.layerMetadata, one)}</LayerChip>)}
           {warning && (
             <span className="flex items-center gap-1 text-small font-semibold text-warn">
               <WarningIcon size={11} /> {warning}

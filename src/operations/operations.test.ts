@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { BehaviorOptions, KeyAction, MorseProfile } from "../vendor/rynk-wasm/rynk_wasm";
 import type { KeyboardImage } from "../sync/image";
 import { noLabels } from "../model/behavior-labels";
+import { emptyCombo } from "../model/slots";
 import { catalog, guardInputOf, OPERATIONS, runOperation, type OperationFacts } from ".";
 
 const key = (code: string): KeyAction => ({ Single: { Key: { Hid: code } } }) as KeyAction;
@@ -176,6 +177,17 @@ describe("transforms", () => {
     const ctrl = { Single: { Key: { Hid: "LCtrl" } } } as KeyAction;
     const result = run("apply_transform", { transform: "ctrl-gui-swap" }, { ...image(), layers: [[ctrl, "No"], ["No", "No"], ["No", "No"], ["No", "No"]] });
     expect(result.ok && result.image.layers[0][0]).toEqual({ Single: { Key: { Hid: "LGui" } } });
+  });
+});
+
+describe("combos", () => {
+  it("sets several slots as one change, and refuses a slot or a value that is not a combo", () => {
+    const combo = { Positions: { positions: [{ row: 0, col: 0 }, { row: 0, col: 1 }], output: key("Z"), layer: 1 } };
+    const empty = emptyCombo();
+    const two = { ...image(), combos: [empty, empty] };
+    expect(run("set_combos", { combos: [{ slot: 0, combo }, { slot: 1, combo }] }, two)).toMatchObject({ ok: true, image: { combos: [combo, combo] } });
+    expect(run("set_combos", { combos: [{ slot: 2, combo }] }, two)).toEqual({ ok: false, message: "There is no combo 2" });
+    expect(run("set_combos", { combos: [{ slot: 0, combo: "No" }] }, two)).toEqual({ ok: false, message: "set_combos: combos[0] is not a combo" });
   });
 });
 

@@ -25,14 +25,20 @@ import { useKeyText } from "../useKeyText";
 function LayerChoice({ focus }: { focus: ComboFocus }) {
   const { bundle, state } = useWorkbench();
   const own = comboLayer(focus.combo);
+  const several = focus.layers.length > 0;
   return (
     <label className="flex flex-col gap-1">
       <SectionLabel>Works on</SectionLabel>
       <select
-        value={own ?? ""}
+        value={several ? "several" : (own ?? "")}
         onChange={(event) => void focus.setLayer(event.target.value === "" ? undefined : Number(event.target.value))}
         className="rounded-lg border border-line bg-raised px-2 py-1.5 text-body text-ink"
       >
+        {several && (
+          <option value="several" disabled>
+            {focus.layers.map((layer) => layerName(state.layerMetadata, layer)).join(", ")}
+          </option>
+        )}
         <option value="">Every layer</option>
         {Array.from({ length: bundle.caps.num_layers }, (_, layer) => (
           <option key={layer} value={layer}>

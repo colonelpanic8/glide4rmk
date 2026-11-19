@@ -15,3 +15,4 @@ export type { CopiedBehavior } from "./behavior-text";
 export { behaviorsAsText, behaviorsFromText } from "./behavior-text";
 export type { Board, DescribedLayer, Description } from "./describe";
 export { describe } from "./describe";
+export type { ComboSet } from "./combos";
