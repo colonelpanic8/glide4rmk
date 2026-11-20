@@ -47,5 +47,5 @@ jobs:
 
           npx --yes wrangler@4 deploy \
             --assets dist \
-            --name GLIDE4RMK \
+            --name glide4rmk \
             --compatibility-date 2026-10-01
