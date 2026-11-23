@@ -23,7 +23,7 @@ What GLIDE4RMK took from GLIDE, feature by feature: GLIDE's files (in `moosylog/
 | `guard` | Guard | `dev/ui/guard.jsx` `dev/core/capabilities/changeGuard.js` | `src/domain/guard.ts` `src/ui/guard` | fece887 | 1652c5a |
 | `operations` | Operations | `dev/core/operations.js` | `src/operations/catalog.ts` | unknown | — |
 | `board-geometry` | Glove80 geometry | `dev/core/boards/boards.generated.js` `dev/boards` | `src/model/boards` `src/session/mock/glove80.ts` | a685f3d | f64f7a1 |
-| `flow-mirror-halves` | Mirror halves Flow | `dev/flows/shared/mirror-halves.flows` | `flows/shared/mirror-halves.flows` `src/model/boards/key-groups.ts` | 0e41d34 | #PR |
+| `flow-mirror-halves` | Mirror halves Flow | `dev/flows/shared/mirror-halves.flows` | `flows/shared/mirror-halves.flows` `src/model/boards/key-groups.ts` | 0e41d34 | #36 |
 
 ## Not ported yet
 
