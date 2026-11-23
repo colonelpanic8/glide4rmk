@@ -12,7 +12,7 @@ import { forkIsEmpty, morseIsEmpty } from "../../model/slots";
 import { labelAt, type BehaviorKind, type BehaviorLabels } from "../../model/behavior-labels";
 import { actionReferences, keyActionReferences, type BehaviorUse, type Ref } from "../../domain";
 import type { Term, TermId, Wording } from "../terms";
-import { actionLabel, keyActionGlyph, type LayerNames } from "../labels";
+import { actionLabel, keyActionGlyph, type TextContext } from "../labels";
 import { morseProfileSummary } from "../morse-profile";
 import type { SiteRef, UsageReport } from "../../workbench/usage";
 
@@ -73,8 +73,8 @@ export interface LibraryInput {
   behaviorUse: ReadonlyMap<string, BehaviorUse>;
   /** The app's voice for row names (ui/terms.ts). */
   wording: Wording;
-  /** Layer keys in the details read as their layers' names. */
-  layerNames: LayerNames;
+  /** How details read: modifiers for the chosen computer, layer keys as their layers' names. */
+  text: TextContext;
 }
 
 /** A behavior's name as rows show it: its own, or the kind and number. */
@@ -83,12 +83,12 @@ export function behaviorTitle(kind: LibraryKind, slot: number, input: Pick<Libra
   return own || `${LIBRARY_KINDS[kind].one[input.wording]} ${slot}`;
 }
 
-function morseDetail(morse: Morse, names: LayerNames): string {
-  return morse.actions.map(([pattern, action]) => `${morsePatternGlyph(pattern)} ${actionLabel(action, names)}`).join(" · ");
+function morseDetail(morse: Morse, text: TextContext): string {
+  return morse.actions.map(([pattern, action]) => `${morsePatternGlyph(pattern)} ${actionLabel(action, text)}`).join(" · ");
 }
 
-function forkDetail(fork: Fork, morse: readonly Morse[], names: LayerNames): string {
-  const glyph = (action: Fork["trigger"]) => keyActionGlyph(action, morse, names).text || "nothing";
+function forkDetail(fork: Fork, morse: readonly Morse[], text: TextContext): string {
+  const glyph = (action: Fork["trigger"]) => keyActionGlyph(action, morse, text).text || "nothing";
   return `${glyph(fork.trigger)} → ${glyph(fork.positive_output)}, else ${glyph(fork.negative_output)}`;
 }
 
@@ -105,7 +105,7 @@ function usedThings(refs: readonly Ref[], input: LibraryInput): UsedThing[] {
     seen.add(key);
     const kind = REF_KIND[ref.kind];
     if (kind) out.push({ label: behaviorTitle(kind, ref.index, input), behavior: { kind, slot: ref.index } });
-    else out.push({ label: input.layerNames[ref.index] ?? `Layer ${ref.index}`, behavior: null });
+    else out.push({ label: input.text.names?.[ref.index] ?? `Layer ${ref.index}`, behavior: null });
   }
   return out;
 }
@@ -137,7 +137,7 @@ export function libraryRows(kind: LibraryKind, input: LibraryInput): LibraryRow[
           const morse = input.morse[slot.index];
           const refs = morse.actions.flatMap(([, action]) => actionReferences(action).map((reference) => reference.to));
           return row(kind, slot.index, input, {
-            detail: morseDetail(morse, input.layerNames),
+            detail: morseDetail(morse, input.text),
             uses: slot.refs.length,
             places: slot.refSites,
             refersTo: usedThings(refs, input),
@@ -147,7 +147,7 @@ export function libraryRows(kind: LibraryKind, input: LibraryInput): LibraryRow[
       return input.forks.flatMap((fork, index) => {
         if (forkIsEmpty(fork)) return [];
         const refs = [fork.trigger, fork.positive_output, fork.negative_output].flatMap((action) => keyActionReferences(action).map((reference) => reference.to));
-        return [row(kind, index, input, { detail: forkDetail(fork, input.morse, input.layerNames), uses: null, places: [], refersTo: usedThings(refs, input) })];
+        return [row(kind, index, input, { detail: forkDetail(fork, input.morse, input.text), uses: null, places: [], refersTo: usedThings(refs, input) })];
       });
     case "profiles":
       return input.profiles.map((entry) =>

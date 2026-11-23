@@ -12,6 +12,7 @@ import { setTheme, useTheme } from "./theme";
 import { themeList } from "./theme/themes";
 import { setWording, useWording } from "./terms";
 import { PREFERENCES, detectOs, resetPreferences, usePreference, type Os } from "./preferences";
+import { modifierLook } from "./keyface/modifiers";
 import type { Setting as Stored } from "./settings";
 import { cx } from "./kit";
 import { CloseIcon, GearIcon, InfoIcon } from "./icons";
@@ -209,9 +210,9 @@ export function SettingsBody() {
           setting={PREFERENCES.os}
           options={[
             { value: "auto", label: "Auto", picture: <span className="text-caption font-semibold text-mute">{OS_NAMES[detectOs()]}</span> },
-            { value: "mac", label: "Mac", picture: symbol("⌘") },
-            { value: "win", label: "Windows", picture: symbol("⊞") },
-            { value: "linux", label: "Linux", picture: symbol("❖") },
+            { value: "mac", label: "Mac", picture: symbol(modifierLook("gui", "mac").symbol) },
+            { value: "win", label: "Windows", picture: symbol(modifierLook("gui", "win").symbol) },
+            { value: "linux", label: "Linux", picture: symbol(modifierLook("gui", "linux").symbol) },
           ]}
         />
         <Setting label="Keyboard layout" info="The layout your computer types with: it decides the characters keys show and the picker offers.">

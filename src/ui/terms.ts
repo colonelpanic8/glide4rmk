@@ -44,6 +44,9 @@ export const TERMS = {
   "timing.release": { technical: "Hold trigger on release", friendly: "Decide on release" },
   "morse.timing": { technical: "Timing", friendly: "Timing" },
   "morse.does": { technical: "Action", friendly: "Does" },
+  // What a key is bound to, in the key editor's behavior line.
+  "behavior.tapHold": { technical: "Tap-hold", friendly: "Tap or hold" },
+  "behavior.layerModTap": { technical: "Layer-mod-tap", friendly: "Layer and modifier on hold" },
   // A fork's parts: RMK's words, and plain ones.
   "fork.trigger": { technical: "Trigger", friendly: "Key" },
   "fork.negative": { technical: "Negative output", friendly: "Normally" },

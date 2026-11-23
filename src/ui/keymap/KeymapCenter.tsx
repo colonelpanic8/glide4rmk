@@ -13,7 +13,8 @@ import { BoardWell, KeyboardCanvas } from "../KeyboardCanvas";
 import type { KeyDecor } from "../KeyboardCanvas";
 
 import { keyFace, specialKind } from "../keyface/keyFace";
-import { PREFERENCES, usePreference } from "../preferences";
+import { PREFERENCES, detectOs, usePreference } from "../preferences";
+import { appShortcut } from "../keyface/modifiers";
 import { useFaceContext } from "../keyface/useFaceContext";
 import { keyAddressLabel } from "../key-address";
 
@@ -196,8 +197,8 @@ export function KeymapCenter() {
     return [
       { heading: `${keyAddressLabel(key)} · ${keyText.describe(bound)}` },
       ...light,
-      { id: "copy", label: "Copy key", hint: "Ctrl/⌘ C" },
-      { id: "paste", label: "Paste", hint: "Ctrl/⌘ V" },
+      { id: "copy", label: "Copy key", hint: appShortcut("C", detectOs()) },
+      { id: "paste", label: "Paste", hint: appShortcut("V", detectOs()) },
       "-",
       {
         id: "transparent",

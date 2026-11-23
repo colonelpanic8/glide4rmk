@@ -122,7 +122,7 @@ function chordFace(action: Action, ctx: FaceContext): { chord: FacePart[]; key: 
   const [key, mods] = action.KeyWithModifier;
   const looks = chordLook(mods, ctx.os);
   if (looks.length === 0 || characterWithModifiers(key, mods) !== null) return undefined;
-  return { chord: looks.map((m) => (m.icon ? icon(m.icon) : text(m.word))), key: hidLabel(key) };
+  return { chord: looks.map((m) => (m.icon ? icon(m.icon) : text(m.word))), key: hidLabel(key, ctx.os) };
 }
 
 const MODIFIER_KEYS: Record<string, keyof ModifierCombination> = {
@@ -146,7 +146,7 @@ export function keyFace(action: KeyAction, morse: readonly Morse[], ctx: FaceCon
   // A tap pattern with a name reads as its name, not as its slots.
   const patternName = typeof action === "object" && "Morse" in action ? ctx.behaviorName?.("morse", action.Morse) : undefined;
   if (patternName) return { text: patternName };
-  const glyph = withMacroNames(keyActionGlyph(action, morse, ctx.layerNames), action, ctx);
+  const glyph = withMacroNames(keyActionGlyph(action, morse, { os: ctx.os, names: ctx.layerNames }), action, ctx);
   // A key that does nothing: GLIDE's faint slash.
   if (action === "No") return { ...glyph, none: true };
   if (typeof action !== "object") return glyph;

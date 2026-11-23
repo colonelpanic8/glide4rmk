@@ -9,7 +9,7 @@ import type {
   StateBits,
 } from "../../model/action-types";
 import { comboIsEmpty as definitionIsEmpty } from "../../model/combos";
-import { ModGrid } from "../keymap/ActionEditor";
+import { ModGrid } from "../keymap/ModGrid";
 import type { SlotKind } from "../../workbench";
 import { slotPendingId } from "../../workbench";
 import { WriteStatus } from "../write-status";

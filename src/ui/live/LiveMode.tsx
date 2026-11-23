@@ -19,7 +19,7 @@ import { LockIndicators } from "./LockIndicators";
 import { useMatrixPoll } from "../matrix-poll";
 import { layersInMask } from "../../model/lighting/wake-layers";
 import { effectAnim, effectColor } from "../lighting/decor";
-import { useLayerNames } from "../layer-names";
+import { useTextContext } from "../useKeyText";
 import { layerRef } from "../labels";
 
 /** Wire HSV (0–255 each) → CSS color. */
@@ -140,7 +140,8 @@ function LayerStack() {
 
 export function LiveMode() {
   const { bundle, state } = useWorkbench();
-  const layerNames = useLayerNames();
+  const text = useTextContext();
+  const layerNames = text.names;
   const capabilities = useCapabilities();
   const cols = bundle.caps.num_cols;
   // Only a firmware that cannot report resolved modifiers needs the matrix
@@ -207,7 +208,7 @@ export function LiveMode() {
       state.defaultLayer,
       key.row * cols + key.col,
     );
-    const glyph = liveKeyActionGlyph(action, shiftActive, layerNames);
+    const glyph = liveKeyActionGlyph(action, shiftActive, text);
     if (!glyph.text && key.label) return { text: key.label, dim: true };
     return glyph.text ? { ...glyph, dim: true } : undefined;
   };

@@ -46,6 +46,8 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 
 ## Done recently
 
+- The key editor names the behavior a key is bound to (kind, name, timing, forks), edits its timing from a gear on the slot (a shared timing is copied for the one key, named after the original and the key: `set_key_timing`), and shows a fork-made double tap (TailorKey's shiftdance) as On Double Tap (ADR 0026). Modifiers read as the computer chosen in Settings writes them in every label, not only on key faces (`src/architecture/modifier-text.test.ts`).
+
 - The macro editor as GLIDE's Macro Builder: steps as compact rows (drag or Alt + arrows to move, Undo, Clear), + Add for a step, text or a pause, each step sending a key, a layer or another macro (never one that runs it again) from Pick Key's small picker, which now lists layers and your behaviors when a caller asks (`PickOffer`); opening a macro on a live or simulated board no longer crashes (both wasm modules load in `openBundle`).
 
 - From GLIDE: hovering a behavior row lights the keys on the layer shown that use it; the key menu's colours (your colours and the presets, or off) give the key, or every selected key, its light on boards that store lights, one Undo step through the draft.

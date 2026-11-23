@@ -2,7 +2,7 @@
 // by its HID code, or anything else by its action. No React.
 
 import type { Action, HidKeyCode } from "../../model/action-types";
-import { hidLabel } from "../labels";
+import { capLabel } from "../labels";
 
 /** What a tile puts on the key: an action for the slot being filled, "Transparent"
  *  (falls through to the layer below) or a tap pattern, which is the whole key. */
@@ -48,12 +48,12 @@ export const PUNCTUATION_CODES: HidKeyCode[] = [
 ];
 export const NON_US: HidKeyCode[] = ["NonusBackslash", "NonusHash"];
 
-export function keyTile(code: HidKeyCode, label?: string, search = ""): Tile {
+export function keyTile(code: HidKeyCode, label: string, search = ""): Tile {
   return {
     id: `key:${code}`,
-    label: label ?? hidLabel(code),
+    label,
     action: { Key: { Hid: code } } as Action,
-    search: `${code} ${label ?? ""} ${hidLabel(code)} ${search}`.toLowerCase(),
+    search: `${code} ${label} ${capLabel(code)} ${search}`.toLowerCase(),
   };
 }
 

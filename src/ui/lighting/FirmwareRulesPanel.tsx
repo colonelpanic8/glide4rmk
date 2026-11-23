@@ -11,11 +11,11 @@ import { firmwareRuleGroups } from "../../model/lighting/firmware-rules";
 import { LIVE_VIEW, previewActiveLayers } from "../../model/lighting/preview";
 import { layersInMask } from "../../model/lighting/wake-layers";
 import { lightingKeyLegend } from "./keyLegend";
-import { useLayerNames } from "../layer-names";
+import { useTextContext } from "../useKeyText";
 
 export function FirmwareRulesPanel() {
   const { bundle, state } = useWorkbench();
-  const layerNames = useLayerNames();
+  const text = useTextContext();
   const total = state.compiledScenes.length + state.conditionalScenes.length;
   const activeLayers = useMemo(
     () => previewActiveLayers(LIVE_VIEW, state.activeLayers, state.defaultLayer),
@@ -30,14 +30,14 @@ export function FirmwareRulesPanel() {
     for (const key of bundle.model.keys) {
       if (key.ledId !== undefined) {
         const label = lightingKeyLegend(
-          layerNames, key, state.layers, bundle.caps.num_cols,
+          text, key, state.layers, bundle.caps.num_cols,
           LIVE_VIEW, state.activeLayers, state.defaultLayer,
         );
         result.set(key.ledId, keyAddressWithLegend({ ...key, label }));
       }
     }
     return result;
-  }, [bundle.model, bundle.caps.num_cols, state.layers, state.activeLayers, state.defaultLayer, layerNames]);
+  }, [bundle.model, bundle.caps.num_cols, state.layers, state.activeLayers, state.defaultLayer, text]);
   const nameOf = useCallback(
     (layer: number) => layerName(state.layerMetadata, layer),
     [state.layerMetadata],

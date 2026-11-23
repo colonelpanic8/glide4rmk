@@ -1,6 +1,6 @@
 import type { KeyView } from "../../model/keyboard";
 import type { KeyAction } from "../../model/action-types";
-import { keyActionGlyph, type LayerNames } from "../labels";
+import { keyActionGlyph, type TextContext } from "../labels";
 import { effectiveAction } from "../live/compositor";
 
 /** What a key does where the lighting view looks: on the overlay, what the
@@ -21,8 +21,8 @@ export function lightingKeyAction(
 }
 
 export function lightingKeyLegend(
-  names: LayerNames,
+  text: TextContext,
   ...args: Parameters<typeof lightingKeyAction>
 ): string {
-  return keyActionGlyph(lightingKeyAction(...args), [], names).text;
+  return keyActionGlyph(lightingKeyAction(...args), [], text).text;
 }
