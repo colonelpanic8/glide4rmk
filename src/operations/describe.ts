@@ -41,6 +41,8 @@ export interface Description {
   default_layer: number;
   /** The layers in use; a layer slot the firmware marks unused is left out. */
   layers: DescribedLayer[];
+  /** How many layers the keyboard can hold: room for `max_layers - (layers | length)` more. */
+  max_layers: number;
   /** The tap-hold timing profiles, by name (a tap-hold names its profile by slot). */
   profiles: { index: number; name: string; timing: MorseProfile }[];
   /** How many combos the layout has. */
@@ -93,6 +95,7 @@ export function describe(image: KeyboardImage, board: Board): Description {
     cols,
     default_layer: image.defaultLayer,
     layers,
+    max_layers: image.layers.length,
     profiles,
     combo_count: image.combos.length,
   };

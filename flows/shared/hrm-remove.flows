@@ -1,0 +1,66 @@
+uid = "hrm_remove"
+
+runs_on = "glide4rmk"
+
+title = "Home-row mods removal"
+
+subtitle = "Return to plain letters"
+
+description = '''
+Takes home-row mods off your layout so your layers type plain letters again.
+
+- Every home-row mod becomes the plain key it types when tapped: a tap-hold on a letter that holds a modifier turns back into that letter.
+- This covers the home row on every layer. A mod-tap on another row (a Shift on the bottom row, say) is left alone.
+- Thumb keys, layer keys, Autoshift keys and everything else are left alone.'''
+
+category = "Modifier keys"
+
+script = '''
+# ==============================================================================
+# Home-row mods removal
+#
+# Turns every home-row mod back into the plain key it types on tap, on the
+# board's home-row keys (group "home_row") on every layer. A home-row mod is a
+# tap-hold whose tap is a letter or a punctuation key and whose hold is a
+# modifier. That leaves out:
+#   - thumb keys (their tap is Space, Enter, Backspace... and not a letter),
+#   - layer-taps and layer keys,
+#   - Autoshift keys (they hold the key shifted, not a modifier),
+#   - one-shot keys, tap patterns and shortcuts,
+#   - mod-taps on any other key than the home-row keys.
+#
+# Not changed: layers, combos, and the timing profiles (they stay in your
+# layout and are simply no longer used by any key).
+# ==============================================================================
+
+# The key a home-row mod types on tap, or null for any other key.
+def hrm_tap: if holds_modifier then (tapped_hid | select(. != null and (is_letter or is_punctuation))) // null else null end;
+
+# Every home-row mod, on every layer, with the plain key that takes its place.
+[$view.layers[] as $layer | group("home_row")[] as $spot |
+  key_at($layer; $spot) as $v |
+  select($v != null and ($v | hrm_tap) != null) |
+  {layer: $layer.index, name: $layer.name, row: $spot.row, col: $spot.col, action: {Single: $v.TapHold[0]}}] as $changes |
+
+[$changes | group_by(.layer)[] | {name: .[0].name, n: length}] as $per |
+
+if ($changes | length) == 0 then
+  {operations: [], report: {changed: false,
+    message: "Nothing was changed: no home-row mods were found in this layout.",
+    log: ["no home-row mods found"]}}
+else
+  {operations: [set_keys([$changes[] | {layer, row, col, action}])],
+   report: {
+     message: "Home-row mods are gone. Your layers type plain letters again.",
+     lines: [{ok: true, text: "Turned \($changes | length) home-row mod keys back into plain keys on \($per | length) \(if ($per | length) == 1 then "layer" else "layers" end): \($per | map(.name) | join(", "))"},
+             {ok: true, text: "Thumb keys, layer keys and Autoshift keys were left alone"}],
+     log: (["\($view.board.name)"] + [$per[] | "\(.name): \(.n) keys"])
+   }}
+end
+'''
+
+[manifest]
+author = "moosyresearch"
+icon = "❌"
+keywords = ["undo", "hrm", "home row"]
+needs_keys = ["home_row"]

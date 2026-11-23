@@ -1,0 +1,117 @@
+uid = "hrm_create"
+
+runs_on = "glide4rmk"
+
+title = "Home-row mods"
+
+subtitle = "Per-finger, bilateral"
+
+description = '''
+Puts home-row mods on the home row of your base layer, with timing tuned for each finger. Works with the letters you already have there (QWERTY, Colemak, Dvorak, Enthium, ...).
+
+- Each finger has its own timing profile, so the pinky waits longer than the index finger.
+- Bilateral: a mod only turns on when the next key is pressed with the other hand, which stops two keys on the same hand from misfiring together.
+- Pick the modifier order that matches your computer.
+- Run it again to reset the home row to these settings; profiles you already have are kept as they are.'''
+
+category = "Modifier keys"
+
+script = '''
+# ==============================================================================
+# Home-row mods
+#
+# Puts a home-row mod on each key of the board's home row (group "home_row",
+# pinky to pinky, each with its hand and finger) on the base layer: the key
+# still types its letter on tap and holds its finger's modifier. The bilateral
+# behavior and the timing come from one profile per finger
+# (HRM_<finger>_v1_TK), so no extra layers or macros are needed.
+#
+# Home-row keys that are not plain keys are left as they are. A home-row mod
+# you already have is read as the key it types and set again, so running this
+# twice changes nothing. Profiles with these names that you already have are
+# kept as they are.
+#
+# Not changed: other layers, combos, other behaviors.
+# ==============================================================================
+
+# The four timing profiles, as the TailorKey layouts define them.
+def profiles: {
+  "HRM_index_v1_TK":  {hold_timeout_ms: 180, quick_tap_timeout_ms: 300, prior_idle_time_ms: 30, unilateral_tap: true, opposite_hand_hold: false, mode: "PermissiveHold"},
+  "HRM_middle_v1_TK": {hold_timeout_ms: 210, quick_tap_timeout_ms: 300, prior_idle_time_ms: 80, unilateral_tap: true, opposite_hand_hold: false, mode: "PermissiveHold"},
+  "HRM_pinky_v1_TK":  {hold_timeout_ms: 270, quick_tap_timeout_ms: 300, prior_idle_time_ms: 80, unilateral_tap: true, opposite_hand_hold: false, mode: "PermissiveHold"},
+  "HRM_ring_v1_TK":   {hold_timeout_ms: 240, quick_tap_timeout_ms: 300, prior_idle_time_ms: 30, unilateral_tap: true, opposite_hand_hold: false, mode: "PermissiveHold"}
+};
+def profile_of($spot): "HRM_\($spot.finger)_v1_TK";
+
+# The modifier on each finger: the pinky and middle finger follow the chosen
+# order, the ring finger holds Alt (left Alt on both hands, as TailorKey has
+# it), the index finger Shift.
+def modifier_of($order; $spot):
+  if $spot.finger == "pinky" then "\($spot.hand)_\($order.pinky)"
+  elif $spot.finger == "middle" then "\($spot.hand)_\($order.middle)"
+  elif $spot.finger == "ring" then "left_alt"
+  else "\($spot.hand)_shift" end;
+
+# The keys a home-row mod may go on: letters, and punctuation a layout puts on
+# its home row (QWERTY has ; there).
+def typed_on_home_row: is_letter or is_punctuation;
+
+({"GACS": {pinky: "gui", middle: "ctrl"}, "CAGS": {pinky: "ctrl", middle: "gui"}}[$mod_preset]
+  // error("There is no modifier order called \($mod_preset), so nothing was changed.")) as $order |
+(base_layer // error("Your base layer is not in use, so nothing was changed.")) as $base |
+
+# The home-row keys with the key each one types now (a plain key or a home-row mod).
+[group("home_row")[] as $spot | key_at($base; $spot) as $old
+  | ($old | if (type == "object" and (.Single != null or holds_modifier)) then tapped_hid else null end) as $h
+  | {spot: $spot, old: $old, h: (if $h != null and ($h | typed_on_home_row) then $h else null end)}] as $look |
+[$look[] | select(.h == null)] as $skipped |
+[$look[] | select(.h != null)] as $usable |
+(if ($usable | length) == 0
+ then error("The home row of your base layer has no plain letter keys, so there is nothing to put the home-row mods on.")
+ else . end) |
+
+# A profile is named in a key by its slot once it exists, so a key that has it already reads as unchanged.
+def profile_ref($name): profile_named($name).index // $name;
+
+[$usable[] | . as $u
+  | tap_hold(key($u.h); {Modifier: mods([modifier_of($order; $u.spot)])}; profile_ref(profile_of($u.spot))) as $new
+  | select($new != $u.old)
+  | {layer: $base.index, row: $u.spot.row, col: $u.spot.col, action: $new}] as $changes |
+([$usable[] | profile_of(.spot)] | unique | map(select(has_profile(.) | not))) as $missing |
+
+if ($changes | length) == 0 and ($missing | length) == 0 then
+  {operations: [], report: {changed: false,
+    message: "Nothing was changed: your home row already has these home-row mods.",
+    log: ["identical to the existing home row"]}}
+else
+  {operations:
+     ([$missing[] | set_timing_profile(.; profiles[.])]
+      + (if ($changes | length) > 0 then [set_keys($changes)] else [] end)),
+   report: {
+     message: "Home-row mods are ready on your base layer's home row.",
+     lines: ([{ok: true, text: (if ($usable | length) == ($look | length) then "Put home-row mods on all \($look | length) home-row keys of your base layer" else "Put home-row mods on \($usable | length) of the \($look | length) home-row keys of your base layer" end)},
+              {ok: true, text: (if ($missing | length) > 0
+                 then "Added \($missing | length) timing profiles, one for each finger, that make the bilateral behavior work"
+                 else "Your layout already had the timing profiles they use, so they were kept" end)}]
+             + (if ($skipped | length) > 0
+                 then [{ok: false, text: "\($skipped | length) home-row keys were left as they are because they are not plain keys (\($skipped | map("\(.spot.hand) \(.spot.finger)") | join(", ")))."}]
+                 else [] end)),
+     log: ["\($view.board.name), base layer \($base.index)", "keys written: \($changes | length)", "profiles added: \($missing | length)"]
+   }}
+end
+'''
+
+[manifest]
+author = "moosyresearch"
+icon = "🏠"
+keywords = ["hrm", "home row", "mod-tap", "bilateral", "per finger", "sunaku"]
+needs_keys = ["home_row"]
+requires = ["behaviors.profiles"]
+
+[[param]]
+id = "mod_preset"
+label = "Modifier order"
+type = "select"
+options = ["GACS", "CAGS"]
+labels = ["Windows / Linux", "macOS"]
+default = "GACS"
