@@ -187,6 +187,12 @@ export function LiveMode() {
         state.conditionalScenes,
         new Map([[0, device.battery], [1, device.peripheralBattery]]),
         state.lightingOutputMode,
+        {
+          rules: state.runtimeConditionalScenes,
+          connection: device.connection,
+          indicators: device.ledIndicator,
+          effectsEnabled: state.lightingExtension ? state.lightingExtension.state.value !== 0 : null,
+        },
       ),
     [
       state.compiledScenes,
@@ -200,6 +206,10 @@ export function LiveMode() {
       device.battery,
       device.peripheralBattery,
       state.lightingOutputMode,
+      state.runtimeConditionalScenes,
+      device.connection,
+      device.ledIndicator,
+      state.lightingExtension,
     ],
   );
 
