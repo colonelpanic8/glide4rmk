@@ -31,7 +31,8 @@ describe("a Go60 MoErgo JSON file", () => {
   });
 
   it("imports onto a Glove80 as a converted Go60 layout", async () => {
-    await withTestWorkbench({ fixture: "plain" }, { mode: "draft" }, async ({ bundle, state }) => {
+    // TailorKey's Glove80 has room for the factory layout's four layers.
+    await withTestWorkbench({ fixture: "tailorkey" }, { mode: "draft" }, async ({ bundle, state }) => {
       const imported = readImport({ text: FACTORY, bundle, state: state(), catalog });
       expect(imported.sourceBoard).toBe("go60");
       expect(imported.targetBoard).toBe("glove80");
