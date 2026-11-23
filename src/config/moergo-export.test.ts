@@ -30,6 +30,10 @@ function withoutUnportable(snapshot: RuntimeSnapshot): RuntimeSnapshot {
   };
 }
 
+/** The combos a layout programs: TailorKey's are positional, and an empty slot
+ *  is an empty action combo. */
+const programmed = (combos: ComboDefinition[] | undefined) => combos?.filter((combo) => "Positions" in combo);
+
 /** A key whose runtime spelling the trip may change: a profiled tap-hold comes
  *  back as a tap pattern, and macros are numbered by first use. What they do is
  *  checked in moergo-config. */
@@ -67,7 +71,9 @@ describe("TailorKey as MoErgo JSON", () => {
           else expect(action, `layer ${index} offset ${offset}`).toEqual(was);
         }),
       );
-      expect(after.behaviors?.combos).toEqual(before.behaviors?.combos);
+      // The workbench holds the keyboard's whole combo table, empty slots
+      // included; a file carries the programmed ones.
+      expect(programmed(after.behaviors?.combos)).toEqual(programmed(before.behaviors?.combos));
       expect(after.behaviors?.macros?.length).toBe(before.behaviors?.macros?.length);
       expect(after.behaviors?.forks?.length).toBe(1);
 
