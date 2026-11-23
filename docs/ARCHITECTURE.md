@@ -145,4 +145,4 @@ Not yet:
 
 ## What comes next
 
-From the architecture plan (`docs/architecture-review.md`, "The plan, validated"; `docs/todo.md`), done: the safety net, `workbench/`, the draft as a wanted image, operations. Left: the direct Live writes and whole-table writes onto the write path; capabilities and `offer()` for everything a screen offers; ADR 0019's Realtime switch for lighting; then `describe(image)`, Flows and WebMCP.
+From the architecture plan (`docs/architecture-review.md`, "The plan, validated"; its second pass lists what to do next, "Do now" and "Plan"; `docs/todo.md`), done: the safety net, `workbench/`, the draft as a wanted image, operations. Left: the direct Live writes and whole-table writes onto the write path; capabilities and `offer()` for everything a screen offers; ADR 0019's Realtime switch for lighting; then `describe(image)`, Flows and WebMCP.
