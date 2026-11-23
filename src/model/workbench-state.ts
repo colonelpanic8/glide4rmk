@@ -57,7 +57,7 @@ import type {
 import type { BoardProfile } from "./boards";
 import type { KeyboardModel } from "./keyboard";
 import type { KeyboardImage, PatchEntry, SyncItem } from "../sync";
-import type { History } from "./history";
+import type { History, LayoutNotes } from "./history";
 
 /** The screen on show: one section of one area (src/ui/areas.ts). */
 export type Mode =
@@ -280,6 +280,8 @@ export interface WorkbenchState {
   history: History;
   /** The behaviors' names and descriptions (ADR 0020): beside what you want, never sent. */
   labels: BehaviorLabels;
+  /** The add-on modules the layout turns on (`lh-cirque`; ADR 0028). */
+  modules: readonly string[];
   /** Draft mode (ADR 0010): edits change what you want, and Send writes the
    *  difference; in Live each edit is written at once. */
   batchMode: boolean;
@@ -358,10 +360,12 @@ export type WorkbenchAction =
   /** An operation's result (ADR 0019): what you want, whole, as one step; `join`
    *  puts it in the last step (Live putting back a send that failed); a layer
    *  rewrite's `layerOrder` (destination → source slot) moves the layer on show with it. */
-  | { type: "commit"; image: KeyboardImage; join?: boolean; layerOrder?: number[]; labels?: BehaviorLabels }
-  /** Labels kept for this keyboard or read from a file (ADR 0020), without those
-   *  on empty slots: no step. */
-  | { type: "labelsLoaded"; labels: BehaviorLabels }
+  | { type: "commit"; image: KeyboardImage; join?: boolean; layerOrder?: number[]; notes?: Partial<LayoutNotes> }
+  /** Layout notes kept for this keyboard or read from a file (labels: ADR 0020,
+   *  without those on empty slots; modules: ADR 0028): no step. */
+  | { type: "notesLoaded"; notes: Partial<LayoutNotes> }
+  /** Layout notes changed alone (an add-on turned on or off): one step. */
+  | { type: "notesSet"; notes: Partial<LayoutNotes> }
   /** The keyboard was read (Send's read-back): the base is this image. `wrote`:
    *  the items the send wrote before it, now based on what was read. */
   | { type: "draftStored"; image: KeyboardImage; wrote?: SyncItem[] }

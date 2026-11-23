@@ -127,7 +127,7 @@ export function FlowsWindow() {
   const [busy, setBusy] = useState(false);
 
   const capabilityIds = useMemo(() => capabilities.list().map(({ id }) => id as string), [capabilities]);
-  const board = useMemo(() => flowBoard(bundle, capabilityIds), [bundle, capabilityIds]);
+  const board = useMemo(() => flowBoard(bundle, capabilityIds, state.modules), [bundle, capabilityIds, state.modules]);
   const has = (capability: string) => capabilityIds.includes(capability);
 
   useEffect(() => {

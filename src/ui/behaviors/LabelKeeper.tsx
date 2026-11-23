@@ -20,10 +20,10 @@ export function LabelKeeper() {
     if (loaded.current === key) return;
     loaded.current = key;
     if (offline) {
-      if (fileText) dispatch({ type: "labelsLoaded", labels: labelsFromToml(fileText) });
+      if (fileText) dispatch({ type: "notesLoaded", notes: { labels: labelsFromToml(fileText) } });
       return;
     }
-    dispatch({ type: "labelsLoaded", labels: labelsFromText(readSetting(key)) });
+    dispatch({ type: "notesLoaded", notes: { labels: labelsFromText(readSetting(key)) } });
   }, [key, offline, fileText, dispatch]);
 
   useEffect(() => {

@@ -6,11 +6,11 @@
 // leave the history alone; Discard is a step like any other. It belongs to the
 // open workbench and starts over with another keyboard or file. Pure.
 
-import type { History, HistoryStep, LabelsChange } from "../../model/history";
+import type { History, HistoryStep, NotesChange } from "../../model/history";
 import { sameValue } from "../../model/deep-equal";
 import { invertPatch, joinPatches, type PatchEntry } from "../../sync";
 
-export type { History, HistoryStep, LabelsChange };
+export type { History, HistoryStep, NotesChange };
 
 export const HISTORY_LIMIT = 100;
 
@@ -19,19 +19,19 @@ export const emptyHistory = (): History => ({ past: [], future: [], stroke: "non
 /** Two steps one after the other as one; null when together they change nothing. */
 function joinSteps(first: HistoryStep, second: HistoryStep): HistoryStep | null {
   const changes = joinPatches(first.changes, second.changes);
-  const before = first.labels?.before ?? second.labels?.before;
-  const after = second.labels?.after ?? first.labels?.after;
-  const labels = before && after && !sameValue(before, after) ? { before, after } : undefined;
-  if (changes.length === 0 && !labels) return null;
-  return labels ? { changes, labels } : { changes };
+  const before = first.notes?.before ?? second.notes?.before;
+  const after = second.notes?.after ?? first.notes?.after;
+  const notes = before && after && !sameValue(before, after) ? { before, after } : undefined;
+  if (changes.length === 0 && !notes) return null;
+  return notes ? { changes, notes } : { changes };
 }
 
 /** A commit: a new step (the future is gone), or joined to the last one (the rest
- *  of a Paint stroke, or a write that failed and put things back). `labels`: the
- *  behavior labels, when the commit changed them (ADR 0020). */
-export function recordStep(history: History, changes: readonly PatchEntry[], join = false, labels?: LabelsChange): History {
-  if (changes.length === 0 && !labels) return history;
-  const step: HistoryStep = labels ? { changes, labels } : { changes };
+ *  of a Paint stroke, or a write that failed and put things back). `notes`: the
+ *  layout notes (labels, modules), when the commit changed them. */
+export function recordStep(history: History, changes: readonly PatchEntry[], join = false, notes?: NotesChange): History {
+  if (changes.length === 0 && !notes) return history;
+  const step: HistoryStep = notes ? { changes, notes } : { changes };
   const last = history.past.at(-1);
   if ((join || history.stroke === "joined") && last) {
     const joined = joinSteps(last, step);

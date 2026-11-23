@@ -10,8 +10,8 @@ import { applyPatch, patchBetween, type KeyboardImage } from "../sync";
 import { sendStaged } from "./draft/send";
 import { wantOf } from "./draft/want";
 import type { IoContext, IoWriteResult } from "./io";
-import type { BehaviorLabels } from "../model/behavior-labels";
-import { sameValue } from "../model/deep-equal";
+import type { LayoutNotes } from "../model/history";
+import { notesChange, notesOf } from "./notes";
 
 /** Guard's say on a change from what you want now to `after`: the screen asks
  *  the person; without one, everything goes ahead. */
@@ -45,8 +45,8 @@ export function ledNodesOf(bundle: Pick<ConnectedBundle, "caps" | "model">): Rec
 export interface CommitOptions {
   /** A layer rewrite's order (destination → source slot): the layer on show follows. */
   layerOrder?: number[];
-  /** The behavior labels after the change, when it changed them (ADR 0020). */
-  labels?: BehaviorLabels;
+  /** The layout notes after the change, those it changed (labels: ADR 0020; modules: ADR 0028). */
+  notes?: Partial<LayoutNotes>;
 }
 
 /** Makes `after` what you want, as one commit; in Live the keyboard follows. */
@@ -55,17 +55,17 @@ export async function commitImage(context: IoContext, after: KeyboardImage, opti
   const sending: IoWriteResult = { ok: false, message: "the draft is being sent" };
   if (getState().batchBusy) return sending;
   const before = wantOf(getState());
-  const labelsBefore = getState().labels;
+  const notesBefore = notesOf(getState());
   const change = patchBetween(before, after);
   if (change.length === 0) {
-    // A change only to names and descriptions: nothing for Guard or the keyboard.
-    if (options.labels && !sameValue(options.labels, labelsBefore)) dispatch({ type: "commit", image: after, labels: options.labels });
+    // A change only to the layout's notes (names, descriptions, modules): nothing for Guard or the keyboard.
+    if (notesChange(getState(), options.notes)) dispatch({ type: "commit", image: after, notes: options.notes });
     return { ok: true };
   }
   const pass = await context.judge(before, after);
   if (!pass.ok) return pass;
   if (getState().batchBusy) return sending;
-  dispatch({ type: "commit", image: after, layerOrder: options.layerOrder, labels: options.labels });
+  dispatch({ type: "commit", image: after, layerOrder: options.layerOrder, notes: options.notes });
   if (getState().batchMode) return { ok: true };
 
   const send = () => sendStaged(context, { settingNow: change.map(({ item }) => item) });
@@ -76,7 +76,7 @@ export async function commitImage(context: IoContext, after: KeyboardImage, opti
   if (sent.unread) return { ok: false, message: `${sent.message}; the change is kept in the draft` };
   // Live is all or nothing: what the change set goes back, joined to the same
   // step, and the keyboard with it.
-  dispatch({ type: "commit", image: applyPatch(wantOf(getState()), change, "before"), join: true, labels: labelsBefore });
+  dispatch({ type: "commit", image: applyPatch(wantOf(getState()), change, "before"), join: true, notes: notesBefore });
   const back = await send();
   return {
     ok: false,
@@ -89,5 +89,5 @@ export function applyOperation<Name extends OperationName>(context: IoContext, n
   const state = context.getState();
   const result = runOperation(name, wantOf(state), input, factsOf(state, context));
   if (!result.ok) return Promise.resolve({ ok: false, message: result.message });
-  return commitImage(context, result.image, { layerOrder: result.layerOrder, labels: result.labels });
+  return commitImage(context, result.image, { layerOrder: result.layerOrder, notes: result.labels && { labels: result.labels } });
 }

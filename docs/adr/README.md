@@ -31,5 +31,6 @@ One short page per decision that shapes the code, so the reason survives the peo
 | [0025](0025-flows.md) | Flows: jq over a description, operations out | Accepted |
 | [0026](0026-key-editor-behavior-and-timing.md) | The key editor names the behavior, edits its timing, and shows a fork's double tap | Accepted |
 | [0027](0027-flows-know-the-board.md) | Flows know the board: key groups, a jq library, needs_keys | Accepted |
+| [0028](0028-add-ons-in-the-layout.md) | A keyboard's add-ons are kept in the layout | Accepted |
 
 The glossary is in [../glossary.md](../glossary.md).

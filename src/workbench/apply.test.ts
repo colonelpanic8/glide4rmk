@@ -178,7 +178,7 @@ describe("behavior operations (ADR 0020)", () => {
       expect(await io.apply("create_behavior", { kind: "morse", value: tapA })).toEqual({ ok: true });
       const labels = withLabel(withLabel(noLabels(), "morse", free, { name: "Kept", description: "" }), "morse", free + 1, { name: "Gone", description: "" });
       const reducer = makeWorkbenchReducer(2);
-      expect(reducer(state(), { type: "labelsLoaded", labels }).labels.morse).toEqual({ [free]: { name: "Kept", description: "" } });
+      expect(reducer(state(), { type: "notesLoaded", notes: { labels } }).labels.morse).toEqual({ [free]: { name: "Kept", description: "" } });
     });
   });
 

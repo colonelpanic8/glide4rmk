@@ -8,6 +8,7 @@ import { useWorkbench } from "../state";
 import { useSharedDocumentTransfer } from "../transfer-actions";
 import { TextInput } from "../kit";
 import { closeProperties } from "./store";
+import { AddOnsSection } from "./AddOnsSection";
 
 const LABEL = "mt-4 mb-1.5 block text-small font-semibold text-mute";
 
@@ -71,6 +72,8 @@ export function DetailsSection() {
           Moves your keys to the other keyboard and tells you what could not come along.
         </p>
       )}
+
+      <AddOnsSection label={LABEL} />
 
       <span className={LABEL}>What this keyboard holds</span>
       <div className="rounded-xl border border-line bg-raised px-3 py-1">

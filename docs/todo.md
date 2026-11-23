@@ -11,7 +11,7 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 3. ~~**The draft holds the whole keyboard** (the rest of ADR 0013): macros, layer names and moves, settings; one history in Draft and Live.~~ ADR 0018.
 4. **Operations.** ~~Image in, image out, judged by Guard, applied as one undo step; transforms onto them.~~ `85884ce`, ADR 0019; imports as a commit, ADR 0023. Left: the rule panels and the lighting presets (items 11 and 12).
 5. **Capabilities and `offer()`** for everything a screen offers; any time.
-6. **The doors:** `describe(image)`, then Flows and WebMCP. Flows: ADR 0025, in the top bar; they know the board (ADR 0027): key groups, a jq library, `needs_keys`. Left: WebMCP behind a flag; `describe` grows with its readers; more GLIDE Flows (symbol layer, mouse, gaming); one-time setups (the RGB status setups, lighting key presets, stock Magic layer) as Flows, which also settles items 11 and 12; extras the firmware cannot report (a touchpad) declared somewhere a layout keeps them.
+6. **The doors:** `describe(image)`, then Flows and WebMCP. Flows: ADR 0025, in the top bar; they know the board (ADR 0027): key groups, a jq library, `needs_keys`. Left: WebMCP behind a flag; `describe` grows with its readers; more GLIDE Flows (symbol layer, mouse, gaming); one-time setups (the RGB status setups, lighting key presets, stock Magic layer) as Flows, which also settles items 11 and 12; key groups for boards the registry does not know (a profile each, or marked by the person and kept in the layout); the Glove80's touchpads drawn on the canvas when fitted.
 
 ## Cheap 
 
@@ -45,6 +45,8 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 26. **`DraftKeeper`'s effect** (Live's own send, the kept draft's flush) is untested; only its gate (`liveSendDue`) is.
 
 ## Done recently
+
+- A keyboard's add-ons are kept in the layout (ADR 0028): the Glove80's touchpad modules are switched in Layout properties → Add-ons, saved in MoErgo JSON's `hardware_modules` or a TOML comment line, one Undo step; the Go60's are built in; Flows see them as the board's extras.
 
 - The key editor names the behavior a key is bound to (kind, name, timing, forks), edits its timing from a gear on the slot (a shared timing is copied for the one key, named after the original and the key: `set_key_timing`), and shows a fork-made double tap (TailorKey's shiftdance) as On Double Tap (ADR 0026). Modifiers read as the computer chosen in Settings writes them in every label, not only on key faces (`src/architecture/modifier-text.test.ts`).
 - Flows know the board (ADR 0027): the Glove80 and Go60 carry their key groups (letter block, home row with fingers, thumbs, number and function rows); `describe()` gives them with the profiles and the layer capacity; a jq library goes in front of every script; `add_layer` and `set_timing_profile`; a Flow names what it needs (`needs_keys`, `min_keys`) and one this keyboard cannot run is shown greyed with why. Home-row mods, their removal, their timing presets and Autoshift ship in `flows/shared/`; the typing-layout Flow lost its board table.

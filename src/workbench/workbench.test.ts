@@ -83,6 +83,7 @@ function baseState(over: Partial<WorkbenchState> = {}): WorkbenchState {
     pending: {},
     history: emptyHistory(),
     labels: noLabels(),
+    modules: [],
     batchMode: false,
     batchBusy: false,
     batchError: null,

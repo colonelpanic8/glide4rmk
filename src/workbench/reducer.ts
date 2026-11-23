@@ -13,6 +13,7 @@ import { recordStep, travel } from "./draft/history";
 import { atBase, wantOf, withBase, withBasisInUse, withItemsAtBase, withRead, withStored, withWant } from "./draft/want";
 import { encoderPendingId, keyPendingId } from "./pending";
 import { labelsFor } from "./labels";
+import { notesOf, withNotes } from "./notes";
 import { isLightingAction, reduceLighting } from "./reduce-lighting";
 import { isSettingsAction, reduceSettings } from "./reduce-settings";
 
@@ -76,7 +77,7 @@ function withLiveBase(state: WorkbenchState, items: readonly SyncItem[]): Workbe
 /** Edits: each changes what you want and is one step of the history (ADR 0018).
  *  Reads change it too, by following the keyboard, and are no step. */
 const COMMITS = new Set<WorkbenchAction["type"]>([
-  "keyStage", "encoderStage", "slotStage", "wantSet", "commit", "paint", "erase", "draftReset",
+  "keyStage", "encoderStage", "slotStage", "wantSet", "commit", "notesSet", "paint", "erase", "draftReset",
   "conditionalDraft", "conditionalDraftReset", "pointingDraftSet", "pointingDraftReset", "draftRevert", "batchDiscard",
   "keyWriteStart", "encoderWriteStart", "slotWriteStart", "fieldWriteStart", "defaultLayer", "layerMetadataSet", "lightingStateSet",
   "scenePolicySet", "wakeLayersSet", "extensionStateSet",
@@ -88,8 +89,9 @@ const FAILED_WRITES = new Set<WorkbenchAction["type"]>([
 
 function withStep(before: WorkbenchState, after: WorkbenchState, join: boolean): WorkbenchState {
   const changes = patchBetween(wantOf(before), wantOf(after));
-  const labels = sameValue(before.labels, after.labels) ? undefined : { before: before.labels, after: after.labels };
-  const history = recordStep(after.history, changes, join, labels);
+  const notes =
+    sameValue(before.labels, after.labels) && sameValue(before.modules, after.modules) ? undefined : { before: notesOf(before), after: notesOf(after) };
+  const history = recordStep(after.history, changes, join, notes);
   // An edit: what the last send left behind may be tried again.
   const batchError = changes.length > 0 ? null : after.batchError;
   return history === after.history && batchError === after.batchError ? after : { ...after, history, batchError };
@@ -156,8 +158,8 @@ export function makeWorkbenchReducer(cols: number) {
       case "historyTravel": {
         const moved = travel(state.history, act.direction);
         if (!moved) return state;
-        const labels = moved.step.labels?.[act.direction === "undo" ? "before" : "after"] ?? state.labels;
-        return { ...withWant(state, applyPatch(wantOf(state), moved.patch)), history: moved.history, labels };
+        const notes = moved.step.notes?.[act.direction === "undo" ? "before" : "after"] ?? {};
+        return { ...withNotes(withWant(state, applyPatch(wantOf(state), moved.patch)), notes), history: moved.history };
       }
       case "historyStroke":
         return { ...state, history: { ...state.history, stroke: act.open ? "open" : "none" } };
@@ -182,10 +184,14 @@ export function makeWorkbenchReducer(cols: number) {
         return withItemsAtBase(state, act.items);
       case "wantSet":
         return withWant(state, withValues(wantOf(state), act.values));
-      case "labelsLoaded":
-        return { ...state, labels: labelsFor(act.labels, wantOf(state)) };
+      case "notesLoaded": {
+        const { labels } = act.notes;
+        return withNotes(state, labels ? { ...act.notes, labels: labelsFor(labels, wantOf(state)) } : act.notes);
+      }
+      case "notesSet":
+        return withNotes(state, act.notes);
       case "commit": {
-        const next = { ...withWant(state, act.image), labels: act.labels ?? state.labels };
+        const next = withNotes(withWant(state, act.image), act.notes ?? {});
         return act.layerOrder ? { ...next, uiLayer: movedLayer(state.uiLayer, act.layerOrder), selection: null } : next;
       }
       case "draftStored":

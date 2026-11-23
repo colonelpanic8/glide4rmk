@@ -59,9 +59,11 @@ export interface Board {
   groups?: KeyGroups | null;
   /** Capability ids the keyboard has. */
   capabilities?: readonly string[];
+  /** The kinds of add-on fitted (`pointing`); from the capabilities when unknown. */
+  extras?: readonly string[];
 }
 
-/** The extras a board has, from its capabilities. */
+/** The extras of a board the registry knows nothing about: what its capabilities say. */
 export const extrasOf = (capabilities: readonly string[]): string[] => (capabilities.includes("pointing") ? ["pointing"] : []);
 
 const used = (image: KeyboardImage, layer: number): boolean =>
@@ -75,7 +77,7 @@ export function describeBoard(board: Board, rows: number): DescribedBoard {
     keys: board.keyCount ?? rows * board.cols,
     groups: board.groups ? structuredClone(board.groups) : {},
     capabilities,
-    extras: extrasOf(capabilities),
+    extras: board.extras ? [...board.extras] : extrasOf(capabilities),
   };
 }
 

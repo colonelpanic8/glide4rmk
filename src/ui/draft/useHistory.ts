@@ -10,12 +10,17 @@ import type { WorkbenchContextValue } from "../state";
 import { keyActionGlyph } from "../labels";
 import { layerName, layerNamesOf } from "../layer-names";
 import { showToast } from "../messages/store";
+import { sameValue } from "../../model/deep-equal";
 import { useOs, type Os } from "../preferences";
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /** What a step changed, in a few words. */
 export function stepLabel(step: HistoryStep, state: WorkbenchState, os: Os): string {
+  // A step that changed only what the layout keeps beside the keys.
+  if (step.changes.length === 0 && step.notes) {
+    return sameValue(step.notes.before.modules, step.notes.after.modules) ? "behavior names" : "the add-ons";
+  }
   const kinds = new Set(step.changes.map(({ item }) => item.kind));
   const [first] = step.changes;
   if (kinds.size === 1 && first.item.kind === "key") {

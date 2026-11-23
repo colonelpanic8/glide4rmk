@@ -3,7 +3,7 @@
 // Draft it waits for Send, in Live it is sent at once through Send's path.
 
 import type { ImportedLayout, LayoutImport } from "../config/transfer";
-import type { BehaviorLabels } from "../model/behavior-labels";
+import type { LayoutNotes } from "../model/history";
 import { errorMessage } from "../session/errors";
 import { isUnsupportedError } from "../session/unsupported";
 import { commitImage } from "./apply";
@@ -17,7 +17,13 @@ export interface LayoutImported {
 }
 
 /** Reads what the file needs and the keyboard was not read for, then commits the file. */
-export async function importLayout(context: IoContext, file: LayoutImport, labels?: BehaviorLabels): Promise<LayoutImported> {
+/** Imports a layout, with what its file keeps beside the keys: behavior labels
+ *  (ADR 0020) and add-on modules (ADR 0028), when it says. */
+export async function importLayout(
+  context: IoContext,
+  file: LayoutImport,
+  notes: Partial<LayoutNotes> = {},
+): Promise<LayoutImported> {
   const { session, getState, dispatch } = context;
   let pointingUnread: string | undefined;
   // A missing configuration can mean the connect-time read failed, not that
@@ -38,6 +44,6 @@ export async function importLayout(context: IoContext, file: LayoutImport, label
   }
   const state = getState();
   const layout = file.onto(state, wantOf(state), pointingUnread);
-  const written = await commitImage(context, layout.image, { labels: labels && labelsFor(labels, layout.image) });
+  const written = await commitImage(context, layout.image, { notes: notes.labels ? { ...notes, labels: labelsFor(notes.labels, layout.image) } : notes });
   return { layout, written };
 }
