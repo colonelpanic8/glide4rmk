@@ -1,7 +1,7 @@
 // The RGB Lighting tab's effect speed: a named speed, or Custom with the
 // timing a light really has, for the key shown and for the Paint brush.
 
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { LightingEffect } from "../../model/lighting-types";
 import { keyLightOf } from "../../model/lighting/key-light";
 import { renderInWorkbench } from "../../test/workbench";
@@ -30,8 +30,6 @@ const speed = (html: string) => /aria-pressed="true"[^>]*>(Fast|Normal|Slow|Cust
 /** The numbers in the timing fields, by label. */
 const numbers = (html: string) =>
   Object.fromEntries([...html.matchAll(/>(Period|Duty|Step|Phase)<span[^>]*><input [^>]*value="(\d+)"/g)].map((m) => [m[1], Number(m[2])]));
-
-afterEach(() => lightView.setBrush(null));
 
 describe("a light's speed in the RGB Lighting tab", () => {
   it("shows timing of the light's own as Custom, in its real numbers", () => {

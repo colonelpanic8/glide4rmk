@@ -2,7 +2,7 @@
 // canvas says and collects, and what ends the pick.
 
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { KeyPick } from "../../model/lighting/key-pick";
 import type { Selection } from "../../model/workbench-state";
 import { mockProvider } from "../../session/mock/board";
@@ -13,10 +13,10 @@ import { openBundle } from "../../workbench/open";
 import { KeyEditor } from "../keymap/KeyEditor";
 import { KeymapCenter } from "../keymap/KeymapCenter";
 import { PickBanner } from "../keymap/PickBanner";
-import { openProperties, closeProperties } from "../properties/store";
+import { openProperties } from "../properties/store";
 import { keyPick } from "./keyPick";
 import { lightView } from "../keymap/lightView";
-import { endWorkbench } from "../workbench-end";
+import { endWorkbench } from "../workbench-store";
 import { usePropertiesTab } from "../properties/store";
 
 function PropertiesTab() {
@@ -25,11 +25,6 @@ function PropertiesTab() {
 
 const bar: KeyPick = { kind: "battery", layer: 2, node: 0, order: "auto", style: "bands" };
 const usb: KeyPick = { kind: "connection", layer: 2, connection: { type: "usb" } };
-
-afterEach(() => {
-  keyPick.stop();
-  closeProperties();
-});
 
 describe("a pick of keys on the board", () => {
   it("lasts until it is stopped, or Layout properties is opened again", () => {

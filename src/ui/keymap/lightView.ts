@@ -4,10 +4,10 @@
 // choice in the tab reaches them all. While trying out, the tab, Paint and
 // the selection give keys try-out lights (useTryOut.ts); trying out outlasts
 // the tab, as the lights it put on the keyboard do, but not the workbench
-// (ui/workbench-end.ts). The tab and the canvas share this.
+// (ui/workbench-store.ts). The tab and the canvas share this.
 
-import { useSyncExternalStore } from "react";
 import type { KeyLight } from "../../model/lighting/key-light";
+import { createWorkbenchStore, useWorkbenchStore } from "../workbench-store";
 
 export interface LightView {
   open: boolean;
@@ -23,30 +23,24 @@ export interface LightView {
 }
 
 const CLOSED: LightView = { open: false, brush: null, selecting: false, tryingOut: false, lifetimeMs: null };
-let view = CLOSED;
-const listeners = new Set<() => void>();
-
-function set(next: LightView) {
-  view = next;
-  for (const listener of listeners) listener();
-}
+/** Ends with the workbench: the next keyboard starts closed, with trying out off. */
+const store = createWorkbenchStore(CLOSED);
+const change = (part: Partial<LightView>) => store.set({ ...store.get(), ...part });
 
 export const lightView = {
-  get: () => view,
-  subscribe(listener: () => void) {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-  },
+  get: store.get,
+  subscribe: store.subscribe,
   /** Leaving the tab closes the lit view and stops painting and selecting. */
-  setOpen: (open: boolean) => set(open ? { ...view, open } : { ...CLOSED, tryingOut: view.tryingOut, lifetimeMs: view.lifetimeMs }),
-  setTryingOut: (tryingOut: boolean) => set({ ...view, tryingOut }),
-  setLifetime: (lifetimeMs: number | null) => set({ ...view, lifetimeMs }),
-  setBrush: (brush: KeyLight | null) => set({ ...view, brush, selecting: brush ? false : view.selecting }),
-  setSelecting: (selecting: boolean) => set({ ...view, selecting, brush: selecting ? null : view.brush }),
-  /** The workbench went away: the next keyboard starts with trying out off. */
-  end: () => set(CLOSED),
+  setOpen: (open: boolean) => {
+    const view = store.get();
+    store.set(open ? { ...view, open } : { ...CLOSED, tryingOut: view.tryingOut, lifetimeMs: view.lifetimeMs });
+  },
+  setTryingOut: (tryingOut: boolean) => change({ tryingOut }),
+  setLifetime: (lifetimeMs: number | null) => change({ lifetimeMs }),
+  setBrush: (brush: KeyLight | null) => change({ brush, selecting: brush ? false : store.get().selecting }),
+  setSelecting: (selecting: boolean) => change({ selecting, brush: selecting ? null : store.get().brush }),
 };
 
 export function useLightView(): LightView {
-  return useSyncExternalStore(lightView.subscribe, lightView.get, lightView.get);
+  return useWorkbenchStore(store);
 }

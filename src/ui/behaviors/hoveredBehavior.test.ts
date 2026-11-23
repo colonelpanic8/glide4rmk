@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { hoveredBehavior, keysOnLayer } from "./hoveredBehavior";
 
 const cell = (layer: number, row: number, col: number) => ({ label: "", target: { kind: "cell" as const, layer, row, col } });
@@ -12,8 +12,6 @@ describe("keysOnLayer", () => {
 });
 
 describe("hoveredBehavior", () => {
-  afterEach(() => hoveredBehavior.end());
-
   it("is cleared only by the row still hovered", () => {
     hoveredBehavior.enter({ id: "macros:0", places: [] });
     hoveredBehavior.enter({ id: "macros:1", places: [] });
