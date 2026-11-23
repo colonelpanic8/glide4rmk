@@ -153,6 +153,8 @@
           # MoErgo JSON export of tap patterns, macros, combos and mod-morphs
           # (docs/todo.md 30).
           ./nix/patches/moergo-rmk-export-tap-patterns.patch
+          # The Go60's MoErgo JSON (on top of the one above).
+          ./nix/patches/moergo-rmk-go60-moergo-json.patch
         ];
         moergo-config-wasm = rustPlatform.buildRustPackage {
           pname = "moergo-config-wasm";

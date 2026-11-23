@@ -1,0 +1,2620 @@
+From 86d16b40a9b8c686a140b5c0adc54533c7bbfefa Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 23 Nov 2026 20:46:48 +0100
+Subject: [PATCH] Read and write the Go60's MoErgo JSON
+
+The MoErgo JSON codec knew one board: an 80-key Glove80 table into a
+6x14 matrix. A Go60 layout stopped at "expected 'glove80'", although the
+TOML model, the go60-rmk board and its key map already describe it.
+
+moergo/board.rs names both boards: the Go60's editor-to-matrix table
+(taken from crates/go60-rmk/keyboard.toml's map, the matrix transform of
+MoErgo's go60.dtsi), rows, thumbs and halves. Import picks the board
+from the document's keyboard field (or its layer length), export from
+the snapshot's shape, and a template for the other board is refused.
+Go60 layers of 62 entries (the trackpad slots some exports add) are read
+past; 60 are written. Bilateral hold-taps get the Go60's other half and
+thumbs as trigger positions.
+
+Import also accepts ZMK's short PSCRN and SLCK, which the Go60 factory
+layout uses.
+
+Tests: MoErgo's Go60 factory default imports with nothing dropped, its
+keys land on the cells the board map names, and it round-trips to the
+same snapshot with and without itself as template, keeping its
+trackpad listeners.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01QpAvhekAu35RCnRCUtmvDL
+---
+ crates/moergo-config/src/moergo/behaviors.rs  |    2 +-
+ crates/moergo-config/src/moergo/board.rs      |  180 ++
+ crates/moergo-config/src/moergo/mod.rs        |  128 +-
+ crates/moergo-config/src/moergo/raise.rs      |   62 +-
+ .../tests/fixtures/go60-factory-default.json  | 1837 +++++++++++++++++
+ crates/moergo-config/tests/moergo_go60.rs     |  119 ++
+ 6 files changed, 2252 insertions(+), 76 deletions(-)
+ create mode 100644 crates/moergo-config/src/moergo/board.rs
+ create mode 100644 crates/moergo-config/tests/fixtures/go60-factory-default.json
+ create mode 100644 crates/moergo-config/tests/moergo_go60.rs
+
+diff --git a/crates/moergo-config/src/moergo/behaviors.rs b/crates/moergo-config/src/moergo/behaviors.rs
+index 4ccedd6..4d4876c 100644
+--- a/crates/moergo-config/src/moergo/behaviors.rs
++++ b/crates/moergo-config/src/moergo/behaviors.rs
+@@ -1,4 +1,4 @@
+-//! Typed view of the behavior tables in a MoErgo Glove80 Layout Editor export.
++//! Typed view of the behavior tables in a MoErgo Layout Editor export.
+ //!
+ //! The editor stores custom ZMK behaviors in sibling arrays next to `layers`:
+ //! `holdTaps`, `tapDances`, `macros`, `modMorphs`, `combos` and
+diff --git a/crates/moergo-config/src/moergo/board.rs b/crates/moergo-config/src/moergo/board.rs
+new file mode 100644
+index 0000000..16afb8c
+--- /dev/null
++++ b/crates/moergo-config/src/moergo/board.rs
+@@ -0,0 +1,180 @@
++//! The two MoErgo boards the Layout Editor writes JSON for.
++//!
++//! An editor layer lists one binding per physical key in the editor's own
++//! order; Rynk addresses a key by its cell in a row-major matrix with 14
++//! columns. Each board's table maps the first onto the second, and the rest of
++//! its facts (which keys are thumbs, which half a key is on) follow from it.
++
++use crate::COLS;
++
++/// Glove80 editor key index -> row-major 6x14 matrix offset.
++///
++/// This is the walk in `config/firmware.toml`'s `[layout].map`: five top-row
++/// keys per half, six keys per half on the next three rows, then the thumb
++/// fans interleaved with the bottom two rows. The four matrix holes never
++/// appear in an editor layer.
++pub const GLOVE80_TO_MATRIX: [usize; 80] = [
++    0, 1, 2, 3, 4, 9, 10, 11, 12, 13, // top row
++    14, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 39, 40, 41,
++    42, 43, 44, 45, 46, 47, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 6, 20, 34, 35, 21, 7,
++    64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 48, 62, 76, 77, 63, 49, 79, 80, 81, 82, 83,
++];
++
++/// Go60 editor key index -> row-major 5x14 matrix offset.
++///
++/// The walk in `crates/go60-rmk/keyboard.toml`'s `[layout].map`, which is the
++/// matrix transform of MoErgo's `go60.dtsi`: four rows of six keys per half
++/// (columns 0-5 and 8-13), the three fifth-row keys per half, then the thumb
++/// arcs, left inner to outer and right outer to inner. Columns 6 and 7 carry
++/// only the thumbs.
++pub const GO60_TO_MATRIX: [usize; 60] = [
++    0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, // row 1
++    14, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 27, // row 2
++    28, 29, 30, 31, 32, 33, 36, 37, 38, 39, 40, 41, // row 3 (home)
++    42, 43, 44, 45, 46, 47, 50, 51, 52, 53, 54, 55, // row 4
++    58, 59, 60, 65, 66, 67, // row 5
++    6, 20, 34, 35, 21, 7, // thumbs: LH T1 T2 T3, RH T3 T2 T1
++];
++
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub enum Board {
++    Glove80,
++    Go60,
++}
++
++impl Board {
++    /// The board a document's `keyboard` field names.
++    pub fn named(name: &str) -> Option<Self> {
++        match name.trim().to_ascii_lowercase().as_str() {
++            "glove80" => Some(Board::Glove80),
++            "go60" => Some(Board::Go60),
++            _ => None,
++        }
++    }
++
++    /// The board whose matrix has this shape.
++    pub fn of_shape(rows: u8, cols: u8) -> Option<Self> {
++        match (rows, cols) {
++            (6, COLS) => Some(Board::Glove80),
++            (5, COLS) => Some(Board::Go60),
++            _ => None,
++        }
++    }
++
++    /// The `keyboard` field the editor writes.
++    pub fn id(self) -> &'static str {
++        match self {
++            Board::Glove80 => "glove80",
++            Board::Go60 => "go60",
++        }
++    }
++
++    pub fn display_name(self) -> &'static str {
++        match self {
++            Board::Glove80 => "Glove80",
++            Board::Go60 => "Go60",
++        }
++    }
++
++    pub fn rows(self) -> u8 {
++        match self {
++            Board::Glove80 => 6,
++            Board::Go60 => 5,
++        }
++    }
++
++    pub fn layer_size(self) -> usize {
++        usize::from(self.rows()) * usize::from(COLS)
++    }
++
++    /// Editor key index -> matrix offset, in editor order.
++    pub fn editor_to_matrix(self) -> &'static [usize] {
++        match self {
++            Board::Glove80 => &GLOVE80_TO_MATRIX,
++            Board::Go60 => &GO60_TO_MATRIX,
++        }
++    }
++
++    pub fn editor_keys(self) -> usize {
++        self.editor_to_matrix().len()
++    }
++
++    /// Editor layer lengths a document may carry. Some Go60 exports add the two
++    /// trackpads as positions 60 and 61; the editor's schema does not, so they
++    /// are read past and never written.
++    pub fn accepts_layer_length(self, length: usize) -> bool {
++        length == self.editor_keys() || (self == Board::Go60 && length == 62)
++    }
++
++    /// The editor index of a matrix cell, if the board has a key there.
++    pub fn editor_index(self, offset: usize) -> Option<usize> {
++        self.editor_to_matrix()
++            .iter()
++            .position(|&cell| cell == offset)
++    }
++
++    /// The editor positions of one hand's thumb keys.
++    pub fn thumbs(self, left: bool) -> &'static [usize] {
++        match (self, left) {
++            (Board::Glove80, true) => &[52, 53, 54, 69, 70, 71],
++            (Board::Glove80, false) => &[55, 56, 57, 72, 73, 74],
++            (Board::Go60, true) => &[54, 55, 56],
++            (Board::Go60, false) => &[57, 58, 59],
++        }
++    }
++}
++
++/// Whether a matrix cell is on the left half. Both boards split their 14
++/// columns 7 and 7.
++pub fn is_left(offset: usize) -> bool {
++    offset % usize::from(COLS) < 7
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn every_editor_key_has_its_own_cell() {
++        for board in [Board::Glove80, Board::Go60] {
++            let mut cells = board.editor_to_matrix().to_vec();
++            cells.sort_unstable();
++            cells.dedup();
++            assert_eq!(cells.len(), board.editor_keys(), "{board:?}");
++            assert!(
++                cells.iter().all(|&cell| cell < board.layer_size()),
++                "{board:?}"
++            );
++        }
++    }
++
++    #[test]
++    fn go60_halves_and_thumbs_match_the_editor() {
++        // MoErgo's left half (the LLM reference's left_half_indices).
++        let left: Vec<usize> = (0..60)
++            .filter(|&index| is_left(GO60_TO_MATRIX[index]))
++            .collect();
++        assert_eq!(
++            left,
++            [
++                0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 24, 25, 26, 27, 28, 29, 36, 37, 38, 39,
++                40, 41, 48, 49, 50, 54, 55, 56
++            ]
++        );
++        for &thumb in Board::Go60.thumbs(true) {
++            assert!(is_left(GO60_TO_MATRIX[thumb]));
++        }
++        for &thumb in Board::Go60.thumbs(false) {
++            assert!(!is_left(GO60_TO_MATRIX[thumb]));
++        }
++    }
++
++    #[test]
++    fn boards_are_found_by_name_and_shape() {
++        assert_eq!(Board::named("Go60"), Some(Board::Go60));
++        assert_eq!(Board::named("glove80"), Some(Board::Glove80));
++        assert_eq!(Board::named("corne"), None);
++        assert_eq!(Board::of_shape(5, 14), Some(Board::Go60));
++        assert_eq!(Board::of_shape(6, 14), Some(Board::Glove80));
++    }
++}
+diff --git a/crates/moergo-config/src/moergo/mod.rs b/crates/moergo-config/src/moergo/mod.rs
+index 0619150..a48271a 100644
+--- a/crates/moergo-config/src/moergo/mod.rs
++++ b/crates/moergo-config/src/moergo/mod.rs
+@@ -1,34 +1,29 @@
+ //! Import and export for the experimental JSON backup format used by the
+-//! MoErgo Glove80 Layout Editor.
++//! MoErgo Layout Editor, for the Glove80 and the Go60 ([`Board`]).
+ //!
+ //! The editor stores ZMK behavior trees in physical-key order. Rynk stores a
+-//! typed action at every cell of the 6x14 matrix. This module deliberately
+-//! converts only the intersection of those models and reports the exact layer
+-//! and key for anything that cannot be represented without changing meaning.
++//! typed action at every cell of the board's matrix (6x14 or 5x14). This
++//! module deliberately converts only the intersection of those models and
++//! reports the exact layer and key for anything that cannot be represented
++//! without changing meaning.
+ 
+ mod behaviors;
++mod board;
+ mod lower;
+ mod raise;
+ 
++pub use board::{Board, GO60_TO_MATRIX};
++
+ use anyhow::{bail, Context, Result};
+ use serde_json::{json, Map, Value};
+ 
+ pub use lower::{Diagnostic, Severity};
+ 
+-use crate::{keycodes, LayerConfig, RuntimeConfig, Snapshot, COLS, LAYER_SIZE};
++use crate::{keycodes, LayerConfig, RuntimeConfig, Snapshot, COLS};
+ 
+-/// Editor key index -> row-major 6x14 Rynk matrix offset.
+-///
+-/// This is the walk in `config/firmware.toml`'s `[layout].map`: five top-row
+-/// keys per half, six keys per half on the next three rows, then the thumb
+-/// fans interleaved with the bottom two rows. The four matrix holes never
+-/// appear in an editor layer.
+-pub const MOERGO_TO_MATRIX: [usize; 80] = [
+-    0, 1, 2, 3, 4, 9, 10, 11, 12, 13, // top row
+-    14, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 39, 40, 41,
+-    42, 43, 44, 45, 46, 47, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 6, 20, 34, 35, 21, 7,
+-    64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 48, 62, 76, 77, 63, 49, 79, 80, 81, 82, 83,
+-];
++/// Glove80 editor key index -> row-major 6x14 Rynk matrix offset. The Go60's
++/// is [`board::GO60_TO_MATRIX`]; [`Board`] picks between them.
++pub const MOERGO_TO_MATRIX: [usize; 80] = board::GLOVE80_TO_MATRIX;
+ 
+ /// A MoErgo export lowered onto the Rynk runtime model.
+ ///
+@@ -90,11 +85,6 @@ impl ImportedLayout {
+ pub fn import_moergo_layout(text: &str) -> Result<ImportedLayout> {
+     let root: Value = serde_json::from_str(text).context("invalid JSON")?;
+     let layout = layout_object(&root)?;
+-    if let Some(keyboard) = layout.get("keyboard").and_then(Value::as_str) {
+-        if !keyboard.eq_ignore_ascii_case("glove80") {
+-            bail!("MoErgo JSON is for keyboard '{keyboard}', expected 'glove80'");
+-        }
+-    }
+ 
+     let names = layout
+         .get("layer_names")
+@@ -114,6 +104,17 @@ pub fn import_moergo_layout(text: &str) -> Result<ImportedLayout> {
+     if layers.is_empty() {
+         bail!("MoErgo JSON must contain at least one layer");
+     }
++    let board = match layout.get("keyboard").and_then(Value::as_str) {
++        Some(keyboard) => Board::named(keyboard).with_context(|| {
++            format!("MoErgo JSON is for keyboard '{keyboard}'; only Glove80 and Go60 layouts can be read")
++        })?,
++        // A hand-written file may leave the board out; its layers say which.
++        None => match layers[0].as_array().map(Vec::len) {
++            Some(80) => Board::Glove80,
++            Some(60 | 62) => Board::Go60,
++            _ => bail!("MoErgo JSON names no keyboard, and its layers fit neither a Glove80 nor a Go60"),
++        },
++    };
+ 
+     let layer_names = names
+         .iter()
+@@ -162,16 +163,33 @@ pub fn import_moergo_layout(text: &str) -> Result<ImportedLayout> {
+         let keys = layer
+             .as_array()
+             .with_context(|| format!("layers[{layer_index}] must be an array"))?;
+-        if keys.len() != MOERGO_TO_MATRIX.len() {
++        if !board.accepts_layer_length(keys.len()) {
+             bail!(
+-                "layer {layer_index} ({}) has {} keys; a Glove80 editor layer must have 80",
++                "layer {layer_index} ({}) has {} keys; a {} editor layer must have {}",
+                 layer_names[layer_index],
+-                keys.len()
++                keys.len(),
++                board.display_name(),
++                board.editor_keys()
+             );
+         }
+-        let mut matrix = vec![0u16; LAYER_SIZE];
+-        for (editor_index, binding) in keys.iter().enumerate() {
+-            let offset = MOERGO_TO_MATRIX[editor_index];
++        // Go60 trackpad slots (positions 60 and 61) are not keys; the
++        // trackpads are configured by `inputListeners`.
++        if keys[board.editor_keys()..].iter().any(|binding| {
++            !matches!(
++                binding.get("value").and_then(Value::as_str),
++                Some("&none" | "&trans")
++            )
++        }) {
++            lowering.report(
++                lower::Severity::Approximated,
++                Some(format!("layer {layer_index} ({})", layer_names[layer_index])),
++                "binds the trackpad slots after the 60 keys; trackpads are set by input listeners, \
++                 so those bindings are not imported",
++            );
++        }
++        let mut matrix = vec![0u16; board.layer_size()];
++        for (editor_index, binding) in keys.iter().take(board.editor_keys()).enumerate() {
++            let offset = board.editor_to_matrix()[editor_index];
+             // A binding that cannot be converted leaves its cell empty and is
+             // reported, rather than aborting the whole import: one unportable
+             // key should not hide the other seven hundred.
+@@ -202,14 +220,14 @@ pub fn import_moergo_layout(text: &str) -> Result<ImportedLayout> {
+         converted.push(LayerConfig {
+             id,
+             name,
+-            keys: crate::render_keys(&matrix),
++            keys: crate::render_keys_for_matrix(&matrix, board.rows(), COLS),
+             key_entries: Vec::new(),
+             light_entries: Vec::new(),
+         });
+     }
+ 
+     let wire_combos = lowering.lower_combos(&|position| {
+-        MOERGO_TO_MATRIX.get(position).map(|&offset| {
++        board.editor_to_matrix().get(position).map(|&offset| {
+             [
+                 (offset / usize::from(crate::COLS)) as u8,
+                 (offset % usize::from(crate::COLS)) as u8,
+@@ -247,7 +265,7 @@ pub fn import_moergo_layout(text: &str) -> Result<ImportedLayout> {
+         .collect();
+ 
+     let config = RuntimeConfig {
+-        rows: crate::ROWS,
++        rows: board.rows(),
+         cols: crate::COLS,
+         bluetooth_name: None,
+         bluetooth_names: Default::default(),
+@@ -283,14 +301,26 @@ pub fn snapshot_to_moergo_json(
+     if snapshot.layers.is_empty() {
+         bail!("configuration must contain at least one layer");
+     }
+-    let mut root = match template {
+-        Some(text) => serde_json::from_str(text).context("invalid template JSON")?,
+-        None => default_document(),
++    let root: Option<Value> = template
++        .map(|text| serde_json::from_str(text).context("invalid template JSON"))
++        .transpose()?;
++    let board = Board::of_shape(snapshot.rows, snapshot.cols).with_context(|| {
++        format!(
++            "a {}x{} keyboard has no MoErgo editor layout; only Glove80 and Go60 do",
++            snapshot.rows, snapshot.cols
++        )
++    })?;
++    let mut root = match root {
++        Some(root) => root,
++        None => default_document(board),
+     };
+     let layout = layout_object_mut(&mut root)?;
+     if let Some(keyboard) = layout.get("keyboard").and_then(Value::as_str) {
+-        if !keyboard.eq_ignore_ascii_case("glove80") {
+-            bail!("MoErgo JSON template is for keyboard '{keyboard}', expected 'glove80'");
++        if Board::named(keyboard) != Some(board) {
++            bail!(
++                "the MoErgo JSON being replaced is for keyboard '{keyboard}', but this layout is a {}",
++                board.display_name()
++            );
+         }
+     }
+ 
+@@ -311,18 +341,20 @@ pub fn snapshot_to_moergo_json(
+     // with its reason, and every such key is listed rather than only the
+     // first, so one export says how much of the layout does not fit.
+     let template_layout = layout.clone();
+-    let mut raising = raise::Raising::new(&snapshot.behaviors, labels, layout);
++    let mut raising = raise::Raising::new(board, &snapshot.behaviors, labels, layout);
+     let mut refusals = Vec::new();
+     let mut layers = Vec::with_capacity(snapshot.layers.len());
+     for (layer_index, matrix) in snapshot.layers.iter().enumerate() {
+-        if matrix.len() != LAYER_SIZE {
++        if matrix.len() != board.layer_size() {
+             bail!(
+-                "layer {layer_index} has {} matrix cells; expected {LAYER_SIZE}",
+-                matrix.len()
++                "layer {layer_index} has {} matrix cells; a {} has {}",
++                matrix.len(),
++                board.display_name(),
++                board.layer_size()
+             );
+         }
+-        let mut editor = Vec::with_capacity(MOERGO_TO_MATRIX.len());
+-        for (editor_index, offset) in MOERGO_TO_MATRIX.iter().copied().enumerate() {
++        let mut editor = Vec::with_capacity(board.editor_keys());
++        for (editor_index, offset) in board.editor_to_matrix().iter().copied().enumerate() {
+             let cell = raise::Cell {
+                 layer: layer_index,
+                 layer_name: &names[layer_index],
+@@ -372,7 +404,7 @@ pub fn snapshot_to_moergo_json(
+             entries.push(definition);
+         }
+     }
+-    layout.insert("keyboard".into(), Value::String("glove80".into()));
++    layout.insert("keyboard".into(), Value::String(board.id().into()));
+     layout.insert(
+         "layer_names".into(),
+         Value::Array(names.into_iter().map(Value::String).collect()),
+@@ -389,9 +421,9 @@ pub fn snapshot_to_moergo_json(
+     Ok(text)
+ }
+ 
+-fn default_document() -> Value {
++fn default_document(board: Board) -> Value {
+     json!({
+-        "keyboard": "glove80",
++        "keyboard": board.id(),
+         "firmware_api_version": "1",
+         "locale": "en-US",
+         "uuid": "",
+@@ -916,8 +948,8 @@ fn zmk_keycode_to_via(text: &str) -> Result<u16> {
+         "COMMA" => "KC_COMM",
+         "FSLH" | "SLASH" => "KC_SLSH",
+         "CAPS" | "CAPSLOCK" => "KC_CAPS",
+-        "PRINTSCREEN" => "KC_PSCR",
+-        "SCROLLLOCK" => "KC_SCRL",
++        "PSCRN" | "PRINTSCREEN" => "KC_PSCR",
++        "SLCK" | "SCROLLLOCK" => "KC_SCRL",
+         "PAUSE_BREAK" => "KC_PAUS",
+         "INS" | "INSERT" => "KC_INS",
+         "PG_UP" | "PAGE_UP" => "KC_PGUP",
+@@ -1318,7 +1350,7 @@ mod tests {
+         assert_eq!(offsets.len(), 80);
+         assert_eq!(
+             offsets,
+-            (0..LAYER_SIZE)
++            (0..crate::LAYER_SIZE)
+                 .filter(|n| ![5, 8, 75, 78].contains(n))
+                 .collect::<Vec<_>>()
+         );
+diff --git a/crates/moergo-config/src/moergo/raise.rs b/crates/moergo-config/src/moergo/raise.rs
+index 2c5fad8..e50fd15 100644
+--- a/crates/moergo-config/src/moergo/raise.rs
++++ b/crates/moergo-config/src/moergo/raise.rs
+@@ -22,12 +22,9 @@ use rynk::rmk_types::modifier::{ModifierCombination, ModifierKey};
+ use rynk::rmk_types::morse::{Morse, MorseMode, MorsePattern, MorseProfile, HOLD, TAP};
+ use serde_json::{json, Map, Value};
+ 
++use super::board::Board;
+ use crate::{BehaviorSnapshot, MorseProfileEntry, RuntimeConfig, COLS};
+ 
+-/// Glove80 editor positions of the thumb keys, by hand.
+-const LEFT_THUMBS: [usize; 6] = [52, 53, 54, 69, 70, 71];
+-const RIGHT_THUMBS: [usize; 6] = [55, 56, 57, 72, 73, 74];
+-
+ /// The tapping term ZMK uses when a behavior names none, written when the
+ /// runtime profile leaves the hold timeout to the firmware default and the
+ /// snapshot does not say what that default is.
+@@ -71,9 +68,9 @@ enum Hand {
+ }
+ 
+ impl Hand {
+-    fn of(editor_index: usize) -> Self {
+-        let offset = super::MOERGO_TO_MATRIX[editor_index];
+-        if offset % usize::from(COLS) < 7 {
++    /// The hand of a matrix cell.
++    fn of(offset: usize) -> Self {
++        if super::board::is_left(offset) {
+             Hand::Left
+         } else {
+             Hand::Right
+@@ -90,13 +87,11 @@ impl Hand {
+     /// ZMK's `hold-trigger-key-positions` for a bilateral hold on this hand:
+     /// every key of the other hand, plus this hand's own thumbs, which is the
+     /// set TailorKey-style layouts write and what Rynk's unilateral tap means.
+-    fn trigger_positions(self) -> Vec<usize> {
+-        let own_thumbs = match self {
+-            Hand::Left => LEFT_THUMBS,
+-            Hand::Right => RIGHT_THUMBS,
+-        };
+-        (0..super::MOERGO_TO_MATRIX.len())
+-            .filter(|&index| Hand::of(index) != self || own_thumbs.contains(&index))
++    fn trigger_positions(self, board: Board) -> Vec<usize> {
++        let own_thumbs = board.thumbs(self == Hand::Left);
++        let cells = board.editor_to_matrix();
++        (0..cells.len())
++            .filter(|&index| Hand::of(cells[index]) != self || own_thumbs.contains(&index))
+             .collect()
+     }
+ }
+@@ -126,6 +121,7 @@ impl Cell<'_> {
+ type Refusal = String;
+ 
+ pub(crate) struct Raising<'a> {
++    board: Board,
+     behaviors: &'a BehaviorSnapshot,
+     labels: Option<&'a RuntimeConfig>,
+     default_profile: MorseProfile,
+@@ -148,6 +144,7 @@ pub(crate) struct Raising<'a> {
+ 
+ impl<'a> Raising<'a> {
+     pub fn new(
++        board: Board,
+         behaviors: &'a BehaviorSnapshot,
+         labels: Option<&'a RuntimeConfig>,
+         layout: &Map<String, Value>,
+@@ -193,6 +190,7 @@ impl<'a> Raising<'a> {
+         timeouts.sort_unstable();
+         timeouts.dedup();
+         Self {
++            board,
+             behaviors,
+             labels,
+             default_profile,
+@@ -260,9 +258,7 @@ impl<'a> Raising<'a> {
+     }
+ 
+     fn unforked_binding(&mut self, action: KeyAction, cell: &Cell) -> Result<Value, Refusal> {
+-        if action == KeyAction::Single(Action::User(12))
+-            && Hand::of(cell.editor_index) == Hand::Left
+-        {
++        if action == KeyAction::Single(Action::User(12)) && Hand::of(cell.offset) == Hand::Left {
+             return Err(left_half_bootloader());
+         }
+         if let Some(binding) = self.binding(action, cell)? {
+@@ -330,14 +326,13 @@ impl<'a> Raising<'a> {
+                 .map(|position| {
+                     let offset =
+                         usize::from(position.row) * usize::from(COLS) + usize::from(position.col);
+-                    super::MOERGO_TO_MATRIX
+-                        .iter()
+-                        .position(|&cell| cell == offset)
++                    self.board.editor_index(offset)
+                 })
+                 .collect();
+             let Some(positions) = positions.filter(|positions| !positions.is_empty()) else {
+                 refusals.push(format!(
+-                    "combo '{label}' uses a matrix position the Glove80 has no key at"
++                    "combo '{label}' uses a matrix position the {} has no key at",
++                    self.board.display_name()
+                 ));
+                 continue;
+             };
+@@ -345,7 +340,7 @@ impl<'a> Raising<'a> {
+                 layer: combo.layer.map_or(0, usize::from),
+                 layer_name: "combo",
+                 editor_index: positions[0],
+-                offset: super::MOERGO_TO_MATRIX[positions[0]],
++                offset: self.board.editor_to_matrix()[positions[0]],
+             };
+             let binding = match combo.output {
+                 KeyAction::LayerModTap(layer, modifier, key) => {
+@@ -536,7 +531,7 @@ impl<'a> Raising<'a> {
+     ) -> Result<Value, Refusal> {
+         let what = || format!("tap {} / hold {}", action_text(tap), action_text(hold));
+         let unilateral = profile.unilateral_tap() == Some(true);
+-        let hand = Hand::of(cell.editor_index);
++        let hand = Hand::of(cell.offset);
+ 
+         let (shape, bindings, params): (&str, [String; 2], [Value; 2]) = match (tap, hold) {
+             (Action::Key(KeyCode::Hid(key)), Action::Modifier(modifiers)) => {
+@@ -617,7 +612,7 @@ impl<'a> Raising<'a> {
+         if unilateral {
+             definition.insert(
+                 "holdTriggerKeyPositions".into(),
+-                json!(hand.trigger_positions()),
++                json!(hand.trigger_positions(self.board)),
+             );
+         }
+         let base = match (label, unilateral) {
+@@ -1213,18 +1208,31 @@ mod tests {
+ 
+     #[test]
+     fn trigger_positions_are_the_other_hand_and_own_thumbs() {
+-        let left = Hand::Left.trigger_positions();
++        let left = Hand::Left.trigger_positions(Board::Glove80);
+         // TailorKey's left-hand home-row mods list exactly these 46 keys.
+         assert_eq!(left.len(), 46);
+-        for thumb in LEFT_THUMBS.iter().chain(&RIGHT_THUMBS) {
++        for thumb in Board::Glove80
++            .thumbs(true)
++            .iter()
++            .chain(Board::Glove80.thumbs(false))
++        {
+             assert!(left.contains(thumb), "{thumb}");
+         }
+         assert!(!left.contains(&35), "left pinky home key");
+         assert!(left.contains(&44), "right pinky home key");
+-        let right = Hand::Right.trigger_positions();
++        let right = Hand::Right.trigger_positions(Board::Glove80);
+         assert!(right.contains(&35) && !right.contains(&44));
+     }
+ 
++    #[test]
++    fn go60_trigger_positions_are_its_other_half_and_own_thumbs() {
++        let left = Hand::Left.trigger_positions(Board::Go60);
++        assert_eq!(left.len(), 30 + 3);
++        assert!(!left.contains(&25), "left pinky home key");
++        assert!(left.contains(&34), "right pinky home key");
++        assert!(left.contains(&54) && left.contains(&59), "both thumb arcs");
++    }
++
+     #[test]
+     fn pattern_text_spells_taps_and_holds() {
+         assert_eq!(pattern_text(TAP), ".");
+diff --git a/crates/moergo-config/tests/fixtures/go60-factory-default.json b/crates/moergo-config/tests/fixtures/go60-factory-default.json
+new file mode 100644
+index 0000000..dcbe028
+--- /dev/null
++++ b/crates/moergo-config/tests/fixtures/go60-factory-default.json
+@@ -0,0 +1,1837 @@
++{
++  "version": 2,
++  "keyboard": "go60",
++  "firmware_api_version": "1",
++  "locale": "en-US",
++  "uuid": "",
++  "parent_uuid": "d1380eff-30da-480f-ad0d-6f068344c165",
++  "unlisted": false,
++  "date": 1753145284,
++  "creator": "moosy",
++  "title": "Factory Default Layout",
++  "notes": "Factory default layout for Go60\n\nThis layout is designed as a low-friction layout for beginners, mostly avoiding the use of hold-taps and other timing-dependent behaviours. \n\nThe layout has 5 layers:\n- Layer 0 (Base Layer): The alphas and numbers and base symbols\n- Layer 1 (Keypad Layer): Layer optimized for number data entry\n- Layer 2 (SymbolNav Layer): Navigation keys and symbol keys accessible via chording. Please note to simplify navigation key combos with ctrl+shift, this layer has added shift and control on the bottom row of the right hand pinky columns\n- Layer 3 (Magic Layer): Access to Go60 control functions such as RGB and Bluetooth\n- Layer 4 (Factory Test Layer): This layer is not used for normal typing; it is only for switch testing\n\nTo switch to Layer 1 (Keypad Layer), you can hold down RH C6R4 to temporarily switch into Layer 1, or double tap to persistently switch into Layer 1. You can single tap RH C6R4 to get back to the Layer 0 (Base Layer).\nTo switch to Layer 2 (SymbolNav Layer), you can hold down LH T1 to temporarily switch into Layer 2, or double tap to persistently switch into Layer 2. You can single tap LH T1 to get back to the Layer 0 (Base Layer).\n\nThe Right Trackpad mouse movement is accelerated 3 times the normal speed in the SymbolNav Layer (i.e. with LH T1 held).",
++  "tags": [
++    "qwerty"
++  ],
++  "custom_defined_behaviors": "",
++  "custom_devicetree": "",
++  "config_parameters": [],
++  "layout_parameters": {},
++  "layer_names": [
++    "Base",
++    "Keypad",
++    "SymbolNav",
++    "Magic"
++  ],
++  "layers": [
++    [
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "EQUAL"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "N1"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "N2"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "N3"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "N4"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "N5"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "N6"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "N7"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "N8"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "N9"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "N0"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "MINUS"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "TAB"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "Q"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "W"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "E"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "R"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "T"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "Y"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "U"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "I"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "O"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "P"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "BSLH"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "ESC"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "A"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "S"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "D"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "G"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "H"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "J"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "K"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "L"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "SEMI"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "SQT"
++          }
++        ]
++      },
++      {
++        "value": "&magic"
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "Z"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "X"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "C"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "V"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "B"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "N"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "M"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "COMMA"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "DOT"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "FSLH"
++          }
++        ]
++      },
++      {
++        "value": "&layer",
++        "params": [
++          {
++            "value": 1
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "GRAVE"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "DEL"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "BSPC"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LGUI"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LBKT"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "RBKT"
++          }
++        ]
++      },
++      {
++        "value": "&layer",
++        "params": [
++          {
++            "value": 2
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LSHFT"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LCTRL"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LALT"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "SPACE"
++          }
++        ]
++      },
++      {
++        "value": "&mt",
++        "params": [
++          {
++            "value": "RALT"
++          },
++          {
++            "value": "RET"
++          }
++        ]
++      }
++    ],
++    [
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F1"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F2"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F3"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F4"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F5"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F6"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F7"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F8"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F9"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F10"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F11"
++          }
++        ]
++      },
++      {
++        "value": "&trans"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "HOME"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "UP"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "END"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "PG_UP"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_N7"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_N8"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_N9"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_MINUS"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_SLASH"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F12"
++          }
++        ]
++      },
++      {
++        "value": "&trans"
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LC",
++            "params": [
++              {
++                "value": "Y"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LEFT"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "DOWN"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "RIGHT"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "PG_DN"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_N4"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_N5"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_N6"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_PLUS"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_MULTIPLY"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_NUM"
++          }
++        ]
++      },
++      {
++        "value": "&magic"
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LC",
++            "params": [
++              {
++                "value": "Z"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LC",
++            "params": [
++              {
++                "value": "X"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LC",
++            "params": [
++              {
++                "value": "C"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LC",
++            "params": [
++              {
++                "value": "V"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LS",
++            "params": [
++              {
++                "value": "LC",
++                "params": [
++                  {
++                    "value": "V"
++                  }
++                ]
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_N1"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_N2"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_N3"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_ENTER"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "EQUAL"
++          }
++        ]
++      },
++      {
++        "value": "&to",
++        "params": [
++          {
++            "value": "0"
++          }
++        ]
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&trans"
++      },
++      {
++        "value": "&trans"
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_N0"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_DOT"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "BSPC"
++          }
++        ]
++      },
++      {
++        "value": "&mo",
++        "params": [
++          {
++            "value": "2"
++          }
++        ]
++      },
++      {
++        "value": "&trans"
++      },
++      {
++        "value": "&trans"
++      },
++      {
++        "value": "&trans"
++      },
++      {
++        "value": "&trans"
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "KP_N0"
++          }
++        ]
++      }
++    ],
++    [
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "INS"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F1"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F2"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F3"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F4"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F5"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F6"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F7"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F8"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F9"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F10"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F11"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "SLCK"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LS",
++            "params": [
++              {
++                "value": "N1"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "HOME"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "UP"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "END"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "PG_UP"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LS",
++            "params": [
++              {
++                "value": "N9"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LS",
++            "params": [
++              {
++                "value": "N0"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "UP"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LS",
++            "params": [
++              {
++                "value": "N5"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "K_APP"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "F12"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "CAPS"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LS",
++            "params": [
++              {
++                "value": "N2"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LEFT"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "DOWN"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "RIGHT"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "PG_DN"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LS",
++            "params": [
++              {
++                "value": "N4"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LEFT"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "DOWN"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "RIGHT"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "PAUSE_BREAK"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "PSCRN"
++          }
++        ]
++      },
++      {
++        "value": "&magic"
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LS",
++            "params": [
++              {
++                "value": "N3"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LBKT"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "RBKT"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LS",
++            "params": [
++              {
++                "value": "LBKT"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LS",
++            "params": [
++              {
++                "value": "RBKT"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LS",
++            "params": [
++              {
++                "value": "N7"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LS",
++            "params": [
++              {
++                "value": "N8"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LS",
++            "params": [
++              {
++                "value": "MINUS"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LS",
++            "params": [
++              {
++                "value": "EQUAL"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LSHFT"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LCTRL"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LS",
++            "params": [
++              {
++                "value": "N6"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&trans"
++      },
++      {
++        "value": "&trans"
++      },
++      {
++        "value": "&trans"
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LC",
++            "params": [
++              {
++                "value": "LS",
++                "params": [
++                  {
++                    "value": "TAB"
++                  }
++                ]
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "LC",
++            "params": [
++              {
++                "value": "TAB"
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "value": "&to",
++        "params": [
++          {
++            "value": 0
++          }
++        ]
++      },
++      {
++        "value": "&trans"
++      },
++      {
++        "value": "&trans"
++      },
++      {
++        "value": "&trans"
++      },
++      {
++        "value": "&trans"
++      },
++      {
++        "value": "&trans"
++      }
++    ],
++    [
++      {
++        "value": "&bt",
++        "params": [
++          {
++            "value": "BT_CLR"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "C_BRI_DN"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "C_BRI_UP"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "C_PREV"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "C_NEXT"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "C_PP"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "C_MUTE"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "C_VOL_DN"
++          }
++        ]
++      },
++      {
++        "value": "&kp",
++        "params": [
++          {
++            "value": "C_VOL_UP"
++          }
++        ]
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&bt",
++        "params": [
++          {
++            "value": "BT_CLR_ALL"
++          }
++        ]
++      },
++      {
++        "value": "&bootloader"
++      },
++      {
++        "value": "&rgb_ug",
++        "params": [
++          {
++            "value": "RGB_SPI"
++          }
++        ]
++      },
++      {
++        "value": "&rgb_ug",
++        "params": [
++          {
++            "value": "RGB_SAI"
++          }
++        ]
++      },
++      {
++        "value": "&rgb_ug",
++        "params": [
++          {
++            "value": "RGB_HUI"
++          }
++        ]
++      },
++      {
++        "value": "&rgb_ug",
++        "params": [
++          {
++            "value": "RGB_BRI"
++          }
++        ]
++      },
++      {
++        "value": "&rgb_ug",
++        "params": [
++          {
++            "value": "RGB_TOG"
++          }
++        ]
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&bootloader"
++      },
++      {
++        "value": "&reset"
++      },
++      {
++        "value": "&rgb_ug",
++        "params": [
++          {
++            "value": "RGB_SPD"
++          }
++        ]
++      },
++      {
++        "value": "&rgb_ug",
++        "params": [
++          {
++            "value": "RGB_SAD"
++          }
++        ]
++      },
++      {
++        "value": "&rgb_ug",
++        "params": [
++          {
++            "value": "RGB_HUD"
++          }
++        ]
++      },
++      {
++        "value": "&rgb_ug",
++        "params": [
++          {
++            "value": "RGB_BRD"
++          }
++        ]
++      },
++      {
++        "value": "&rgb_ug",
++        "params": [
++          {
++            "value": "RGB_EFF"
++          }
++        ]
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&reset"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&bt_0"
++      },
++      {
++        "value": "&bt_1"
++      },
++      {
++        "value": "&bt_2"
++      },
++      {
++        "value": "&bt_3"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&out",
++        "params": [
++          {
++            "value": "OUT_USB"
++          }
++        ]
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      },
++      {
++        "value": "&none"
++      }
++    ]
++  ],
++  "inputListeners": [
++    {
++      "code": "&cirque_rh_listener",
++      "inputProcessors": [
++        {
++          "code": "&zip_xy_scaler",
++          "params": [
++            3,
++            1
++          ]
++        }
++      ],
++      "nodes": [
++        {
++          "code": "layer_2",
++          "layers": [
++            2
++          ],
++          "inputProcessors": [
++            {
++              "code": "&zip_xy_scaler",
++              "params": [
++                9,
++                1
++              ]
++            }
++          ]
++        }
++      ]
++    },
++    {
++      "code": "&cirque_lh_listener",
++      "inputProcessors": [
++        {
++          "code": "&zip_xy_to_scroll_mapper"
++        },
++        {
++          "code": "&zip_xy_scaler",
++          "params": [
++            11,
++            12
++          ]
++        },
++        {
++          "code": "&zip_xy_transform",
++          "params": [
++            [
++              "INPUT_TRANSFORM_Y_INVERT"
++            ]
++          ]
++        },
++        {
++          "code": "&zip_click_to_right_click_mapper"
++        }
++      ]
++    }
++  ],
++  "combos": [],
++  "macros": [],
++  "holdTaps": [],
++  "modMorphs": [],
++  "tapDances": [],
++  "stickyKeys": []
++}
+\ No newline at end of file
+diff --git a/crates/moergo-config/tests/moergo_go60.rs b/crates/moergo-config/tests/moergo_go60.rs
+new file mode 100644
+index 0000000..f8d3c1b
+--- /dev/null
++++ b/crates/moergo-config/tests/moergo_go60.rs
+@@ -0,0 +1,119 @@
++//! The Go60's MoErgo JSON: MoErgo's factory default layout read, written and
++//! read again.
++
++use moergo_config::{import_moergo_layout, snapshot_to_moergo_json, Severity, GO60_TO_MATRIX};
++use rynk::rmk_types::action::{Action, KeyAction};
++use rynk::rmk_types::keycode::{HidKeyCode, KeyCode};
++use serde_json::{json, Value};
++
++/// MoErgo's Go60 factory default: four layers, `&layer` keys, a mod-tap
++/// thumb, the Magic layer's Bluetooth and RGB keys, and both trackpads.
++const FACTORY: &str = include_str!("fixtures/go60-factory-default.json");
++const GLOVE80: &str = include_str!("fixtures/tailorkey-v52-bilateral.json");
++
++fn cell(row: usize, col: usize) -> usize {
++    row * 14 + col
++}
++
++#[test]
++fn the_factory_layout_reads_as_a_go60() {
++    let imported = import_moergo_layout(FACTORY).expect("import");
++    let dropped: Vec<_> = imported
++        .diagnostics
++        .iter()
++        .filter(|diagnostic| diagnostic.severity == Severity::Dropped)
++        .collect();
++    assert!(dropped.is_empty(), "{dropped:#?}");
++    let snapshot = imported.runtime.snapshot().unwrap();
++    assert_eq!((snapshot.rows, snapshot.cols), (5, 14));
++    assert_eq!(snapshot.layers.len(), 4);
++    let base = &snapshot.layers[0];
++    let key = |code| KeyAction::Single(Action::Key(KeyCode::Hid(code)));
++    // Editor key 25 is the left pinky home key, A; 30 is the right inner home key, H.
++    assert_eq!(base[cell(2, 1)], key(HidKeyCode::A));
++    assert_eq!(base[cell(2, 8)], key(HidKeyCode::H));
++    // The fifth row: GRAVE DEL BSPC | LGUI [ ].
++    assert_eq!(base[cell(4, 2)], key(HidKeyCode::Grave));
++    assert_eq!(base[cell(4, 11)], key(HidKeyCode::RightBracket));
++    // Thumbs: LH T1 holds SymbolNav, RH T2 is space, RH T1 taps Enter.
++    assert_eq!(base[GO60_TO_MATRIX[54]], base[cell(0, 6)]);
++    assert_eq!(base[cell(1, 7)], key(HidKeyCode::Space));
++    assert!(
++        matches!(base[cell(0, 7)], KeyAction::TapHold(..)),
++        "{:?}",
++        base[cell(0, 7)]
++    );
++    // The Keypad layer's &to 0 sits on RH C6R4.
++    assert_eq!(
++        snapshot.layers[1][cell(3, 13)],
++        KeyAction::Single(Action::LayerToggleOnly(0))
++    );
++}
++
++#[test]
++fn the_factory_layout_round_trips() {
++    let imported = import_moergo_layout(FACTORY).unwrap();
++    let first = imported.runtime.snapshot().unwrap();
++    for template in [None, Some(FACTORY)] {
++        let exported = snapshot_to_moergo_json(&first, Some(&imported.runtime), template)
++            .unwrap_or_else(|error| panic!("export: {error:#}"));
++        let document: Value = serde_json::from_str(&exported).unwrap();
++        assert_eq!(document["keyboard"], "go60");
++        for layer in document["layers"].as_array().unwrap() {
++            assert_eq!(layer.as_array().unwrap().len(), 60);
++        }
++        let back = import_moergo_layout(&exported).unwrap();
++        let second = back.runtime.snapshot().unwrap();
++        assert_eq!(first, second, "template: {}", template.is_some());
++        let again = snapshot_to_moergo_json(&second, Some(&back.runtime), Some(&exported)).unwrap();
++        assert_eq!(exported, again);
++    }
++    // The template keeps what the keymap does not hold: the trackpads.
++    let exported: Value = serde_json::from_str(
++        &snapshot_to_moergo_json(&first, Some(&imported.runtime), Some(FACTORY)).unwrap(),
++    )
++    .unwrap();
++    let original: Value = serde_json::from_str(FACTORY).unwrap();
++    assert_eq!(exported["inputListeners"], original["inputListeners"]);
++    assert_eq!(exported["notes"], original["notes"]);
++}
++
++#[test]
++fn trackpad_slots_after_the_keys_are_read_past() {
++    let mut document: Value = serde_json::from_str(FACTORY).unwrap();
++    for layer in document["layers"].as_array_mut().unwrap() {
++        let keys = layer.as_array_mut().unwrap();
++        keys.push(json!({ "value": "&none" }));
++        keys.push(json!({ "value": "&trans" }));
++    }
++    let wide = import_moergo_layout(&document.to_string()).unwrap();
++    let plain = import_moergo_layout(FACTORY).unwrap();
++    assert_eq!(
++        wide.runtime.snapshot().unwrap(),
++        plain.runtime.snapshot().unwrap()
++    );
++}
++
++#[test]
++fn a_layout_is_not_saved_over_the_other_boards_file() {
++    let glove80 = import_moergo_layout(GLOVE80).unwrap();
++    let error = snapshot_to_moergo_json(
++        &glove80.runtime.snapshot().unwrap(),
++        Some(&glove80.runtime),
++        Some(FACTORY),
++    )
++    .unwrap_err()
++    .to_string();
++    assert!(
++        error.contains("is for keyboard 'go60', but this layout is a Glove80"),
++        "{error}"
++    );
++
++    let error = import_moergo_layout(&FACTORY.replace("\"go60\"", "\"corne\""))
++        .unwrap_err()
++        .to_string();
++    assert!(
++        error.contains("only Glove80 and Go60 layouts can be read"),
++        "{error}"
++    );
++}
+-- 
+2.43.0
+
