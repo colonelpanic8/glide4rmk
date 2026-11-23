@@ -54,7 +54,7 @@ The picture is the intent. What the tests enforce (`src/architecture/boundaries.
 - `ui/` never decides what to offer from the firmware: no null test of a connect-time read, no firmware feature field of `caps` (`is_split`, `max_combos` …; geometry stays allowed) (`probing.ts`; older reads are on `probing.baseline.json`, the measure of P4 in `docs/architecture-review.md`).
 - `ui/` never dispatches an edit, an action that changes what you want; it goes through `io` (`dispatching.ts`; older ones are on `dispatching.baseline.json`, the measure of P5).
 
-The layers from `sync/` down to `session/` are not ordered among themselves, and the code has imports both ways: `model/` imports types from `session/` (and values from `session/lighting-rules`), `sync/` and `config/`, and `capabilities/` types; `sync/` imports `model/` and `session/`; `config/` imports `model/`, `session/` and `sync/`; `session/` imports `model/` and, from the offline board, `config/` types.
+The layers from `sync/` down to `session/` are not ordered among themselves, and the code has imports both ways: `model/` imports types from `session/` (and values from `session/lighting-rules`), `sync/` and `config/`, and `capabilities/` types; `sync/` imports `model/` and `session/`; `config/` imports `model/`, `session/` and `sync/`; `session/` imports `model/` and, from the offline board, `config/` (it parses a file on the board it is for, ADR 0034).
 
 | Layer | Holds | Never imports (tested) |
 |---|---|---|
