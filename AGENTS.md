@@ -51,4 +51,5 @@ A browser workbench for RMK/Rynk keyboards (Glove80, Go60 and plain RMK boards):
 
 ## Docs
 - `docs/ARCHITECTURE.md` — the layers and how a change flows (no line counts: they drift). `docs/todo.md` — what is left, cheapest first: strike an item in the PR that does it, with the PR's number; no log of what shipped.
+- `docs/glide-parity.md` — what came from GLIDE (`moosylog/glide-src`), feature by feature, with the GLIDE commit last ported; `scripts/glide-since.sh <feature>` prints what GLIDE changed since. Update the row when you port.
 - `docs/ux-brief.md` — the UX brief (areas, flows, principles). `docs/adr/` — decisions, newest last; on a conflict in its README's table, take either side and run `npm run docs`. `docs/glossary.md` — words. `docs/sync.md` — how writing to the keyboard works.
