@@ -39,6 +39,7 @@ import { ResizeHandle, usePaneSize } from "./panes";
 import { SETTING_KEYS } from "./settings";
 import { InspectorShell, cx } from "./kit";
 import { historyShortcut } from "../model/history";
+import { busyOf } from "../model/busy-state";
 import { useTerms } from "./terms";
 import { getLocaleId, subscribeLocale } from "./locale";
 import { areaOfSection, areasFor, sectionTerm, type Area, type AreaId, type SectionId } from "./areas";
@@ -303,8 +304,8 @@ export function Workbench({
       <LabelKeeper />
       <ModulesKeeper />
       <BehaviorEditorHost />
-      <div className="relative flex h-full flex-col" aria-busy={state.layerBusy}>
-        {state.layerBusy && (
+      <div className="relative flex h-full flex-col" aria-busy={busyOf(state).layerBusy}>
+        {busyOf(state).layerBusy && (
           <div
             className="absolute inset-0 z-50 flex items-center justify-center bg-well/70 backdrop-blur-[1px]"
             role="status"

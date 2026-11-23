@@ -13,6 +13,7 @@ import { wantOf } from "./draft/want";
 import type { IoContext, IoWriteResult } from "./io";
 import type { LayoutNotes } from "../model/history";
 import { notesChange, notesOf } from "./notes";
+import { busyOf } from "../model/busy-state";
 
 /** Guard's say on a change from what you want now to `after`: the screen asks
  *  the person; without one, everything goes ahead. */
@@ -54,7 +55,7 @@ export interface CommitOptions {
 export async function commitImage(context: IoContext, after: KeyboardImage, options: CommitOptions = {}): Promise<IoWriteResult> {
   const { getState, dispatch } = context;
   const sending: IoWriteResult = { ok: false, message: "the draft is being sent" };
-  if (getState().batchBusy) return sending;
+  if (busyOf(getState()).batchBusy) return sending;
   const before = wantOf(getState());
   const notesBefore = notesOf(getState());
   const change = patchBetween(before, after);
@@ -65,7 +66,7 @@ export async function commitImage(context: IoContext, after: KeyboardImage, opti
   }
   const pass = await context.judge(before, after);
   if (!pass.ok) return pass;
-  if (getState().batchBusy) return sending;
+  if (busyOf(getState()).batchBusy) return sending;
   dispatch({ type: "commit", image: after, layerOrder: options.layerOrder, notes: options.notes });
   if (getState().batchMode) return { ok: true };
 

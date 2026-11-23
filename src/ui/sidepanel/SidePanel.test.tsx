@@ -21,8 +21,7 @@ function panel(overrides: Record<string, unknown> = {}) {
       combos: [],
       morse: [],
       forks: [],
-      layerBusy: false,
-      layerError: null,
+      busy: { layerBusy: false, layerError: null },
       behaviorOptions: null,
       ...overrides,
     },
@@ -55,6 +54,6 @@ describe("side panel", () => {
   });
 
   it("shows a layer error under the list", () => {
-    expect(panel({ layerError: "Layer is still used" })).toContain("Layer is still used");
+    expect(panel({ busy: { layerError: "Layer is still used" } })).toContain("Layer is still used");
   });
 });

@@ -5,6 +5,10 @@ import type { WorkbenchAction, WorkbenchState } from "../model/workbench-state";
 import { sameOverlayLights } from "../model/lighting/compare";
 import { wantOf, withLightingRead, withRead, withWant } from "./draft/want";
 import { cellsToRecord, layerSceneCells, lightingDraftFor, withLayerDraft } from "./lighting-drafts";
+import { busyOf, withBusy } from "../model/busy-state";
+
+/** A lighting write the keyboard answered: nothing is being written, nothing failed. */
+const DONE = { lightingBusy: false, lightingError: null } as const;
 
 const LIGHTING_ACTION_TYPES = [
   "lightingRefresh",
@@ -66,7 +70,7 @@ export function reduceLighting(state: WorkbenchState, act: LightingAction): Work
     case "paint": {
       const draft = { ...lightingDraftFor(state, act.layer) };
       for (const cell of act.cells) draft[cell.led_id] = cell;
-      return { ...state, ...withLayerDraft(state, act.layer, draft), lightingError: null };
+      return withBusy({ ...state, ...withLayerDraft(state, act.layer, draft) }, { lightingError: null });
     }
     case "erase": {
       const draft = { ...lightingDraftFor(state, act.layer) };
@@ -74,66 +78,51 @@ export function reduceLighting(state: WorkbenchState, act: LightingAction): Work
       return { ...state, ...withLayerDraft(state, act.layer, draft) };
     }
     case "draftReset":
-      return { ...state, ...withLayerDraft(state, act.layer, layerSceneCells(state.scenes, act.layer)), lightingError: null };
+      return withBusy({ ...state, ...withLayerDraft(state, act.layer, layerSceneCells(state.scenes, act.layer)) }, { lightingError: null });
     case "lightingBusy":
-      return {
-        ...state,
-        lightingBusy: act.busy,
-        lightingError: act.error === undefined ? state.lightingError : act.error,
-      };
+      return withBusy(state, { lightingBusy: act.busy, lightingError: act.error === undefined ? busyOf(state).lightingError : act.error });
     case "tryOutSet": {
       const tryOut = { ...state.tryOut };
       for (const led of act.erase) delete tryOut[led];
       for (const cell of act.cells) tryOut[cell.led_id] = cell;
-      return { ...state, tryOut, lightingError: null };
+      return withBusy({ ...state, tryOut }, { lightingError: null });
     }
     case "tryOutSent":
-      return { ...withLightingRead(state, act.state), applied: cellsToRecord(act.cells), lightingError: null };
+      return withBusy({ ...withLightingRead(state, act.state), applied: cellsToRecord(act.cells) }, { lightingError: null });
     case "tryOutCleared":
-      return { ...withLightingRead(state, act.state), applied: {}, tryOut: {}, lightingError: null };
+      return withBusy({ ...withLightingRead(state, act.state), applied: {}, tryOut: {} }, { lightingError: null });
     case "tryOutFailed":
-      return { ...state, lightingError: act.error };
+      return withBusy(state, { lightingError: act.error });
     case "scenesApplied":
-      return {
-        ...withLightingRead(withRead(state, { scenes: act.cells }), act.state),
-        lightingBusy: false,
-        lightingError: null,
-      };
+      return withBusy(withLightingRead(withRead(state, { scenes: act.cells }), act.state), DONE);
     case "conditionalDraft":
-      return { ...state, runtimeConditionalDraft: act.cells, lightingError: null };
+      return withBusy({ ...state, runtimeConditionalDraft: act.cells }, { lightingError: null });
     case "conditionalDraftReset":
-      return {
-        ...state,
-        runtimeConditionalDraft: state.runtimeConditionalScenes,
-        lightingError: null,
-      };
+      return withBusy({ ...state, runtimeConditionalDraft: state.runtimeConditionalScenes }, { lightingError: null });
     case "conditionalApplied":
-      return {
-        ...withLightingRead(
+      return withBusy(
+        withLightingRead(
           withWant(withRead(state, { runtimeConditionalScenes: act.cells }), { ...wantOf(state), runtimeConditionalScenes: act.cells }),
           act.state,
         ),
-        lightingBusy: false,
-        lightingError: null,
-      };
+        DONE,
+      );
     case "scenePolicySet":
-      return {
-        ...withLightingRead(withRead({ ...state, scenePolicy: state.scenePolicy ?? act.policy }, { layerPolicy: act.policy }), act.state),
-        lightingBusy: false,
-        lightingError: null,
-      };
+      return withBusy(
+        withLightingRead(withRead({ ...state, scenePolicy: state.scenePolicy ?? act.policy }, { layerPolicy: act.policy }), act.state),
+        DONE,
+      );
     case "wakeLayersSet":
-      return {
-        ...withRead(
+      return withBusy(
+        withRead(
           { ...state, lightingOutputMode: { ...act.outputMode, wake_layers: state.lightingOutputMode?.wake_layers ?? state.base.wakeLayers } },
           { wakeLayers: act.outputMode.wake_layers },
         ),
-        lightingBusy: false,
-        lightingError: null,
-      };
+        DONE,
+      );
     case "extensionStateSet":
-      return {
-        ...withLightingRead(
+      return withBusy(
+        withLightingRead(
           withRead(
             {
               ...state,
@@ -144,9 +133,8 @@ export function reduceLighting(state: WorkbenchState, act: LightingAction): Work
           ),
           act.state,
         ),
-        lightingBusy: false,
-        lightingError: null,
-      };
+        DONE,
+      );
     case "extensionParamsLoaded": {
       const values = act.items.map((param) => param.value);
       const known = state.extensionParams[act.effect];
@@ -169,11 +157,11 @@ export function reduceLighting(state: WorkbenchState, act: LightingAction): Work
     case "hoverLeds":
       return { ...state, hoverLeds: act.leds };
     case "lightingStateSet":
-      return { ...withLightingRead(state, act.state), lightingBusy: false, lightingError: null };
+      return withBusy(withLightingRead(state, act.state), DONE);
     case "realtimeStored": {
       const parts = act.parts.effectParams ? { ...act.parts, effectParams: { ...state.base.effectParams, ...act.parts.effectParams } } : act.parts;
       const read = withRead(state, parts);
-      return { ...(act.lighting ? withLightingRead(read, act.lighting) : read), lightingError: null };
+      return withBusy(act.lighting ? withLightingRead(read, act.lighting) : read, { lightingError: null });
     }
   }
 }

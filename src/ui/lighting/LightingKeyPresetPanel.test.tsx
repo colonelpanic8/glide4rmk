@@ -28,9 +28,7 @@ function render(batchMode: boolean, current: unknown = "No") {
       runtimeConditionalDraft: batchMode ? [] : replaceLightingKeyRules([], {
         kind: "effects", layer: 1, row: 0, col: 0, led: 4,
       }),
-      lightingBusy: false,
-      pointingBusy: false,
-      batchBusy: false,
+      busy: { lightingBusy: false, pointingBusy: false, batchBusy: false },
       pending: {},
     },
     dispatch: () => {},

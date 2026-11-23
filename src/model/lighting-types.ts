@@ -3,6 +3,8 @@
 // they are RMK's shapes; a second protocol changes this file, not the screens.
 
 export type {
+  /** How the background colour shows: steady or breathing. */
+  LightingBackgroundMode,
   BleState,
   LightingActiveTransport,
   LightingChargeCondition,

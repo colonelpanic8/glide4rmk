@@ -25,6 +25,7 @@ import { writePlan } from "../sync";
 import { makeIo } from "./io";
 import { makeWorkbenchReducer } from "./reducer";
 import { type WorkbenchAction, type WorkbenchState } from "../model/workbench-state";
+import { busyOf, type BusyFlags } from "../model/busy-state";
 import { deviceOf } from "../model/device-state";
 
 const reducer = makeWorkbenchReducer(2);
@@ -41,6 +42,18 @@ const LIGHTING: LightingState = {
   overlay_len: 0,
 };
 
+/** Nothing being written, nothing failed. */
+const IDLE: BusyFlags = {
+  batchBusy: false,
+  batchError: null,
+  layerBusy: false,
+  layerError: null,
+  lightingBusy: false,
+  lightingError: null,
+  pointingBusy: false,
+  pointingError: null,
+};
+
 /** A workbench whose keyboard holds what it shows, unless `over.base` says otherwise. */
 function baseState(over: Partial<WorkbenchState> = {}): WorkbenchState {
   const { base, ...fields } = over;
@@ -53,8 +66,6 @@ function baseState(over: Partial<WorkbenchState> = {}): WorkbenchState {
     layerMetadata: null,
     pointingConfig: null,
     pointingDraft: null,
-    pointingBusy: false,
-    pointingError: null,
     encoders: {},
     lightingState: LIGHTING,
     lightingOutputMode: null,
@@ -78,12 +89,7 @@ function baseState(over: Partial<WorkbenchState> = {}): WorkbenchState {
     labels: noLabels(),
     modules: [],
     batchMode: false,
-    batchBusy: false,
-    batchError: null,
-    layerBusy: false,
-    layerError: null,
-    lightingBusy: false,
-    lightingError: null,
+    busy: IDLE,
     hoverLeds: null,
     combos: [],
     morse: [],
@@ -278,14 +284,14 @@ describe("Magic-layer policy", () => {
       wake_layers: 2 ** 2,
       indicator: undefined,
     };
-    const next = reducer(baseState({ lightingBusy: true }), {
+    const next = reducer(baseState({ busy: { ...IDLE, lightingBusy: true } }), {
       type: "wakeLayersSet",
       outputMode,
     });
 
     expect(next.lightingOutputMode).toEqual(outputMode);
     expect(next.lightingControls.wake_layers).toBe(2 ** 2);
-    expect(next.lightingBusy).toBe(false);
+    expect(busyOf(next).lightingBusy).toBe(false);
   });
 });
 
@@ -747,7 +753,7 @@ describe("pointing configuration state", () => {
 
     state = reducer(state, { type: "pointingDraftReset" });
     expect(pointingDraftDirty(state)).toBe(false);
-    expect(state.pointingError).toBeNull();
+    expect(busyOf(state).pointingError).toBeNull();
   });
 
   it("writes pointing with the keyboard's current revision, whatever the draft was based on", async () => {
@@ -777,7 +783,7 @@ describe("pointing configuration state", () => {
     let state = baseState({
       pointingConfig: null,
       pointingDraft: null,
-      pointingError: "io error: Other",
+      busy: { ...IDLE, pointingError: "io error: Other" },
     });
     const session = {
       pointing: { get: vi.fn(async () => pointing(4)) },
@@ -790,7 +796,7 @@ describe("pointing configuration state", () => {
     await expect(io.reloadPointingConfig()).resolves.toEqual({ ok: true });
     expect(state.pointingConfig?.revision).toBe(4);
     expect(state.pointingDraft).not.toBeNull();
-    expect(state.pointingError).toBeNull();
+    expect(busyOf(state).pointingError).toBeNull();
   });
 });
 

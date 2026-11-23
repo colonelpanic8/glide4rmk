@@ -12,6 +12,7 @@ import { applyOperation, commitImage, factsOf } from "./apply";
 import { draftEditCount, pointingDraftDirty } from "./draft/selectors";
 import { draftOf, wantOf } from "./draft/want";
 import type { IoContext, IoFeatures, IoWriteResult, WorkbenchIo } from "./io";
+import { busyOf } from "../model/busy-state";
 
 type LayerIo = Pick<
   WorkbenchIo,
@@ -67,8 +68,8 @@ export function layerIo(context: IoContext): LayerIo {
 
   const runLayerStructure = async (operation: LayerOperation): Promise<IoWriteResult> => {
     const before = getState();
-    if (before.layerBusy) return { ok: false, message: "another layer operation is running" };
-    if (before.lightingBusy || Object.values(before.pending).some((item) => item.status === "pending")) {
+    if (busyOf(before).layerBusy) return { ok: false, message: "another layer operation is running" };
+    if (busyOf(before).lightingBusy || Object.values(before.pending).some((item) => item.status === "pending")) {
       return rejectLayerOperation("wait for pending device writes before editing layers");
     }
     const blocked = before.batchMode ? null : liveBlocked(before);
@@ -100,7 +101,7 @@ export function layerIo(context: IoContext): LayerIo {
     // A name is part of what you want: the operation, judged and undone as
     // one change, waits in Draft and goes through Send's path in Live.
     async renameLayer(layer, name) {
-      if (getState().layerBusy) return { ok: false, message: "another layer operation is running" };
+      if (busyOf(getState()).layerBusy) return { ok: false, message: "another layer operation is running" };
       const result = await applyOperation(context, "rename_layer", { layer, name });
       return result.ok || result.guarded ? result : rejectLayerOperation(result.message);
     },

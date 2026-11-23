@@ -10,6 +10,7 @@ import { mutableLighting } from "../../sync";
 import { draftOf } from "./want";
 import { liveSendDue, sendWaits } from "./selectors";
 import { UNATTENDED } from "./send";
+import { busyOf } from "../../model/busy-state";
 
 const key = (code: string) => ({ Single: { Key: { Hid: code } } }) as KeyAction;
 const light = (led_id: number) => ({ led_id, effect: { Solid: { color: { r: 255, g: 0, b: 0 } } }, ttl_ms: undefined });
@@ -42,7 +43,7 @@ describe("Send", () => {
       expect(storedSegmentsOf(session) - before).toBe(2); // two keys share a row
       expect(draftOf(state()).changes).toEqual([]);
       expect(state().base).not.toHaveProperty("activeLayers");
-      expect(state().batchBusy).toBe(false);
+      expect(busyOf(state()).batchBusy).toBe(false);
       const [layer0] = await session.keymap.readAll();
       expect(layer0.actions[0]).toEqual(key("F13"));
     });

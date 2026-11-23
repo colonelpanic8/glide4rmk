@@ -15,7 +15,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { openProperties } from "../properties/store";
 import type { LightingEffect } from "../../model/lighting-types";
-import { useWorkbench } from "../state";
+import { useBusy, useWorkbench } from "../state";
 import { effectColor } from "../lighting/decor";
 import { DEFAULT_TIMING } from "../../model/lighting/effect";
 import { sameLight, type KeyLight } from "../../model/lighting/key-light";
@@ -78,6 +78,7 @@ const toolClass = (on: boolean) =>
 /** `ledId`: the LED of the key the editor shows; the other selected keys' are found here. */
 export function LayerLighting({ ledId, children }: { ledId: number | undefined; children?: ReactNode }) {
   const { bundle, state, dispatch } = useWorkbench();
+  const busy = useBusy();
   const view = useLightView();
   const lights = useKeyLights();
   const tryOut = useTryOut();
@@ -200,7 +201,7 @@ export function LayerLighting({ ledId, children }: { ledId: number | undefined; 
           </button>
         </div>
       )}
-      {state.lightingError && <ErrorBanner message={state.lightingError} />}
+      {busy.lightingError && <ErrorBanner message={busy.lightingError} />}
 
       {CHOICES.filter((choice) => !choice.needsRules || lights.statusLights).map((choice) => {
         const chosen = choiceOf(shown) === choice.id;

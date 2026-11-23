@@ -8,7 +8,7 @@ import { useState } from "react";
 import type { LightingLayerPolicy } from "../../model/lighting-types";
 import { SETTING_KEYS, readSetting } from "../settings";
 import { layerName } from "../layer-names";
-import { useWorkbench } from "../state";
+import { useBusy, useWorkbench } from "../state";
 import { useCapabilities, useCapability } from "../use-capabilities";
 import { Button, SectionLabel, Segmented, cx } from "../kit";
 import { maskHasLayer, setLayerInMask } from "../../model/lighting/wake-layers";
@@ -32,6 +32,7 @@ function localPresets(serial: string): Record<number, { cells: LightingOverlayCe
 
 export function LayerLightingSettings() {
   const { bundle, state, dispatch, io } = useWorkbench();
+  const busy = useBusy();
   const scenes = useCapability("lighting.scenes");
   const wakes = useCapabilities().has("lighting.output");
   const serial = bundle.info.serial_number;
@@ -63,7 +64,7 @@ export function LayerLightingSettings() {
         <div className="text-small text-faint">When several layers are on</div>
         <Segmented
           className="mt-1"
-          items={POLICIES.map((policy) => ({ value: policy.id, label: policy.label, title: policy.hint, disabled: state.lightingBusy }))}
+          items={POLICIES.map((policy) => ({ value: policy.id, label: policy.label, title: policy.hint, disabled: busy.lightingBusy }))}
           value={state.scenePolicy}
           onChange={(policy) => io.setScenePolicy(policy)}
         />
@@ -79,7 +80,7 @@ export function LayerLightingSettings() {
                   key={layer}
                   type="button"
                   aria-pressed={on}
-                  disabled={state.lightingBusy}
+                  disabled={busy.lightingBusy}
                   onClick={() => io.setWakeLayers(setLayerInMask(wakeLayers, layer, !on))}
                   className={cx(
                     "h-7 cursor-pointer rounded-md border px-2 text-small transition-colors disabled:cursor-not-allowed",
@@ -94,7 +95,7 @@ export function LayerLightingSettings() {
         </div>
       )}
       {keptLayers.length > 0 && (
-        <Button variant="outline" className="py-1" disabled={state.lightingBusy} onClick={copyKept}>
+        <Button variant="outline" className="py-1" disabled={busy.lightingBusy} onClick={copyKept}>
           Add the lights kept in this browser for {keptLayers.length} layer{keptLayers.length === 1 ? "" : "s"}
         </Button>
       )}

@@ -15,6 +15,7 @@ import { differences, planSync, readSettings, valueAt, withValues, writePlan, ty
 import { errorMessage } from "../session/errors";
 import { wantOf } from "./draft/want";
 import type { IoContext } from "./io";
+import { busyOf } from "../model/busy-state";
 
 export const REALTIME_KINDS: ReadonlySet<ItemKind> = new Set(["lightingState", "extension", "extensionOverlay", "effectParam"]);
 
@@ -111,7 +112,7 @@ export function realtimeWriter(
   return {
     enabled,
     commit(values) {
-      if (getState().batchBusy) return;
+      if (busyOf(getState()).batchBusy) return;
       dispatch({ type: "wantSet", values });
       schedule();
     },

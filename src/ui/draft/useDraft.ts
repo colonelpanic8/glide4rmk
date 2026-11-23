@@ -5,7 +5,7 @@
 
 import { useMemo, useRef } from "react";
 import { askConfirm, showToast } from "../messages/store";
-import { useWorkbench } from "../state";
+import { useBusy, useWorkbench } from "../state";
 import { draftGroups, draftSize, groupItems, type DraftGroup } from "../../workbench/draft/changes";
 import { liveSendDue, sendWaits } from "../../workbench/draft/selectors";
 import { UNATTENDED } from "../../workbench/draft/send";
@@ -14,11 +14,12 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export function useDraft() {
   const { bundle, state, dispatch, io } = useWorkbench();
+  const busy = useBusy();
   const latest = useRef(state);
   latest.current = state;
   const groups = useMemo(() => draftGroups(state), [state]);
   const size = draftSize(groups);
-  const sending = state.batchBusy || state.lightingBusy;
+  const sending = busy.batchBusy || busy.lightingBusy;
 
   return {
     /** A file has no keyboard to send to: everything is the file's. */

@@ -8,6 +8,7 @@ import type { FieldValue, WorkbenchAction, WritableField } from "../model/workbe
 import { FIELD_STATE_KEY } from "../model/workbench-state";
 import { errorMessage } from "../session/errors";
 import type { IoContext, IoWriteResult, WorkbenchIo } from "./io";
+import { busyOf } from "../model/busy-state";
 
 type SettingsIo = Pick<
   WorkbenchIo,
@@ -88,7 +89,7 @@ export function settingsIo(context: IoContext): SettingsIo {
       );
     },
     async reloadPointingConfig() {
-      if (getState().pointingBusy) {
+      if (busyOf(getState()).pointingBusy) {
         return { ok: false, message: "a pointing write is already running" };
       }
       dispatch({ type: "pointingWriteStart" });

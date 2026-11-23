@@ -1,13 +1,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { testWorkbench } from "../../test/workbench";
+import { testWorkbench, type DeepPartial } from "../../test/workbench";
 import { WorkbenchContext } from "../state";
 import type { WorkbenchState } from "../../workbench";
 import { KeymapInspector } from "./SideInspector";
 
 const UNSUPPORTED = "does not expose runtime pointing configuration";
 
-function markup(state: Partial<WorkbenchState>): string {
+function markup(state: DeepPartial<WorkbenchState>): string {
   const value = testWorkbench({
     bundle: {
       model: { pointingDevices: [{ id: 0, label: "Left trackpad" }] },
@@ -18,8 +18,7 @@ function markup(state: Partial<WorkbenchState>): string {
       layerMetadata: null,
       pointingConfig: null,
       pointingDraft: null,
-      pointingBusy: false,
-      pointingError: null,
+      busy: { pointingBusy: false, pointingError: null },
       ...state,
     },
     dispatch: () => {},
@@ -35,7 +34,7 @@ function markup(state: Partial<WorkbenchState>): string {
 
 describe("trackpad inspector without a pointing config", () => {
   it("reports the read failure and offers a retry", () => {
-    const html = markup({ pointingError: "io error: Other" });
+    const html = markup({ busy: { pointingError: "io error: Other" } });
 
     expect(html).toContain("io error: Other");
     expect(html).toContain("Retry read");

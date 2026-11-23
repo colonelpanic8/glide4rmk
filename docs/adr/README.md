@@ -38,7 +38,7 @@ The table is built from each record's `# NNNN. Title` and `**Status:**` line by 
 | [0029](0029-opening-a-keyboard-and-the-test-harness.md) | Opening a keyboard is the workbench's; one harness for core tests | Accepted |
 | [0030](0030-screen-tests-that-click.md) | Screen tests that click: happy-dom, per test file, on the core harness | Accepted |
 | [0031](0031-operation-names-as-glides.md) | Operation names as GLIDE's; a layer's name is an operation | Accepted |
-| [0032](0032-workbench-state-groups.md) | The workbench state in groups: the keyboard's reports first | Accepted |
+| [0032](0032-workbench-state-groups.md) | The workbench state in groups: the keyboard's reports and the busy flags | Accepted |
 <!-- /adr-index -->
 
 The glossary is in [../glossary.md](../glossary.md).

@@ -108,7 +108,7 @@ function neutralBundle(): Record<string, unknown> {
 
 /** The workbench context for a test. Nested objects in the overrides replace
  *  the defaults' values one level down (caps, model and the state's device
- *  reports merge their fields). */
+ *  reports and busy flags merge their fields). */
 export function testWorkbench(parts: TestWorkbenchParts = {}): WorkbenchContextValue {
   const base = neutralBundle();
   const given = (parts.bundle ?? {}) as Record<string, unknown>;
@@ -120,8 +120,13 @@ export function testWorkbench(parts: TestWorkbenchParts = {}): WorkbenchContextV
   } as unknown as ConnectedBundle; // the one cast: neutral defaults stand in for a board
   const initial = initialWorkbenchState(bundle);
   const overrides = parts.state as Partial<WorkbenchState> | undefined;
-  // The device reports merge their fields too: a test names only the ones it needs.
-  const opened = { ...initial, ...overrides, device: { ...initial.device, ...overrides?.device } };
+  // The device reports and the busy flags merge their fields too: a test names only the ones it needs.
+  const opened = {
+    ...initial,
+    ...overrides,
+    device: { ...initial.device, ...overrides?.device },
+    busy: { ...initial.busy, ...overrides?.busy },
+  };
   // What the keyboard holds is the test's state, with the parts of `base` it
   // gives on top: a test drafts a change by giving the base the old value.
   const state: WorkbenchState = { ...opened, base: { ...storedImage(opened), ...(parts.state?.base as Partial<KeyboardImage>) } };

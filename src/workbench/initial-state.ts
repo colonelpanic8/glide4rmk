@@ -23,8 +23,6 @@ export function initialWorkbenchState(bundle: ConnectedBundle): WorkbenchState {
     pointingDraft: bundle.pointingConfig
       ? normalizePointingConfig(bundle.pointingConfig)
       : null,
-    pointingBusy: false,
-    pointingError: bundle.pointingReadError ?? null,
     encoders: {},
     lightingState: bundle.lightingState,
     lightingOutputMode: bundle.lightingOutputMode,
@@ -48,12 +46,16 @@ export function initialWorkbenchState(bundle: ConnectedBundle): WorkbenchState {
     labels: noLabels(),
     modules: [],
     batchMode: bundle.session.kind !== "offline", // a keyboard starts in Draft (ADR 0010)
-    batchBusy: false,
-    batchError: null,
-    layerBusy: false,
-    layerError: null,
-    lightingBusy: false,
-    lightingError: null,
+    busy: {
+      batchBusy: false,
+      batchError: null,
+      layerBusy: false,
+      layerError: null,
+      lightingBusy: false,
+      lightingError: null,
+      pointingBusy: false,
+      pointingError: bundle.pointingReadError ?? null,
+    },
     hoverLeds: null,
     combos: bundle.combos,
     morse: bundle.morse,
