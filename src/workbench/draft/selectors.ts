@@ -25,9 +25,12 @@ export function hasPendingConfigurationWrite(state: WorkbenchState): boolean {
   );
 }
 
-/** Whether Undo or Redo may go now: there is a step, and nothing is being written. */
+/** Whether Undo or Redo may go now: there is a step, and nothing is being
+ *  written. A layer operation counts: it commits the whole image it built from
+ *  what you wanted when it started, which would put an undone step back. */
 export function canTravel(state: WorkbenchState, direction: "undo" | "redo"): boolean {
-  if (busyOf(state).batchBusy || hasPendingConfigurationWrite(state)) return false;
+  const busy = busyOf(state);
+  if (busy.batchBusy || busy.layerBusy || hasPendingConfigurationWrite(state)) return false;
   return (direction === "undo" ? state.history.past : state.history.future).length > 0;
 }
 
