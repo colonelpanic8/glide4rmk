@@ -1,8 +1,8 @@
 // The mock backend's engine: a BoardSpec is one simulated device (static
 // identity, geometry, topology, defaults); MockSession drives its mutable
-// in-memory state behind the RynkSession seam. Every op resolves through a
-// small random latency so the UI's loading states are exercised honestly,
-// and topic pushes arrive on timers like a real device's.
+// in-memory state behind the RynkSession seam. Every op resolves after the
+// simulated latency (latency.ts: 5–15 ms in the app, none in tests), and topic
+// pushes arrive on timers like a real device's.
 
 import { macroTableSize } from "../../model/macros";
 import type {
@@ -90,6 +90,7 @@ import { keymapSegments } from "../flash-writes";
 import { unsupported } from "../unsupported";
 import { emptyCombo, emptyFork, emptyMorse, emptyMorseProfile, noModifiers } from "../../model/slots";
 import { absentSurface } from "./absent";
+import { latency } from "./latency";
 
 export interface BoardSpec {
   title: string;
@@ -281,18 +282,6 @@ const BATTERY_PUSH_MS = 30_000;
 const MATRIX_SIM_MS = 2_000;
 const MATRIX_IDLE_MS = 5_000;
 
-/** Resolve `work`'s result after 5–15 ms, rejecting if it throws. */
-function latency<T>(work: () => T): Promise<T> {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      try {
-        resolve(work());
-      } catch (error) {
-        reject(error instanceof Error ? error : new Error(String(error)));
-      }
-    }, 5 + Math.random() * 10);
-  });
-}
 
 interface OverlayEntry {
   cell: LightingOverlayCell;
