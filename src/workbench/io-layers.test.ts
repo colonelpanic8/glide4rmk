@@ -5,7 +5,7 @@ import { glove80Board } from "../session/mock/glove80";
 import type { RynkSession } from "../session/types";
 import { type WorkbenchIo } from "./io";
 import type { WorkbenchState } from "../model/workbench-state";
-import { draftOf } from "./draft/want";
+import { draftOf, wantOf } from "./draft/want";
 
 /** A simulated Glove80 in Live (or in Draft) with the io the workbench uses. */
 async function withLayers(
@@ -115,6 +115,28 @@ describe("renaming a layer in Live", () => {
       const write = vi.spyOn(session.keymap, "setLayerMetadata");
       expect(await io.renameLayer(1, taken)).toEqual({ ok: false, message: `there is a layer called ${taken} already` });
       expect(write).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("undo while a layer operation runs", () => {
+  it("is refused, so the operation's commit cannot put the undone change back", async () => {
+    // Guard asks before the layer is moved, and the person has not answered yet.
+    let asked = false;
+    let answer = () => {};
+    const judge = () => {
+      asked = true;
+      return new Promise<{ ok: true }>((resolve) => (answer = () => resolve({ ok: true })));
+    };
+    await withTestWorkbench({ fixture: "plain" }, { mode: "draft", io: { judge } }, async ({ io, state }) => {
+      const A = { Single: { Key: { Hid: "A" } } } as const;
+      await io.setKey(0, 0, 0, A);
+      const running = io.moveLayer(1, 2);
+      await vi.waitFor(() => expect(asked).toBe(true));
+      expect(await io.travel("undo")).toEqual({ ok: false, message: "Nothing to undo now" });
+      answer();
+      expect(await running).toMatchObject({ ok: true });
+      expect(wantOf(state()).layers[0][0]).toEqual(A);
     });
   });
 });

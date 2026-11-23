@@ -876,4 +876,12 @@ describe("batch mode", () => {
     expect(canTravel(s, "undo")).toBe(true);
     expect(canTravel(reducer(s, { type: "batchApplyStart" }), "undo")).toBe(false);
   });
+
+  it("does not let undo travel while a layer operation runs", () => {
+    let s = baseState({ batchMode: true, layers: [["No", "No"], []] });
+    s = reducer(s, { type: "keyStage", layer: 0, row: 0, col: 1, action: key("B") });
+    const running = reducer(s, { type: "layerOperationStart" });
+    expect(canTravel(running, "undo")).toBe(false);
+    expect(canTravel(reducer(running, { type: "layerOperationDone" }), "undo")).toBe(true);
+  });
 });
