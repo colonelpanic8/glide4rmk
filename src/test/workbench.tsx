@@ -74,8 +74,6 @@ function neutralBundle(): Record<string, unknown> {
     battery: "Unavailable",
     peripheralBattery: "Unavailable",
     connection: null,
-    maintenanceMode: null,
-    splitTransport: null,
     lightingState: null,
     lightingOutputMode: null,
     overlay: [],

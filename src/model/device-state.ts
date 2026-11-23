@@ -7,9 +7,7 @@ import type {
   BatteryStatus,
   ConnectionStatus,
   LedIndicator,
-  MaintenanceMode,
   ModifierCombination,
-  SplitTransportState,
 } from "../vendor/rynk-wasm/rynk_wasm";
 
 // The report types screens use, named here so that screens never import the
@@ -24,10 +22,10 @@ export type {
 
 export interface DeviceReports {
   battery: BatteryStatus;
+  /** The first split half's battery as read at connect. The firmware has no
+   *  topic for it, so it is not kept current while the keyboard is open. */
   peripheralBattery: BatteryStatus;
   connection: ConnectionStatus | null;
-  maintenanceMode: MaintenanceMode | null;
-  splitTransport: SplitTransportState | null;
   /** Highest-precedence active layer, derived from `activeLayers`. */
   currentLayer: number;
   activeLayers: number[];

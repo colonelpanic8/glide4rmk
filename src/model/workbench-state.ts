@@ -38,7 +38,6 @@ import type {
   LightingSceneStatus,
   LightingState,
   ModifierCombination,
-  MaintenanceMode,
   Morse,
   MorseHoldTriggerPosition,
   MorseProfileEntry,
@@ -46,7 +45,6 @@ import type {
   ProtocolVersion,
   PointingConfig,
   PointingCapabilities,
-  SplitTransportState,
 } from "../vendor/rynk-wasm/rynk_wasm";
 import type {
   LayerMetadata,
@@ -130,8 +128,6 @@ export interface ConnectedBundle {
   battery: BatteryStatus;
   peripheralBattery: BatteryStatus;
   connection: ConnectionStatus | null;
-  maintenanceMode: MaintenanceMode | null;
-  splitTransport: SplitTransportState | null;
   lightingState: LightingState | null;
   lightingOutputMode: LightingOutputModeState | null;
   overlay: LightingOverlayCell[];
