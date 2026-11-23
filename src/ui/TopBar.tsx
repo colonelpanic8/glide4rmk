@@ -103,6 +103,7 @@ export function TopBar({
   onDrawer?: () => void;
 }) {
   const host = detectOs();
+  const term = useTerms();
   const { bundle, state, io, history } = useWorkbench();
   const offline = bundle.session.kind === "offline";
   const { workspaceName } = useSharedDocumentTransfer();
@@ -156,7 +157,7 @@ export function TopBar({
 
         <div
           className="flex items-center gap-0.5"
-          title="Undo covers every change, in Draft and Live."
+          title={term("history.covers")}
         >
           <Button
             variant="ghost"

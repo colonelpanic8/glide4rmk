@@ -10,6 +10,7 @@ import { CloseIcon, SpinnerIcon } from "../icons";
 import type { DraftGroup } from "../../workbench/draft/changes";
 import type { LayerStructure } from "../../model/layer-structure";
 import { useDraft } from "./useDraft";
+import { useTerms } from "../terms";
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const quoted = (names: readonly string[]) => names.map((name) => `“${name}”`).join(", ");
@@ -61,6 +62,7 @@ function groupText(group: DraftGroup, name: (layer: number) => string): { title:
 export function ReviewWindow({ onClose }: { onClose: () => void }) {
   const { bundle, state } = useWorkbench();
   const draft = useDraft();
+  const term = useTerms();
   const name = (layer: number) => layerName(state.layerMetadata, layer);
   const keyboard = bundle.info.product_name || "the keyboard";
 
@@ -111,9 +113,7 @@ export function ReviewWindow({ onClose }: { onClose: () => void }) {
           </ul>
         )}
 
-        <p className="text-small text-faint">
-          Apply rules, the lighting presets and the Device screen write to the keyboard at once; everything else waits for Send.
-        </p>
+        <p className="text-small text-faint">{term("review.atOnce")}</p>
 
         <div className="flex items-center justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>

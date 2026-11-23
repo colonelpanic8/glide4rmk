@@ -5,9 +5,11 @@ import { layerName } from "../layer-names";
 import { hasPendingConfigurationWrite } from "../../workbench";
 import { useWorkbench } from "../state";
 import { STOCK_PROFILE_KEYS, writeStockMagicLayer } from "../../model/lighting/stock-magic-layer";
+import { useTerms } from "../terms";
 
 export function StockMagicLayerPanel({ layer }: { layer: number }) {
   const { bundle, state, io, dispatch } = useWorkbench();
+  const term = useTerms();
   const capabilities = useCapabilities();
   const ruleTable = capabilities.get("lighting.rules");
   const [message, setMessage] = useState<string | null>(null);
@@ -22,7 +24,7 @@ export function StockMagicLayerPanel({ layer }: { layer: number }) {
     if (installing.current || busy || state.batchMode) return;
     installing.current = true;
     dispatch({ type: "lightingBusy", busy: true, error: null });
-    setMessage("Installing keys, scene, and indicators…");
+    setMessage(term("magic.installing"));
     try {
       const result = await writeStockMagicLayer(
         {
@@ -47,7 +49,7 @@ export function StockMagicLayerPanel({ layer }: { layer: number }) {
       );
       setMessage(
         result.ok
-          ? `Installed and verified the stock Magic layer on ${name}. Reach it with a momentary MO(${layer}) key.`
+          ? term("magic.installed", { layer: name, index: layer })
           : result.message,
       );
     } finally {
@@ -58,38 +60,17 @@ export function StockMagicLayerPanel({ layer }: { layer: number }) {
 
   return (
     <div className="mt-2 rounded-lg border border-accent-deep/40 bg-accent-dim/15 p-3">
-      <div className="text-body font-medium text-ink">MoErgo stock Magic layer</div>
-      <p className="mt-1 text-small leading-relaxed text-faint">
-        Rebuild {name} as the factory Glove80 Magic layer. Bluetooth profiles 1–{profiles} sit
-        on the thumbs (T4, T5, T1, T2) with USB output on T6; the Q–T and A–G rows adjust
-        speed, saturation, hue, and brightness and toggle or advance effects; each half's
-        outer keys carry bootloader and reset; F1 forgets the active profile's pairing and
-        F10 forgets all host pairings. Hold F1 with a profile key to clear and activate that slot.
-        Quickly double-tap a non-selected profile key to keep that host temporarily disconnected;
-        single-tap it later to reconnect. Every other key is unbound.
-      </p>
-      <p className="mt-1 text-small leading-relaxed text-faint">
-        While the layer is active the left half goes dark: the number row shows the layers
-        held alongside it in magenta, F3–F5 show caps, num, and scroll lock in red, rows 3 and
-        4 fill green, yellow, or red with each half's battery, and the profile and USB keys
-        show lilac unpaired, red paired, green connected, and white when carrying typing. The
-        layer wakes lighting and keeps its view visible for 20 seconds after release. Brightness controls also adjust the indicators.
-      </p>
-      <p className="mt-1 text-caption leading-relaxed text-faint">
-        Not reproduced: the output-fallback indicator, which this firmware cannot express.
-      </p>
-      {state.batchMode && (
-        <p className="mt-2 text-small text-warn">
-          Finish batch editing and turn batch mode off to install the keys and lighting together.
-        </p>
-      )}
+      <div className="text-body font-medium text-ink">{term("magic.title")}</div>
+      <p className="mt-1 text-small leading-relaxed text-faint">{term("magic.what", { layer: name, profiles })}</p>
+      <p className="mt-1 text-small leading-relaxed text-faint">{term("magic.lights")}</p>
+      {state.batchMode && <p className="mt-2 text-small text-warn">{term("magic.liveOnly")}</p>}
       <Button
         variant="primary"
         className="mt-2 w-full"
         disabled={busy || state.batchMode}
         onClick={install}
       >
-        Install stock Magic layer on {name}
+        {term("magic.install", { layer: name })}
       </Button>
       {message && (
         <p role="status" className="mt-2 text-small leading-relaxed text-mute">
