@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   categoryTiles,
+  flowIsElsewhere,
   flowNotFor,
   flowsIn,
   searchFlows,
@@ -15,12 +16,11 @@ import {
   type FlowChoice,
   type JqRunner,
 } from "../../operations/flows";
-import type { FlowRun } from "../../workbench/flows";
+import { flowBoard, type FlowRun } from "../../workbench/flows";
 import { shippedFlows } from "../../workbench/flow-catalog";
-import { resolveBoardProfile } from "../../model/boards/profiles";
 import { useWorkbench } from "../state";
 import { useCapabilities } from "../use-capabilities";
-import { Button, ErrorBanner, SectionLabel, TextInput } from "../kit";
+import { Button, ErrorBanner, SectionLabel, TextInput, cx } from "../kit";
 import { CloseIcon, FlowsIcon, SearchIcon } from "../icons";
 import { browserJq } from "./browserJq";
 import { FlowResultBar, FlowResultBody } from "./FlowResult";
@@ -99,14 +99,16 @@ function FlowDetail({ flow, values, onChange }: { flow: Flow; values: Record<str
   );
 }
 
-function FlowRow({ flow, showCategory, onOpen }: { flow: Flow; showCategory: boolean; onOpen(): void }) {
+/** A Flow in a list; one this keyboard cannot run is greyed and says why. */
+function FlowRow({ flow, showCategory, notFor, onOpen }: { flow: Flow; showCategory: boolean; notFor: string | null; onOpen(): void }) {
   return (
-    <button type="button" onClick={onOpen} className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-transparent p-2.5 text-left text-body transition-all hover:border-line-strong hover:bg-raised">
+    <button type="button" onClick={onOpen} className={cx("flex w-full cursor-pointer items-center gap-3 rounded-xl border border-transparent p-2.5 text-left text-body transition-all hover:border-line-strong hover:bg-raised", notFor && "opacity-55")}>
       <span className="w-7 shrink-0 text-center text-heading">{flow.icon}</span>
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold text-ink">{flow.title}{flow.advanced && <AdvancedBadge />}</span>
         {flow.subtitle && <span className="block truncate text-mute">{flow.subtitle}</span>}
         {showCategory && <span className="block truncate text-faint">{flow.category}</span>}
+        {notFor && <span className="block truncate text-small text-mute">{notFor}</span>}
       </span>
     </button>
   );
@@ -124,8 +126,9 @@ export function FlowsWindow() {
   const [runs, setRuns] = useState<Record<string, FlowRun>>({});
   const [busy, setBusy] = useState(false);
 
-  const board = useMemo(() => ({ id: resolveBoardProfile(bundle.info, bundle.caps)?.id ?? null, cols: bundle.caps.num_cols }), [bundle]);
-  const has = (capability: string) => capabilities.list().some(({ id }) => id === capability);
+  const capabilityIds = useMemo(() => capabilities.list().map(({ id }) => id as string), [capabilities]);
+  const board = useMemo(() => flowBoard(bundle, capabilityIds), [bundle, capabilityIds]);
+  const has = (capability: string) => capabilityIds.includes(capability);
 
   useEffect(() => {
     let live = true;
@@ -142,7 +145,9 @@ export function FlowsWindow() {
     };
   }, []);
 
-  const offered = (flows ?? []).filter((flow) => flowNotFor(flow, board.id, has) === null);
+  // A Flow for another keyboard is not listed; one this keyboard cannot run is, greyed, with why.
+  const offered = (flows ?? []).filter((flow) => !flowIsElsewhere(flow, board.id));
+  const notFor = (flow: Flow) => flowNotFor(flow, board, has);
   const selected = offered.find((flow) => flow.uid === uid) ?? null;
   const searching = search.trim().length > 0;
   const run = selected ? runs[selected.uid] : undefined;
@@ -171,14 +176,19 @@ export function FlowsWindow() {
       : <FlowDetail flow={selected} values={values[selected.uid] ?? {}} onChange={(id, value) => setValues((current) => ({ ...current, [selected.uid]: { ...current[selected.uid], [id]: value } }))} />;
     footer = run
       ? <FlowResultBar run={run} category={selected.category} onDone={closeFlows} onUndo={() => void undo(selected)} onTryAgain={() => clearRun(selected.uid)} onBack={() => setUid(null)} />
-      : <Button data-testid="flow-apply" variant="primary" className="w-full py-3" disabled={busy} onClick={() => void apply(selected)}>{busy ? "Applying…" : "Apply to layout"}</Button>;
+      : (
+        <div className="flex flex-col gap-2">
+          {notFor(selected) && <p data-testid="flow-not-for" className="text-center text-body text-mute">{notFor(selected)}</p>}
+          <Button data-testid="flow-apply" variant="primary" className="w-full py-3" disabled={busy || notFor(selected) !== null} reason={notFor(selected) ?? "Applying…"} onClick={() => void apply(selected)}>{busy ? "Applying…" : "Apply to layout"}</Button>
+        </div>
+      );
   } else if (category || searching) {
     const listed = searching ? searchFlows(offered, search) : flowsIn(offered, category ?? "");
     body = (
       <div className="flex flex-col gap-1.5">
         {!searching && <div className="px-1"><SectionLabel>{category}</SectionLabel></div>}
         {listed.length === 0 && <p className="py-4 text-center text-body italic text-mute">No Flows match your search.</p>}
-        {listed.map((flow) => <FlowRow key={flow.uid} flow={flow} showCategory={searching} onOpen={() => setUid(flow.uid)} />)}
+        {listed.map((flow) => <FlowRow key={flow.uid} flow={flow} showCategory={searching} notFor={notFor(flow)} onOpen={() => setUid(flow.uid)} />)}
       </div>
     );
   } else {

@@ -2,24 +2,16 @@
 // RMK on a Glove80, with bilateral home-row mods on the base layer, a Typing
 // layer without them and an Autoshift layer. Real jq, real import.
 
-import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
-import "../test/wasm";
 import type { KeyAction } from "../vendor/rynk-wasm/rynk_wasm";
-import { parseDocument } from "../config/document";
-import { offlineGlove80Catalog, openOfflineGlove80 } from "../session/offline/glove80";
-import { openBundle } from "../ui/bundle";
 import type { WorkbenchState } from "../model/workbench-state";
-import { bindChoices, readFlowOutput, type Flow } from "../operations/flows";
+import { flowProgram, readFlowOutput, type Flow } from "../operations/flows";
 import { nodeJq } from "../test/jq";
-import { initialWorkbenchState } from "./initial-state";
-import { ioFeaturesFor, makeIo, type WorkbenchIo } from "./io";
-import { makeWorkbenchReducer } from "./reducer";
+import { withTailorKey } from "../test/tailorkey";
+import { GO60_KEY_GROUPS } from "../model/boards/key-groups";
 import { shippedFlows } from "./flow-catalog";
 import { wantOf } from "./draft/want";
 
-const TAILORKEY = readFileSync("src/test/fixtures/glove80-tailorkey-qwerty.toml", "utf8");
-const env = { jq: nodeJq, board: { id: "glove80", cols: 14 }, has: () => true };
 
 let flow: Flow;
 beforeAll(async () => {
@@ -27,22 +19,6 @@ beforeAll(async () => {
   expect(problems).toEqual([]);
   flow = flows.find(({ uid }) => uid === "alt_layout")!;
 });
-
-/** The TailorKey layout opened as a file (the offline Glove80), in Draft. */
-async function withTailorKey(check: (io: WorkbenchIo, state: () => WorkbenchState) => Promise<void>) {
-  const session = openOfflineGlove80(parseDocument(TAILORKEY, offlineGlove80Catalog()).snapshot);
-  try {
-    const bundle = await openBundle(session);
-    let state: WorkbenchState = { ...initialWorkbenchState(bundle), batchMode: true };
-    const reducer = makeWorkbenchReducer(bundle.caps.num_cols);
-    const io = makeIo(session, () => state, (action) => { state = reducer(state, action); }, {
-      cols: bundle.caps.num_cols, onDisconnect: () => {}, features: ioFeaturesFor(bundle),
-    });
-    await check(io, () => state);
-  } finally {
-    await session.close();
-  }
-}
 
 const mods = (...on: string[]) => Object.fromEntries(
   ["left_ctrl", "left_shift", "left_alt", "left_gui", "right_ctrl", "right_shift", "right_alt", "right_gui"].map((name) => [name, on.includes(name)]),
@@ -55,7 +31,7 @@ const LETTERS = [0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13];
 
 describe("Different typing layout on TailorKey for RMK", () => {
   it("retypes the base, Typing and Autoshift layers; home-row mods keep their finger's modifier and timing", async () => {
-    await withTailorKey(async (io, state) => {
+    await withTailorKey(async (io, state, env) => {
       const before = wantOf(state());
       const run = await io.runFlow(flow, { layout_name: "colemak-dh" }, env);
       expect(run).toMatchObject({ ok: true, message: "Your base layer now types colemak-dh." });
@@ -88,7 +64,7 @@ describe("Different typing layout on TailorKey for RMK", () => {
   });
 
   it("goes back to QWERTY exactly, and a second run finds nothing to do", async () => {
-    await withTailorKey(async (io, state) => {
+    await withTailorKey(async (io, state, env) => {
       const original = state().layers;
       await io.runFlow(flow, { layout_name: "colemak-dh" }, env);
       expect(await io.runFlow(flow, { layout_name: "qwerty" }, env)).toMatchObject({ ok: true });
@@ -102,7 +78,7 @@ describe("Different typing layout on TailorKey for RMK", () => {
   });
 
   it("types a shifted key where a layout has one: Engram's double quote", async () => {
-    await withTailorKey(async (io, state) => {
+    await withTailorKey(async (io, state, env) => {
       expect(await io.runFlow(flow, { layout_name: "engram" }, env)).toMatchObject({ ok: true });
       const quote = { KeyWithModifier: ["Quote", mods("left_shift")] };
       expect(row(state(), 0, 2)[8]).toEqual({ Single: quote });
@@ -110,12 +86,12 @@ describe("Different typing layout on TailorKey for RMK", () => {
     });
   });
 
-  it("refuses a keyboard it does not know, changing nothing", async () => {
-    await withTailorKey(async (io, state) => {
+  it("refuses a keyboard whose letter keys it does not know, changing nothing", async () => {
+    await withTailorKey(async (io, state, env) => {
       const before = state().layers;
-      expect(await io.runFlow(flow, {}, { ...env, board: { id: null, cols: 14 } })).toMatchObject({
+      expect(await io.runFlow(flow, {}, { ...env, board: { id: null, cols: 14, keyCount: 80, groups: null } })).toMatchObject({
         ok: false,
-        message: '"Different typing layout" is for glove80 and go60 only.',
+        message: "Needs a keyboard that GLIDE4RMK knows the letters and home row of.",
       });
       expect(state().layers).toBe(before);
     });
@@ -127,8 +103,9 @@ describe("Different typing layout on a Go60", () => {
     const qwerty = ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "A", "S", "D", "F", "G", "H", "J", "K", "L", "Semicolon"];
     const keys = Array.from({ length: 5 }, () => Array.from({ length: 14 }, (): KeyAction => "Transparent"));
     [1, 2, 3, 4, 5, 8, 9, 10, 11, 12].forEach((col, i) => { keys[1][col] = key(qwerty[i]); keys[2][col] = key(qwerty[i + 10]); });
-    const view = { keyboard: "go60", rows: 5, cols: 14, default_layer: 0, layers: [{ index: 0, name: "Base", keys }] };
-    const { program, lineOffset } = bindChoices(flow.choices, { layout_name: "colemak-dh" }, flow.script);
+    const board = { id: "go60", name: "Go60", keys: 60, groups: GO60_KEY_GROUPS, capabilities: [], extras: [] };
+    const view = { keyboard: "go60", board, rows: 5, cols: 14, default_layer: 0, max_layers: 8, profiles: [], combo_count: 0, layers: [{ index: 0, name: "Base", keys }] };
+    const { program, lineOffset } = flowProgram(flow.choices, { layout_name: "colemak-dh" }, flow.script);
     const ran = await nodeJq.run(view, program, { lineOffset, timeoutMs: 0 });
     expect(ran.ok).toBe(true);
     const output = readFlowOutput(ran.ok ? ran.output : null);

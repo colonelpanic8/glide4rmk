@@ -1,0 +1,145 @@
+uid = "hrm_timing"
+
+runs_on = "glide4rmk"
+
+title = "Home-row mods: Best-practice tuning"
+
+subtitle = "Apply recommended timing presets"
+
+description = '''
+Changes how long you have to hold a home-row key before it becomes a modifier, for every finger at once.
+
+Pick a preset, then nudge it: if you get accidental modifiers, make it **slower**; if holds feel sluggish, make it **faster**.
+
+- **Urob Timeless** and **BraveKarma** are well-known starting points.
+- **Level 0–5** are the Glorious Engrammer levels, from 0 (Sunaku default, the values a fresh home-row setup starts with) and 1 (easy, for beginners) up to 5 (expert, fastest).
+- **Keep current values** only applies the nudge.
+
+The faster / slower amount is added to whatever the profiles hold now, so running it twice nudges twice.
+
+Works on TailorKey-style timing profiles (their name ends in _TK and contains a finger: index, middle, ring, pinky, thumb or space). Your layers and keys are not touched, and neither are the bilateral settings of the profiles. Urob and BraveKarma leave the thumb and space keys as they are.'''
+
+category = "Modifier keys"
+
+script = '''
+# ==============================================================================
+# Home-row timing
+#
+# Sets hold_timeout_ms, quick_tap_timeout_ms and prior_idle_time_ms on the
+# TailorKey timing profiles of the home row (and the thumb and space keys).
+# Level 0 is the Sunaku default as it is in the RMK layouts; levels 1-5 move
+# every value from level 0 by the same steps the Glorious Engrammer levels use:
+#   level 1: +350   level 2: +250   level 3: +150   level 4: +50   level 5: -50
+# (the prior idle never goes below 0). That is the same as taking each ZMK level
+# and moving its prior idle by the per-finger difference between ZMK and RMK
+# level 0 (see rmk_pi_shift). Urob and BraveKarma use that shift too.
+#
+# Not changed: the mode, unilateral tap, opposite-hand hold and the other
+# settings of a profile, layers, keys.
+# ==============================================================================
+
+# Per-finger tables for levels 0-5: hold timeout (tt), quick tap (qt), prior idle (pi).
+# pi is null where the profile has none (thumb and space): it is left as it is.
+{
+  "index":  {tt: [180,530,430,330,230,130], qt: [300,650,550,450,350,250], pi: [30,380,280,180,80,0]},
+  "middle": {tt: [210,560,460,360,260,160], qt: [300,650,550,450,350,250], pi: [80,430,330,230,130,30]},
+  "ring":   {tt: [240,590,490,390,290,190], qt: [300,650,550,450,350,250], pi: [30,380,280,180,80,0]},
+  "pinky":  {tt: [270,620,520,420,320,220], qt: [300,650,550,450,350,250], pi: [80,430,330,230,130,30]},
+  "thumb":  {tt: [200,550,450,350,250,150], qt: [300,650,550,450,350,250], pi: null},
+  "space":  {tt: [200,550,450,350,250,150], qt: [150,500,400,300,200,100], pi: null}
+} as $matrix |
+
+($preset | tostring) as $pr |
+($nudge_ms | floor) as $nudge |
+
+# Which finger a profile belongs to (the first finger word in its name), or null.
+# Only TailorKey profiles count: their name ends in _TK.
+def finger:
+  ascii_downcase as $n
+  | if ($n | test("_tkz?$")) | not then null
+    else
+      ([("index","middle","middy","ring","pinky","pink","thumb","space") as $k
+        | ($n | index($k)) as $i | select($i != null) | {k: $k, i: $i}]
+       | sort_by(.i) | first | .k // null)
+      | if . == "middy" then "middle" elif . == "pink" then "pinky" else . end
+    end;
+
+def thumbish($f): $f == "thumb" or $f == "space";
+def fixed: $pr == "urob" or $pr == "brave";   # these two presets leave thumb and space as they are
+
+# ZMK values to RMK. Level 0 (Sunaku) is the same in both except the prior idle,
+# which RMK has lower by a fixed amount per finger: index 30 vs 100, middle 80 vs
+# 150, ring 30 vs 150, pinky 80 vs 150. Hold timeout and quick tap are the same
+# on both. The Urob and BraveKarma values come from ZMK, so their prior idle is
+# moved by the same amount (never below 0).
+def rmk_pi_shift: {index: -70, middle: -70, ring: -120, pinky: -70};
+def zmk_pi($f; $v): ([($v + rmk_pi_shift[$f]), 0] | max);
+
+# The timing a preset gives a finger, or null to leave the profile as it is.
+def timing_for($f):
+  if $pr == "keep" then null
+  elif fixed and thumbish($f) then null
+  elif $pr == "urob" then {tt: 280, qt: 175, pi: zmk_pi($f; 150)}
+  elif $pr == "brave" then
+    (if $f == "index" then {tt: 200, qt: 150, pi: zmk_pi($f; 0)} else {tt: 250, qt: 150, pi: zmk_pi($f; 100)} end)
+  else
+    ($pr | tonumber) as $l
+    | $matrix[$f] as $m
+    | {tt: $m.tt[$l], qt: $m.qt[$l], pi: (if $m.pi == null then null else $m.pi[$l] end)}
+  end;
+
+[$view.profiles[] | select(.name | finger != null)] as $mine |
+
+if ($mine | length) == 0 then
+  {operations: [], report: {changed: false,
+    message: "No home-row timing profiles were found. This tool looks for profiles named like the TailorKey ones (ending in _TK, with index, middle, ring, pinky, thumb or space in the name), so nothing was changed. If you have not set up home-row mods yet, run Home-row mods first: it adds the HRM_ profiles this tool tunes.",
+    log: ["no TailorKey timing profiles"]}}
+else
+  # Every profile that changes, with its whole new timing.
+  [$mine[] | .name as $n | .timing as $p | (.name | finger) as $f | timing_for($f) as $v
+    | ($p
+       | (if $v != null
+          then . + {hold_timeout_ms: $v.tt, quick_tap_timeout_ms: $v.qt} + (if $v.pi != null then {prior_idle_time_ms: $v.pi} else {} end)
+          else . end)
+       | (if $nudge != 0 and (fixed and thumbish($f) | not)
+          then .hold_timeout_ms = ([((.hold_timeout_ms // 0) + $nudge), 50] | max)
+          else . end)) as $new
+    | select($new != $p)
+    | {name: $n, timing: $new}] as $changes |
+
+  if ($changes | length) == 0 then
+    {operations: [], report: {changed: false,
+      message: (if $pr == "keep" and $nudge == 0 then "Nothing was changed: Keep current values with no faster / slower amount changes nothing. Pick a preset or enter an amount." else "Nothing was changed: your timing already matches." end),
+      log: ["identical"]}}
+  else
+    {operations: [$changes[] | set_timing_profile(.name; .timing)],
+     report: {
+       message: "Timing updated.",
+       lines: ([{ok: true, text: "Updated the timing of \($changes | length) of \($mine | length) home-row timing profiles"}]
+              + (if $nudge != 0 then [{ok: true, text: "Nudged the hold timeout by \($nudge) ms (\(if $nudge > 0 then "slower" else "faster" end))"}] else [] end)
+              + (if fixed then [{ok: true, text: "Thumb and space keys were left as they were"}] else [] end)),
+       log: ["profiles found: \($mine | length), changed: \($changes | length), nudge: \($nudge)"]
+     }}
+  end
+end
+'''
+
+[manifest]
+author = "moosyresearch"
+icon = "⏱️"
+keywords = ["home row", "hrm", "timing", "hold timeout", "urob", "bravekarma", "engrammer", "tailorkey", "tuner"]
+requires = ["behaviors.profiles"]
+
+[[param]]
+id = "preset"
+label = "Preset"
+type = "select"
+options = ["keep", "urob", "brave", "0", "1", "2", "3", "4", "5"]
+labels = ["Keep current values", "Urob Timeless", "BraveKarma", "Level 0 – Sunaku (default)", "Level 1 – Easy (beginner)", "Level 2 – Slower", "Level 3 – Normal", "Level 4 – Faster", "Level 5 – Expert"]
+default = "3"
+
+[[param]]
+id = "nudge_ms"
+label = "Faster / slower (ms, e.g. 20 = slower, -20 = faster)"
+type = "number"
+default = 0

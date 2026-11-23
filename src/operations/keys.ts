@@ -36,11 +36,33 @@ export function withKeys(image: KeyboardImage, cols: number, keys: readonly KeyS
   return { ...image, layers };
 }
 
+/** The keys with each tap-hold profile given by name replaced by its slot,
+ *  or a sentence naming one that does not exist. */
+function withProfileSlots(image: KeyboardImage, keys: readonly KeySet[]): readonly KeySet[] | string {
+  const slotOf = new Map((image.morseProfiles ?? []).flatMap((entry) => (entry ? [[entry.name, entry.index] as const] : [])));
+  const out: KeySet[] = [];
+  for (const key of keys) {
+    const action = key?.action as unknown;
+    const tapHold = typeof action === "object" && action !== null && "TapHold" in action ? (action as { TapHold: unknown }).TapHold : null;
+    if (!Array.isArray(tapHold) || typeof tapHold[2] !== "string") {
+      out.push(key);
+      continue;
+    }
+    const slot = slotOf.get(tapHold[2]);
+    if (slot === undefined) return `there is no timing profile called ${tapHold[2]}`;
+    out.push({ ...key, action: { TapHold: [tapHold[0], tapHold[1], slot] } as KeyAction });
+  }
+  return out;
+}
+
 export const setKeys: Operation<{ keys: readonly KeySet[] }> = {
   name: "set_keys",
   description: "Sets keys to actions, as one change: a paste, a move, a whole layer.",
-  inputs: [{ name: "keys", kind: "value", list: true, description: "Each key: { layer, row, col, action }." }],
-  run(image, { keys }, facts) {
+  inputs: [{ name: "keys", kind: "value", list: true, description: "Each key: { layer, row, col, action }; a tap-hold's profile may be its name." }],
+  run(image, input, facts) {
+    // A Flow may name a tap-hold's timing profile instead of giving its slot.
+    const keys = withProfileSlots(image, input.keys);
+    if (typeof keys === "string") return failed(keys);
     // A caller that is not TypeScript (a Flow, an assistant) may send anything.
     const bad = keys.findIndex((key) => ![key.layer, key.row, key.col].every(Number.isInteger) || !isKeyAction(key.action));
     if (bad >= 0) return failed(`set_keys: keys[${bad}] is not { layer, row, col, action } with an action the keyboard can store`);

@@ -3,8 +3,11 @@ import type { BehaviorOptions, KeyAction, MorseProfile } from "../../vendor/rynk
 import type { KeyboardImage } from "../../sync/image";
 import { noLabels } from "../../model/behavior-labels";
 import type { OperationFacts } from "../types";
+import { GO60_KEY_GROUPS } from "../../model/boards/key-groups";
+import type { Board } from "../describe";
 import {
   bindChoices,
+  flowIsElsewhere,
   checkChoices,
   flowNotFor,
   foldCalls,
@@ -19,6 +22,7 @@ import {
   type FlowChoice,
 } from ".";
 
+const board = (id: string | null): Board => ({ id, cols: 14, keyCount: 60, groups: id ? GO60_KEY_GROUPS : null });
 const mode: FlowChoice = { id: "mode", label: "Mode", type: "select", options: ["a", "b"], default: "a" };
 const on: FlowChoice = { id: "on", label: "Turn it on", type: "boolean", default: true };
 const count: FlowChoice = { id: "count", label: "How many", type: "number", default: 2 };
@@ -62,7 +66,9 @@ describe("a .flows file", () => {
     expect(refused('uid = "x_y"\ntitle = "T"\nscript = "."')).toBe('shared/x.flows cannot be used: it is not a GLIDE4RMK Flow (runs_on = "glide4rmk" is missing).');
     expect(refused(flowText("", 'runs_on = "glide4rmk"\nuid = "X"\ntitle = "T"\nscript = "."'))).toMatch(/its uid has to be/);
     expect(refused(flowText("", 'runs_on = "glide4rmk"\nuid = "ab"\ntitle = "T"\nscript = " "'))).toMatch(/its script is empty/);
-    expect(refused(flowText(), "go60/x.flows")).toMatch(/sits in go60\/ but its keyboards do not list go60/);
+    expect(refused(flowText('[manifest]\nkeyboards = ["glove80"]\n'), "go60/x.flows")).toMatch(/sits in go60\/ but its keyboards do not list go60/);
+    expect(refused(flowText('[manifest]\nneeds_keys = ["home_row", "pinky"]\n'))).toMatch(/its needs_keys have to be key groups: letters, home_row/);
+    expect(refused(flowText('[manifest]\nmin_keys = -1\n'))).toMatch(/its min_keys has to be a whole number/);
     expect(refused(flowText(), "other/x.flows")).toMatch(/has to sit in shared\//);
     expect(refused(flowText('[[param]]\nid = "m"\ntype = "select"\noptions = ["a"]\ndefault = "z"\n'))).toMatch(/the default of "m" is not valid/);
     expect(refused(flowText('[[param]]\nid = "my-choice"\ntype = "text"\ndefault = ""\n'))).toMatch(/needs an id that is a jq name/);
@@ -78,9 +84,24 @@ describe("a .flows file", () => {
   it("is offered when the keyboard is one it names and has what it requires", () => {
     const read = readFlowFile(flowText('[manifest]\nkeyboards = ["glove80", "go60"]\nrequires = ["behaviors.morse"]\n'), "shared/x.flows");
     if (!read.ok) throw new Error(read.message);
-    expect(flowNotFor(read.flow, "glove80", () => true)).toBeNull();
-    expect(flowNotFor(read.flow, null, () => true)).toBe('"My flow" is for glove80 and go60 only.');
-    expect(flowNotFor(read.flow, "go60", () => false)).toBe('"My flow" needs what this keyboard does not have: behaviors.morse.');
+    expect(flowNotFor(read.flow, board("glove80"), () => true)).toBeNull();
+    expect(flowIsElsewhere(read.flow, null)).toBe(true);
+    expect(flowNotFor(read.flow, board(null), () => true)).toBe("For the glove80 and go60 only.");
+    expect(flowNotFor(read.flow, board("go60"), () => false)).toBe("Needs what this keyboard does not have: behaviors.morse.");
+  });
+
+  it("in a board's own folder is for that board only", () => {
+    const read = readFlowFile(flowText(), "go60/x.flows");
+    expect(read).toMatchObject({ ok: true, flow: { keyboards: ["go60"] } });
+  });
+
+  it("is offered on any board with the key groups and the keys it needs, and says what is missing elsewhere", () => {
+    const read = readFlowFile(flowText('[manifest]\nneeds_keys = ["home_row"]\nmin_keys = 30\n'), "shared/x.flows");
+    if (!read.ok) throw new Error(read.message);
+    expect(read.flow).toMatchObject({ keyboards: null, needsKeys: ["home_row"], minKeys: 30 });
+    expect(flowNotFor(read.flow, board("go60"), () => true)).toBeNull();
+    expect(flowNotFor(read.flow, { id: null, cols: 12, keyCount: 36, groups: null }, () => true)).toBe("Needs a keyboard that GLIDE4RMK knows the home row of.");
+    expect(flowNotFor(read.flow, { ...board("go60"), keyCount: 24 }, () => true)).toBe("Needs a keyboard with at least 30 keys.");
   });
 });
 

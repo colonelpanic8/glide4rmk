@@ -4,13 +4,17 @@
 
 import { parse } from "smol-toml";
 import { checkChoices, type ChoiceType, type ChoiceValue, type FlowChoice } from "./choices";
+import { BOARD_PROFILES } from "../../model/boards/profiles";
+import { KEY_GROUP_NAMES, type KeyGroupName } from "../../model/boards/key-groups";
+import type { Board } from "../describe";
 
 export const RUNS_ON = "glide4rmk";
 const UID = /^[a-z][a-z0-9_]{1,63}$/;
 const JQ_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const CHOICE_TYPES: readonly ChoiceType[] = ["select", "boolean", "number", "text"];
-/** The folders a Flow may sit in; a board's own folder names that board. */
-export const FLOW_FOLDERS = ["shared", "glove80", "go60"] as const;
+/** The folders a Flow may sit in: `shared/` for every keyboard, and one per
+ *  board the registry knows, named by its id, for that board only. */
+export const FLOW_FOLDERS: readonly string[] = ["shared", ...BOARD_PROFILES.map(({ id }) => id)];
 
 export interface Flow {
   uid: string;
@@ -29,6 +33,10 @@ export interface Flow {
   keyboards: string[] | null;
   /** Capability ids the keyboard needs (`behaviors.morse`, …). */
   requires: string[];
+  /** Key groups the board needs (`home_row`, `letters`, …; ADR 0027). */
+  needsKeys: KeyGroupName[];
+  /** The fewest keys the board may have; 0 for any. */
+  minKeys: number;
   /** Where it came from, for messages and the run log: `shared/autoshift.flows`. */
   file: string;
 }
@@ -66,10 +74,15 @@ function readFlow(raw: Table, file: string): Flow | string {
   const keyboards = manifest.keyboards === undefined ? null : strings(manifest.keyboards);
   if (manifest.keyboards !== undefined && !keyboards?.length) return "its keyboards have to be a list of board ids";
   const folder = file.split("/")[0];
-  if (!(FLOW_FOLDERS as readonly string[]).includes(folder)) return `it has to sit in ${FLOW_FOLDERS.join("/, ")}/`;
-  if (folder !== "shared" && !keyboards?.includes(folder)) return `it sits in ${folder}/ but its keyboards do not list ${folder}`;
+  if (!FLOW_FOLDERS.includes(folder)) return `it has to sit in ${FLOW_FOLDERS.join("/, ")}/`;
+  if (folder !== "shared" && keyboards && !keyboards.includes(folder)) return `it sits in ${folder}/ but its keyboards do not list ${folder}`;
   const requires = manifest.requires === undefined ? [] : strings(manifest.requires);
   if (!requires) return "its requires have to be a list of capability ids";
+  const needsKeys = manifest.needs_keys === undefined ? [] : strings(manifest.needs_keys);
+  const unknown = needsKeys?.find((name) => !(KEY_GROUP_NAMES as readonly string[]).includes(name));
+  if (!needsKeys || unknown !== undefined) return `its needs_keys have to be key groups: ${KEY_GROUP_NAMES.join(", ")}`;
+  const minKeys = manifest.min_keys ?? 0;
+  if (!Number.isInteger(minKeys) || (minKeys as number) < 0) return "its min_keys has to be a whole number";
   const params = raw.param === undefined ? [] : raw.param;
   if (!Array.isArray(params)) return "its choices have to be [[param]] tables";
   const choices: FlowChoice[] = [];
@@ -91,8 +104,11 @@ function readFlow(raw: Table, file: string): Flow | string {
     icon: text(manifest.icon),
     keywords: strings(manifest.keywords) ?? [],
     advanced: manifest.advanced === true,
-    keyboards,
+    // A board's own folder makes it that board's Flow.
+    keyboards: keyboards ?? (folder === "shared" ? null : [folder]),
     requires,
+    needsKeys: needsKeys as KeyGroupName[],
+    minKeys: minKeys as number,
     file,
   };
 }
@@ -122,11 +138,19 @@ export function readFlowFiles(files: Readonly<Record<string, string>>): { flows:
   return { flows, problems };
 }
 
-/** Why a Flow is not for this keyboard, or null when it is: its keyboards
- *  (if it names any) include this one, and the keyboard has every capability
- *  it requires. */
-export function flowNotFor(flow: Flow, keyboard: string | null, has: (capability: string) => boolean): string | null {
-  if (flow.keyboards && !(keyboard && flow.keyboards.includes(keyboard))) return `"${flow.title}" is for ${flow.keyboards.join(" and ")} only.`;
+/** Whether a Flow is for another keyboard only: it is not listed at all. */
+export function flowIsElsewhere(flow: Flow, keyboard: string | null): boolean {
+  return flow.keyboards !== null && !(keyboard && flow.keyboards.includes(keyboard));
+}
+
+/** Why a Flow cannot run on this keyboard, or null when it can: its
+ *  keyboards (if it names any) include this one, the board has the key
+ *  groups and the keys it needs, and every capability it requires. */
+export function flowNotFor(flow: Flow, board: Board, has: (capability: string) => boolean): string | null {
+  if (flowIsElsewhere(flow, board.id)) return `For the ${flow.keyboards!.join(" and ")} only.`;
+  const groups = flow.needsKeys.filter((name) => !board.groups?.[name]?.length);
+  if (groups.length) return `Needs a keyboard that GLIDE4RMK knows the ${groups.map((name) => name.replace("_", " ")).join(" and ")} of.`;
+  if (board.keyCount !== undefined && board.keyCount < flow.minKeys) return `Needs a keyboard with at least ${flow.minKeys} keys.`;
   const missing = flow.requires.filter((capability) => !has(capability));
-  return missing.length ? `"${flow.title}" needs what this keyboard does not have: ${missing.join(", ")}.` : null;
+  return missing.length ? `Needs what this keyboard does not have: ${missing.join(", ")}.` : null;
 }

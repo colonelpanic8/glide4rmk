@@ -1,0 +1,121 @@
+uid = "autoshift"
+
+runs_on = "glide4rmk"
+
+title = "Autoshift"
+
+subtitle = "Hold a letter for a capital"
+
+description = '''
+Hold any letter a moment longer to get the capital: tap for **a**, hold for **A**. [Watch a quick demo](https://youtu.be/S9MSCUjT1MA).
+
+- Adds a new **Autoshift** layer right after your base layer (after the Typing layer, if you have one there), built from the letter, number and punctuation keys of your base layer.
+- Home-row mods become Autoshift keys on this layer too: the letter shifts when held, and the modifier is not used on it.
+- Thumb keys, layer keys, function keys and everything else stay transparent, so the layer below shows through.
+- Run it again and it updates the Autoshift layer you already have. Keys you put on it yourself (anything that is not a letter, number or punctuation key on your base layer) are kept.
+- Combos are not copied to the Autoshift layer, so a combo that is set for one layer only may not work while Autoshift is on top.
+
+⚠️ The new layer does nothing until you switch to it: assign a key that switches to it (layer-tap, toggle or momentary), or make Autoshift your base layer.'''
+
+category = "Modifier keys"
+
+script = '''
+# ==============================================================================
+# Autoshift
+#
+# Adds a layer named Autoshift right after the base layer (after the Typing
+# layer, if that is the next layer), or updates the one you already have. On it,
+# every letter, number and punctuation key of the base layer becomes a tap-hold
+# on the autoshift_v1_TK profile: tap types the key, hold types it shifted. A
+# home-row mod counts as the key it taps. Every other key is transparent, so the
+# layer below shows through.
+#
+# On a re-run, a key you put on the Autoshift layer yourself (where the base
+# layer has no letter, number or punctuation key) is kept; only Autoshift keys
+# whose base key has changed go back to transparent.
+#
+# Not changed: the base layer, other layers, combos, other behaviors.
+#
+# The profile autoshift_v1_TK, as the TailorKey layouts define it:
+#   hold_timeout_ms 180, quick tap 200, no flow tap, tap unless interrupted.
+# ==============================================================================
+
+"Autoshift" as $layer_name |
+"autoshift_v1_TK" as $profile |
+{hold_timeout_ms: 180, quick_tap_timeout_ms: 200, enable_flow_tap: false, mode: "TapUnlessInterrupted"} as $timing |
+
+# The keys that shift: letters, digits and punctuation with a shifted twin.
+def shiftable: is_letter or is_digit or is_punctuation;
+
+# The key a plain key or a home-row mod types on tap, or null for any other key.
+def autoshift_source:
+  if type == "object" and (.Single != null or .Tap != null or holds_modifier)
+  then (tapped_hid | select(. != null and shiftable)) // null
+  else null end;
+
+# The profile is named in a key by its slot once it exists.
+(profile_named($profile).index // $profile) as $profile_ref |
+
+# An Autoshift key this automation wrote (as opposed to a key you put there).
+def is_autoshift: is_tap_hold and .TapHold[2] == $profile_ref;
+
+# The Autoshift version of a key: tap types it, hold types it shifted.
+def autoshift_key($h): tap_hold(key($h); shifted($h); $profile_ref);
+
+(base_layer // error("Your base layer is not in use, so nothing was changed.")) as $source |
+(if $source.name == $layer_name then error("Your base layer is the Autoshift layer itself, so there is nothing to build it from. Make your typing layer the base layer, then run this again.") else . end) |
+layer_named($layer_name) as $existing |
+(layer($source.index + 1) | if . != null and .name == "Typing" then . else null end) as $typing |
+(if $typing != null then $typing.index else $source.index end) as $after |
+(if $existing == null and ($view.layers | length) >= $view.max_layers
+ then error("Every one of your \($view.max_layers) layers is in use, so there is no room for an Autoshift layer. Delete a layer you do not use, then run this again.")
+ else . end) |
+(if $existing == null then $after + 1 else $existing.index end) as $as_idx |
+
+# Every key position of the base layer with what the Autoshift layer gets there.
+[$source.keys | to_entries[] | .key as $r | (.value // []) | to_entries[] | .key as $c |
+  select(.value != null) |
+  (.value | autoshift_source) as $h |
+  ($existing.keys[$r][$c] // null) as $cur |
+  {row: $r, col: $c, plain: ($h != null),
+   action: (if $h != null then autoshift_key($h)
+            elif $cur == null or ($cur | is_autoshift) then "Transparent"
+            else $cur end)}] as $cells |
+
+([$cells[] | select(.plain)] | length) as $letters |
+(if $letters == 0
+ then error("Your base layer has no letter, number or punctuation keys, so Autoshift has nothing to work on.")
+ else . end) |
+
+# What differs from the Autoshift layer you already have (everything, if none).
+[$cells[] | . as $k | select($existing == null or ($existing.keys[$k.row][$k.col]) != $k.action)] as $changes |
+(has_profile($profile) | not) as $needs_profile |
+
+if $existing != null and ($changes | length) == 0 and ($needs_profile | not) then
+  {operations: [], report: {changed: false,
+    message: "Nothing was changed: the Autoshift layer already matches your base layer.",
+    log: ["identical to the existing layer"]}}
+else
+  {operations:
+     ((if $existing == null then [add_layer($layer_name; $after)] else [] end)
+      + (if $needs_profile then [set_timing_profile($profile; $timing)] else [] end)
+      + (if ($changes | length) > 0 then [set_keys([$changes[] | {layer: $as_idx, row, col, action}])] else [] end)),
+   report: {
+     message: (if $existing == null then "Added the Autoshift layer after your base layer." else "Rebuilt your Autoshift layer from your base layer." end),
+     lines: ([{ok: true, text: (if $existing == null
+                 then "Added the Autoshift layer (layer \($as_idx + 1), right after your \(if $typing != null then "Typing" else "base" end) layer): \($letters) keys shift when held"
+                 else "Rebuilt your Autoshift layer (layer \($as_idx + 1)) from your base layer: \($letters) keys shift when held" end)}]
+             + (if $needs_profile then [{ok: true, text: "Added the \($profile) timing profile that makes it work"}] else [] end)
+             + (if $existing == null and $view.combo_count > 0
+                then [{ok: false, text: "Your combos were not copied to the Autoshift layer, so a combo that is set for one layer only may not work while Autoshift is on top."}] else [] end)
+             + [{ok: false, text: "The layer does nothing until you switch to it: assign a key that switches to it (layer-tap, toggle or momentary), or make Autoshift your base layer."}]),
+     log: ["\($view.board.name), base layer \($source.index), Autoshift layer \($as_idx)", "keys written: \($changes | length)"]
+   }}
+end
+'''
+
+[manifest]
+author = "moosyresearch"
+icon = "⇧"
+keywords = ["capital", "uppercase", "shift", "caps"]
+requires = ["behaviors.profiles"]

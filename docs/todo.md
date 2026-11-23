@@ -11,7 +11,7 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 3. ~~**The draft holds the whole keyboard** (the rest of ADR 0013): macros, layer names and moves, settings; one history in Draft and Live.~~ ADR 0018.
 4. **Operations.** ~~Image in, image out, judged by Guard, applied as one undo step; transforms onto them.~~ `85884ce`, ADR 0019; imports as a commit, ADR 0023. Left: the rule panels and the lighting presets (items 11 and 12).
 5. **Capabilities and `offer()`** for everything a screen offers; any time.
-6. **The doors:** `describe(image)`, then Flows and WebMCP. Flows: ADR 0025, in the top bar. Left: WebMCP behind a flag; `describe` grows with its readers; one-time setups (the RGB status setups, lighting key presets, stock Magic layer) as Flows, which also settles items 11 and 12.
+6. **The doors:** `describe(image)`, then Flows and WebMCP. Flows: ADR 0025, in the top bar; they know the board (ADR 0027): key groups, a jq library, `needs_keys`. Left: WebMCP behind a flag; `describe` grows with its readers; more GLIDE Flows (symbol layer, mouse, gaming); one-time setups (the RGB status setups, lighting key presets, stock Magic layer) as Flows, which also settles items 11 and 12; extras the firmware cannot report (a touchpad) declared somewhere a layout keeps them.
 
 ## Cheap 
 
@@ -47,6 +47,7 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 ## Done recently
 
 - The key editor names the behavior a key is bound to (kind, name, timing, forks), edits its timing from a gear on the slot (a shared timing is copied for the one key, named after the original and the key: `set_key_timing`), and shows a fork-made double tap (TailorKey's shiftdance) as On Double Tap (ADR 0026). Modifiers read as the computer chosen in Settings writes them in every label, not only on key faces (`src/architecture/modifier-text.test.ts`).
+- Flows know the board (ADR 0027): the Glove80 and Go60 carry their key groups (letter block, home row with fingers, thumbs, number and function rows); `describe()` gives them with the profiles and the layer capacity; a jq library goes in front of every script; `add_layer` and `set_timing_profile`; a Flow names what it needs (`needs_keys`, `min_keys`) and one this keyboard cannot run is shown greyed with why. Home-row mods, their removal, their timing presets and Autoshift ship in `flows/shared/`; the typing-layout Flow lost its board table.
 
 - The macro editor as GLIDE's Macro Builder: steps as compact rows (drag or Alt + arrows to move, Undo, Clear), + Add for a step, text or a pause, each step sending a key, a layer or another macro (never one that runs it again) from Pick Key's small picker, which now lists layers and your behaviors when a caller asks (`PickOffer`); opening a macro on a live or simulated board no longer crashes (both wasm modules load in `openBundle`).
 

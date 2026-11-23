@@ -101,11 +101,11 @@ describe("running a Flow (ADR 0025)", () => {
   it("stops before running for another keyboard, a missing capability or a wrong choice", async () => {
     await withBoard(true, async (_session, io, state) => {
       const forGo60 = flow(".", '[manifest]\nkeyboards = ["go60"]');
-      expect(await io.runFlow(forGo60, {}, env())).toMatchObject({ ok: false, message: '"Test flow" is for go60 only.' });
+      expect(await io.runFlow(forGo60, {}, env())).toMatchObject({ ok: false, message: "For the go60 only." });
       // A Flow that names no keyboard and requires nothing runs anywhere.
       expect(await io.runFlow(setFirstKey, {}, env({ has: () => false }))).toMatchObject({ ok: true });
       const needsMorse = flow(".", '[manifest]\nrequires = ["behaviors.morse"]');
-      expect(await io.runFlow(needsMorse, {}, env({ has: () => false }))).toMatchObject({ ok: false, message: '"Test flow" needs what this keyboard does not have: behaviors.morse.' });
+      expect(await io.runFlow(needsMorse, {}, env({ has: () => false }))).toMatchObject({ ok: false, message: "Needs what this keyboard does not have: behaviors.morse." });
       expect(await io.runFlow(setFirstKey, { letter: "Q" }, env())).toMatchObject({ ok: false, message: 'The choice "Letter" has to be one of: X, Z. Nothing was changed.' });
       expect(state().history.past).toHaveLength(1);
     });

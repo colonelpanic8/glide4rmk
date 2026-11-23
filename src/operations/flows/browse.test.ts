@@ -4,7 +4,7 @@ import { categoryTiles, flowsIn, searchFlows, splitDescription } from "./browse"
 
 const flow = (title: string, category: string, extra: Partial<Flow> = {}): Flow => ({
   uid: title.toLowerCase().replace(/\W/g, "_"), title, subtitle: "", description: "", category, script: ".", choices: [],
-  author: "", icon: title[0], keywords: [], advanced: false, keyboards: null, requires: [], file: `shared/${title}.flows`, ...extra,
+  author: "", icon: title[0], keywords: [], advanced: false, keyboards: null, requires: [], needsKeys: [], minKeys: 0, file: `shared/${title}.flows`, ...extra,
 });
 
 const flows = [
