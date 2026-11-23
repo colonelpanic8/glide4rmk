@@ -9,7 +9,6 @@
   "ui-never-imports-wire-types src/ui/lighting/LightingKeyPresetPanel.tsx -> src/vendor/rynk-wasm/rynk_wasm",
   "ui-never-imports-wire-types src/ui/lighting/decor.ts -> src/vendor/rynk-wasm/rynk_wasm",
   "ui-never-imports-wire-types src/ui/live/characters.ts -> src/vendor/rynk-wasm/rynk_wasm",
-  "ui-never-imports-wire-types src/ui/live/compositor.ts -> src/vendor/rynk-wasm/rynk_wasm",
   "ui-never-imports-wire-types src/ui/locale.ts -> src/vendor/rynk-wasm/rynk_wasm",
   "ui-never-imports-wire-types src/ui/morse-profile.ts -> src/vendor/rynk-wasm/rynk_wasm",
   "ui-never-imports-wire-types src/ui/profiles.ts -> src/vendor/rynk-wasm/rynk_wasm"

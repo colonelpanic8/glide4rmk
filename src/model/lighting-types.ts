@@ -13,6 +13,10 @@ export type {
   LightingConnectionCondition,
   LightingIndicatorCondition,
   LightingOutputMode,
+  /** The output mode as the keyboard reports it: the mode, wake layers, indicator. */
+  LightingOutputModeState,
+  /** One LED's effect on one layer, in a scene table. */
+  LightingSceneCell,
   LightingSplitForce,
   LightingSplitLink,
   /** What one LED does: steady, blinking or breathing in a colour. */
