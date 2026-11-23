@@ -1,6 +1,8 @@
 // The key editor, below the keyboard, as in GLIDE (in EditorPanel's frame).
-// Left: which key it is and its actions as slots (On Tap; On Hold, a tap-hold;
-// On Double Tap, a morse entry of its own, written by model/key-slots' plan).
+// Left: which key it is, the behavior it is bound to (KeyBehavior), and its
+// actions as slots (On Tap; On Hold, a tap-hold; On Double Tap, a morse entry
+// of its own, written by model/key-slots' plan, or the fork that makes it).
+// The gear on a slot opens the key's timing (TimingPanel).
 // The tabs fill the active slot: Pick Key, Switch Layer, Other Behaviors (your
 // macros and tap patterns, one-shot modifiers), and Key Lighting, with the
 // lighting keys that show their own state at its foot. With several keys
@@ -28,7 +30,6 @@ import {
   putSlot,
   swapSlots,
   slotsOf,
-  withProfile,
   type Slot,
   type SlotValues,
 } from "../../model/key-slots";
@@ -42,6 +43,10 @@ import { LayerLighting } from "./LayerLighting";
 import { PickKey } from "./PickKey";
 import { isTapPattern, type Pick } from "./pickKey";
 import { SlotList } from "./SlotList";
+import { KeyBehavior } from "./KeyBehavior";
+import { TimingPanel } from "./TimingPanel";
+import { forkDoubleTap, keyTiming, withForkDoubleTap } from "../../model/key-behavior";
+import { labelAt } from "../../model/behavior-labels";
 import { SwitchLayer, type LayerKind } from "./SwitchLayer";
 import { useKeyText } from "../useKeyText";
 
@@ -52,9 +57,13 @@ export function KeyEditor({ size = 310 }: { size?: number }) {
   const capabilities = useCapabilities();
   const [tab, setTab] = useState<EditorTab>("pick");
   const [slot, setSlot] = useState<Slot>("tap");
+  const [timingOpen, setTimingOpen] = useState(false);
   const selection = state.selection?.type === "key" ? state.selection : null;
   const selectionId = selection ? `${state.uiLayer}:${selection.row}:${selection.col}` : null;
-  useEffect(() => setSlot("tap"), [selectionId]);
+  useEffect(() => {
+    setSlot("tap");
+    setTimingOpen(false);
+  }, [selectionId]);
   const uses = useMemo(() => morseUses(state.layers), [state.layers]);
 
   const tabs = useEditorTabs(true);
@@ -93,7 +102,17 @@ export function KeyEditor({ size = 310 }: { size?: number }) {
       if (!result.ok) return;
     }
   };
-  const put = (target: Slot, value: Action | null) => apply(putSlot(slots, target, value));
+  // A double tap a fork makes is changed in the fork; removing it removes the fork.
+  const viaFork = slots.kind === "slots" ? forkDoubleTap(action, slots.tap, state.forks) : null;
+  const forkWrite = async (value: Action | null) => {
+    if (!viaFork) return;
+    if (value === null) await io.apply("delete_behavior", { kind: "forks", slot: viaFork.fork });
+    else await io.setSlot("forks", viaFork.fork, withForkDoubleTap(state.forks[viaFork.fork], value));
+  };
+  const put = (target: Slot, value: Action | null) =>
+    target === "doubleTap" && viaFork && slots.kind === "slots" && slots.doubleTap === null
+      ? forkWrite(value)
+      : apply(putSlot(slots, target, value));
   // A tap pattern is the whole key; anything else fills the slot being picked.
   const fill = (value: Pick) =>
     value === "Transparent" ? apply("Transparent") : isTapPattern(value) ? commit(value) : put(slot, value);
@@ -107,6 +126,10 @@ export function KeyEditor({ size = 310 }: { size?: number }) {
     void fill({ [kind]: target } as unknown as Action);
   };
   const glyph = keyFace(action, state.morse, faceContext);
+  const shown = slots.kind === "slots" && viaFork && slots.doubleTap === null ? { ...slots, doubleTap: viaFork.action } : slots;
+  const timed = keyTiming(action, state) !== null;
+  const gearSlot: Slot | null =
+    !timed || shown.kind !== "slots" ? null : shown.hold !== null ? "hold" : shown.doubleTap !== null && !viaFork ? "doubleTap" : "tap";
   const others = selectedKeys(selection).length - 1;
 
   const side = (
@@ -119,12 +142,15 @@ export function KeyEditor({ size = 310 }: { size?: number }) {
         doneLabel="Done with this key"
       />
 
-      {slots.kind === "slots" ? (
+      <KeyBehavior action={action} doubleTapFork={viaFork?.fork ?? null} />
+
+      {shown.kind === "slots" ? (
         <SlotList
-          slots={slots}
+          slots={shown}
           active={slot}
           offerDoubleTap={capabilities.has("keys.doubleTap")}
-          profiles={state.morseProfiles}
+          doubleTapVia={viaFork ? labelAt(state.labels, "forks", viaFork.fork)?.name || `fork ${viaFork.fork}` : null}
+          gear={gearSlot ? { slot: gearSlot, open: timingOpen, onToggle: () => setTimingOpen((open) => !open) } : null}
           onSelect={setSlot}
           onSwap={(from, to) => {
             const next = swapSlots(slots, from, to);
@@ -136,7 +162,6 @@ export function KeyEditor({ size = 310 }: { size?: number }) {
             if (target !== "tap") setSlot("tap");
             void put(target, null);
           }}
-          onProfile={(profile) => commit(withProfile(action, profile))}
         />
       ) : (
         <p className="text-body leading-relaxed text-mute">
@@ -146,6 +171,18 @@ export function KeyEditor({ size = 310 }: { size?: number }) {
               ? `${keyText.describe(action)}. Edit it under Behaviors → Morse, or pick an action to replace it.`
               : `${keyText.describe(action)}. Edit it under Every action, or pick an action to replace it.`}
         </p>
+      )}
+
+      {timingOpen && gearSlot && (
+        <TimingPanel
+          key={JSON.stringify(action)}
+          layer={layer}
+          row={row}
+          col={col}
+          action={action}
+          keyName={keyAddressLabel(addressable)}
+          onClose={() => setTimingOpen(false)}
+        />
       )}
 
       {pending?.status === "pending" && <p className="text-small text-accent">Writing to the keyboard…</p>}

@@ -1,16 +1,15 @@
 // A key's slots in the key editor, as in GLIDE: On Tap always, On Hold and On
 // Double Tap when set, else a chip that adds them. The slot being filled is
 // marked; the tabs beside the list fill it. A slot's handle drags it onto
-// another slot to swap their actions (model/key-slots.ts swapSlots).
+// another slot to swap their actions (model/key-slots.ts swapSlots). A double
+// tap a fork makes (model/key-behavior.ts) shows as On Double Tap, named, and
+// stays put. The gear on a slot opens the key's timing (TimingPanel).
 
 import type { Action } from "../../model/action-types";
 import type { Slot, SlotsOf } from "../../model/key-slots";
-import { DEFAULT_TAP_HOLD_PROFILE } from "../../model/morse";
-import type { ConnectedBundle } from "../../model/workbench-state";
 
 import { cx } from "../kit";
-import { GripIcon, TrashIcon } from "../icons";
-import { morseProfileSummary } from "../morse-profile";
+import { GearIcon, GripIcon, TrashIcon } from "../icons";
 import { useKeyText } from "../useKeyText";
 import { useRowDrag } from "../sidepanel/useRowDrag";
 
@@ -37,12 +36,17 @@ function SlotRow({
   value,
   active,
   drag,
+  via,
+  gear,
   onSelect,
   onClear,
 }: {
   slot: Slot;
   value: Action;
   active: boolean;
+  /** The behavior that makes this slot, when it is not the key's own (a fork). */
+  via?: string;
+  gear?: SlotGear;
   /** Its handle, and whether it is being dragged or is where a dragged slot would land. */
   drag: { handle: ReturnType<ReturnType<typeof useRowDrag>["handle"]>; lifted: boolean; over: boolean } | null;
   onSelect: () => void;
@@ -77,7 +81,10 @@ function SlotRow({
         aria-pressed={active}
         className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-left"
       >
-        <span className="shrink-0 pl-1.5 text-body font-semibold text-ink">{SLOT_NAME[slot]}:</span>
+        <span className="flex shrink-0 flex-col pl-1.5 leading-tight">
+          <span className="text-body font-semibold text-ink">{SLOT_NAME[slot]}:</span>
+          {via && <span title={`Made by the fork ${via}`} className="max-w-28 truncate text-caption text-mute">via {via}</span>}
+        </span>
         <span
           className={cx(
             "ml-auto truncate pr-2 font-semibold",
@@ -87,6 +94,21 @@ function SlotRow({
           {empty ? "Pick an action →" : keyText.label(value) || keyText.describeAction(value)}
         </span>
       </button>
+      {gear && (
+        <button
+          type="button"
+          onClick={gear.onToggle}
+          aria-pressed={gear.open}
+          aria-label="Timing"
+          title="Timing"
+          className={cx(
+            "mr-1 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded border",
+            gear.open ? "border-accent bg-accent-fill text-on-accent" : "border-line-strong text-mute hover:text-ink",
+          )}
+        >
+          <GearIcon size={13} />
+        </button>
+      )}
       <button
         type="button"
         onClick={onClear}
@@ -100,40 +122,52 @@ function SlotRow({
   );
 }
 
+/** The gear on the slot the key's timing belongs to. */
+export interface SlotGear {
+  slot: Slot;
+  open: boolean;
+  onToggle: () => void;
+}
+
 export function SlotList({
   slots,
   active,
   offerDoubleTap,
-  profiles,
+  doubleTapVia,
+  gear,
   onSelect,
   onClear,
   onSwap,
-  onProfile,
 }: {
   slots: SlotsOf;
   active: Slot;
   /** The keyboard can do a double tap (capability `keys.doubleTap`). */
   offerDoubleTap: boolean;
-  profiles: ConnectedBundle["morseProfiles"];
+  /** The fork that makes the double tap, by name, when one does. */
+  doubleTapVia: string | null;
+  gear: SlotGear | null;
   onSelect: (slot: Slot) => void;
   onClear: (slot: Slot) => void;
   /** Swap two slots' actions (a slot dragged by its handle onto another). */
   onSwap: (from: Slot, to: Slot) => void;
-  onProfile: (profile: number) => void;
 }) {
   const rows = useRowDrag((from, to) => onSwap(SLOTS[from], SLOTS[to]));
-  const extra: Array<Exclude<Slot, "tap">> = offerDoubleTap ? ["hold", "doubleTap"] : ["hold"];
+  const extra: Array<Exclude<Slot, "tap">> = offerDoubleTap || doubleTapVia !== null ? ["hold", "doubleTap"] : ["hold"];
   const set = extra.filter((slot) => slots[slot] !== null);
   const unset = extra.filter((slot) => slots[slot] === null);
-  const shown = 1 + set.length;
+  // A fork's double tap is not the key's own: it does not swap with the others.
+  const movable = (slot: Slot) => !(slot === "doubleTap" && doubleTapVia !== null);
+  const shown = 1 + set.filter(movable).length;
   const row = (slot: Slot, value: Action) => (
     <SlotRow
       key={slot}
       slot={slot}
       value={value}
       active={active === slot}
+      via={slot === "doubleTap" ? (doubleTapVia ?? undefined) : undefined}
+      gear={gear?.slot === slot ? gear : undefined}
       drag={
-        shown > 1
+        shown > 1 && movable(slot)
           ? {
               handle: rows.handle(SLOTS.indexOf(slot)),
               lifted: rows.drag?.from === SLOTS.indexOf(slot),
@@ -150,24 +184,6 @@ export function SlotList({
     <>
       {row("tap", slots.tap)}
       {set.map((slot) => row(slot, slots[slot]!))}
-      {/* A morse-backed key keeps its timing in its morse entry. */}
-      {slots.hold !== null && slots.morse === null && (
-        <label className="flex flex-col gap-1 text-small text-faint">
-          Hold timing
-          <select
-            value={slots.profile}
-            onChange={(event) => onProfile(Number(event.target.value))}
-            className="rounded-lg border border-line bg-raised px-2 py-1.5 text-body text-ink"
-          >
-            <option value={DEFAULT_TAP_HOLD_PROFILE}>The keyboard's default</option>
-            {profiles.map((entry) => (
-              <option key={entry.index} value={entry.index}>
-                {entry.name} · {morseProfileSummary(entry.profile)}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
       {unset.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {unset.map((slot) => (

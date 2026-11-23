@@ -18,6 +18,7 @@ import { useEditorTabs, type EditorTab } from "./editorTabs";
 import { PickKey } from "./PickKey";
 import { isTapPattern, type Pick } from "./pickKey";
 import { SlotList } from "./SlotList";
+import { ProfileSelect } from "./ProfileSelect";
 import { SwitchLayer, type LayerKind } from "./SwitchLayer";
 import type { ComboFocus } from "./useComboFocus";
 import { useKeyText } from "../useKeyText";
@@ -92,7 +93,8 @@ export function ComboEditor({ focus, size }: { focus: ComboFocus; size: number }
           slots={slots}
           active={slot}
           offerDoubleTap={false}
-          profiles={state.morseProfiles}
+          doubleTapVia={null}
+          gear={null}
           onSelect={setSlot}
           onSwap={(from, to) => {
             const next = swapSlots(slots, from, to);
@@ -104,12 +106,14 @@ export function ComboEditor({ focus, size }: { focus: ComboFocus; size: number }
             if (target !== "tap") setSlot("tap");
             put(target, null);
           }}
-          onProfile={(profile) => void focus.setOutput(withProfile(output, profile))}
         />
       ) : (
         <p className="text-body leading-relaxed text-mute">
           {keyText.describe(output)}. Edit it under Every action, or pick an action to replace it.
         </p>
+      )}
+      {slots.kind === "slots" && slots.hold !== null && (
+        <ProfileSelect value={slots.profile} onChange={(profile) => void focus.setOutput(withProfile(output, profile))} />
       )}
       <LayerChoice focus={focus} />
     </>
