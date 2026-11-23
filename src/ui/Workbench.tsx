@@ -17,6 +17,7 @@ import { TopBar } from "./TopBar";
 import { KeymapCenter } from "./keymap/KeymapCenter";
 import { KeymapInspector } from "./keymap/SideInspector";
 import { DraftKeeper } from "./draft/DraftKeeper";
+import { ModulesKeeper } from "./properties/ModulesKeeper";
 import { LabelKeeper } from "./behaviors/LabelKeeper";
 import { BehaviorEditorHost } from "./behaviors/editor/BehaviorEditorHost";
 import { guardIo, guardJudge } from "./guard/guardIo";
@@ -300,6 +301,7 @@ export function Workbench({
       <DocumentTransferProvider>
       <DraftKeeper />
       <LabelKeeper />
+      <ModulesKeeper />
       <BehaviorEditorHost />
       <div className="relative flex h-full flex-col" aria-busy={state.layerBusy}>
         {state.layerBusy && (

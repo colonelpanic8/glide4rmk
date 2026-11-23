@@ -27,10 +27,12 @@ import { wantOf } from "./draft/want";
 import type { IoContext } from "./io";
 import type { ConnectedBundle } from "../model/workbench-state";
 import { resolveBoardProfile } from "../model/boards/profiles";
+import { addOnKinds } from "../model/boards/add-ons";
 
-/** The board a Flow runs on: what the registry knows of it (its name and key
- *  groups) and what the keyboard reports (its keys and capabilities). */
-export function flowBoard(bundle: ConnectedBundle, capabilities: readonly string[]): Board {
+/** The board a Flow runs on: what the registry knows of it (its name, key
+ *  groups and add-on places), what the keyboard reports (its keys and
+ *  capabilities) and what the layout fits (its modules). */
+export function flowBoard(bundle: ConnectedBundle, capabilities: readonly string[], modules: readonly string[] = []): Board {
   const profile = resolveBoardProfile(bundle.info, bundle.caps);
   return {
     id: profile?.id ?? null,
@@ -39,6 +41,7 @@ export function flowBoard(bundle: ConnectedBundle, capabilities: readonly string
     keyCount: bundle.model.keys.length,
     groups: profile?.keyGroups ?? null,
     capabilities,
+    extras: profile?.addOns ? addOnKinds(profile.addOns, modules) : undefined,
   };
 }
 

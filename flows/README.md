@@ -47,7 +47,7 @@ default = "GACS"
   profiles: [{ index, name, timing }] }
 ```
 
-`board.groups` has `letters` (36 keys, reading order), `home_row` (pinky to pinky), `thumbs`, `numbers` and `function`. Each key is `{ row, col, hand, finger }`. A board GLIDE4RMK does not know has no groups. `extras` has `"pointing"` when a trackpad, trackball or touchpad is fitted.
+`board.groups` has `letters` (36 keys, reading order), `home_row` (pinky to pinky), `thumbs`, `numbers` and `function`. Each key is `{ row, col, hand, finger }`. A board GLIDE4RMK does not know has no groups. `extras` has `"pointing"` when a touchpad is fitted: built in (Go60), or its module switched on in the layout (Glove80, Layout properties → Add-ons; ADR 0028).
 
 Actions are the keyboard's own: `{"Single": {"Key": {"Hid": "A"}}}`, `{"TapHold": [tap, hold, profile]}`, `"Transparent"`. A timing's fields are `hold_timeout_ms`, `gap_timeout_ms`, `quick_tap_timeout_ms`, `prior_idle_time_ms`, `unilateral_tap`, `opposite_hand_hold`, `enable_flow_tap`, `retro_tap`, `hold_trigger_on_release` and `mode` (`PermissiveHold`, `HoldOnOtherPress`, `Normal`, `TapUnlessInterrupted`).
 
