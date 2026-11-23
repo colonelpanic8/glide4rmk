@@ -34,7 +34,8 @@ export function useDraft() {
       const total = size;
       const sent = await io.applyBatch();
       if (!sent.ok && sent.guarded) return false; // Guard has said why
-      const left = draftSize(draftGroups(latest.current));
+      // What waits now, from the io: this render's state is from before the send.
+      const left = sent.waiting ?? 0;
       if (sent.ok && left === 0) {
         showToast(`${plural(total, "change")} sent: the keyboard has them all`, { tone: "ok" });
         return true;

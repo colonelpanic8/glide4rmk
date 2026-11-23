@@ -49,6 +49,9 @@ import { realtimeWriter, type RealtimeWriter } from "./realtime";
 export type WorkbenchDispatch = (action: WorkbenchAction) => void;
 
 export type IoWriteResult = { ok: true } | { ok: false; message: string; guarded?: true }; // guarded: Guard said no (ADR 0011)
+/** A send's result; `waiting`, when changes still wait in the draft after it: how
+ *  many, read from the state as it is then (a screen's own copy may not have caught up). */
+export type SendOutcome = IoWriteResult & { waiting?: number };
 export type KeyWrite = { layer: number; row: number; col: number; action: KeyAction };
 
 export interface WorkbenchIo {
@@ -72,7 +75,7 @@ export interface WorkbenchIo {
   travel(direction: "undo" | "redo"): Promise<IoWriteResult>;
   /** Send the draft: only what differs from a fresh read, checked for changes made
    *  on the keyboard since (ADR 0012). What fails stays in the draft. */
-  applyBatch(options?: SendOptions): Promise<IoWriteResult>;
+  applyBatch(options?: SendOptions): Promise<SendOutcome>;
   loadEncoder(layer: number, id: number): void;
   setEncoder(layer: number, id: number, action: EncoderAction): void;
   setDefaultLayer(layer: number): void;

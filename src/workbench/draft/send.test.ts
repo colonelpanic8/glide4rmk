@@ -38,7 +38,7 @@ describe("Send", () => {
       await io.setKey(0, 0, 1, key("F14"));
       await io.setKey(1, 2, 3, key("F15"));
       const before = storedSegmentsOf(session);
-      expect(await io.applyBatch()).toEqual({ ok: true });
+      expect(await io.applyBatch()).toEqual({ ok: true }); // nothing waits: no `waiting`
       expect(storedSegmentsOf(session) - before).toBe(2); // two keys share a row
       expect(draftOf(state()).changes).toEqual([]);
       expect(state().base).not.toHaveProperty("activeLayers");
@@ -80,7 +80,7 @@ describe("Send", () => {
       let failures = 1;
       session.keymap.setRows = (layer, row, actions) =>
         layer === 2 && failures-- > 0 ? Promise.reject(new Error("link dropped")) : setRows(layer, row, actions);
-      expect(await io.applyBatch()).toEqual({ ok: false, message: "link dropped" });
+      expect(await io.applyBatch()).toEqual({ ok: false, message: "link dropped", waiting: 1 });
       expect(draftOf(state()).changes.map(({ item }) => item)).toEqual([{ kind: "key", layer: 2, offset: 0 }]);
       const before = storedSegmentsOf(session);
       expect(await io.applyBatch()).toEqual({ ok: true });
@@ -196,7 +196,7 @@ describe("Send", () => {
       dispatch({ type: "draftRestore", patch: [{ item, before: held, after: { ...held, output_brightness: held.output_brightness === 40 ? 41 : 40 } }] });
       await session.lighting.setState({ ...held, output_brightness: held.output_brightness === 60 ? 61 : 60 }); // changed elsewhere meanwhile
       dispatch({ type: "paint", layer: 1, cells: [light(4)] });
-      expect(await io.applyBatch({ settingNow: [] })).toEqual({ ok: true });
+      expect(await io.applyBatch({ settingNow: [] })).toEqual({ ok: true, waiting: 1 });
       expect(draftOf(state()).changes.map((change) => change.item)).toEqual([item]);
       let asked: unknown[] = [];
       await io.applyBatch({ confirmOverwrite: async (items) => { asked = items; return false; } });
@@ -214,7 +214,7 @@ describe("Send", () => {
         if ((reads += 1) === 2) dispatch({ type: "paint", layer: 1, cells: [light(5)] });
         return capabilities();
       });
-      expect(await io.applyBatch()).toEqual({ ok: true });
+      expect(await io.applyBatch()).toEqual({ ok: true, waiting: 1 });
       reading.mockRestore();
       expect(draftOf(state()).changes.map((change) => change.item)).toEqual([{ kind: "lighting", layer: 1 }]);
       let asked: unknown[] = [];
@@ -239,7 +239,7 @@ describe("Live's own send, once edits pause", () => {
       });
       await session.keymap.setKey(1, 0, 0, key("F20")); // changed elsewhere meanwhile
       expect(liveSendDue(state())).toBe(true);
-      expect(await io.applyBatch(UNATTENDED)).toEqual({ ok: true });
+      expect(await io.applyBatch(UNATTENDED)).toEqual({ ok: true, waiting: 1 });
       expect((await session.keymap.readAll())[1].actions.slice(0, 2)).toEqual([key("F20"), key("F14")]);
       expect(draftOf(state()).changes.map((change) => change.item)).toEqual([clash]);
       expect(liveSendDue(state())).toBe(false);
@@ -277,7 +277,7 @@ describe("Live's own send, once edits pause", () => {
         if ((reads += 1) === 2) dispatch({ type: "paint", layer: 1, cells: [light(5)] });
         return capabilities();
       });
-      expect(await io.applyBatch(UNATTENDED)).toEqual({ ok: true });
+      expect(await io.applyBatch(UNATTENDED)).toEqual({ ok: true, waiting: 1 });
       expect(liveSendDue(state())).toBe(true);
       expect(sendWaits(state())).toBe(false);
     }, false);

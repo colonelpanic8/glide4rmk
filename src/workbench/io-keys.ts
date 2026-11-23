@@ -5,6 +5,7 @@ import type { KeyAction } from "../vendor/rynk-wasm/rynk_wasm";
 import { errorMessage } from "../session/errors";
 import { sendStaged } from "./draft/send";
 import { canTravel } from "./draft/selectors";
+import { draftGroups, draftSize } from "./draft/changes";
 import { applyOperation } from "./apply";
 import type { IoContext, IoWriteResult, WorkbenchIo } from "./io";
 
@@ -60,8 +61,10 @@ export function keyIo(context: IoContext): KeyIo {
       if (context.realtime.enabled()) context.realtime.schedule();
       return { ok: true };
     },
-    applyBatch(options) {
-      return send(options);
+    async applyBatch(options) {
+      const sent = await send(options);
+      const waiting = draftSize(draftGroups(getState()));
+      return waiting > 0 ? { ...sent, waiting } : sent;
     },
     loadEncoder(layer, id) {
       session.keymap.getEncoder(id, layer).then(
