@@ -15,7 +15,7 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 
 ## Cheap 
 
-7. **The clipboard write on a key click.** During browser checks the page wrote to the clipboard while only keys were clicked. Find out whether selecting a key triggers the copy handler; if so, clicking a key overwrites what you copied.
+7. ~~**The clipboard write on a key click.** During browser checks the page wrote to the clipboard while only keys were clicked. Find out whether selecting a key triggers the copy handler; if so, clicking a key overwrites what you copied.~~ Not reproduced: no click, right-click or selecting gesture writes it, only Ctrl or ⌘ with C (`ui/keymap/clipboard.click.test.tsx`), #23.
 8. ~~**Shorter stock Magic layer text** (RGB Lighting → Advanced): it still carries the old Lighting screen's long explanation, and tells you to "finish batch editing".~~ #24.
 9. ~~**Words that outlived what they describe.** The Undo buttons' tooltip (`ui/TopBar.tsx`) says imports and transforms start the history over; neither does (ADR 0019, 0023). The review window (`ui/draft/ReviewWindow.tsx`) says combos, macros and settings go to the keyboard as you change them; in Draft they wait for Send.~~ #24.
 10. ~~**Remove the overlay's leftover state.**~~ The overlay is Try out's now (`95de5d9`, ADR 0024).
