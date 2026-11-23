@@ -38,7 +38,7 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 
 27. **Discarding a layer change in Review & send** reverts the layers and the keys, encoders and lights of the layers that moved, but not other references the change rewrote (combos, tap patterns, settings that name a layer), which stay in their own groups. Fold those in too, or discard them with it.
 28. **Key decorations.** GLIDE gives keys a colour and a label (a binding's `decoration` in MoErgo JSON); GLIDE4RMK does not keep them yet, so an imported GLIDE layout loses them, with a note (`config/decorations.ts`). Keep them beside the keys, as behavior labels and add-ons are (ADR 0020, 0028), and show them on the canvas; decide whether a colour also becomes the key's light.
-29. **Maintenance mode and the split link, live.** The session reads both (`session.device.maintenanceMode()`, `splitTransport()`), and rules can test them, but no topic carries them, so the workbench neither reads nor keeps them (#PR). If a screen or a rules preview needs them, read them at connect into `state.device` and refresh them (on `LightingChange`, say); until then rules on them preview as unknown.
+29. **Maintenance mode and the split link, live.** The session reads both (`session.device.maintenanceMode()`, `splitTransport()`), and rules can test them, but no topic carries them, so the workbench neither reads nor keeps them (#34). If a screen or a rules preview needs them, read them at connect into `state.device` and refresh them (on `LightingChange`, say); until then rules on them preview as unknown.
 
 ## Tests and trying it
 
