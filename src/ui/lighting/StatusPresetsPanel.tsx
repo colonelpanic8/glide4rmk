@@ -14,6 +14,7 @@ import { useCapability } from "../use-capabilities";
 import { layerName } from "../layer-names";
 import { useWorkbench } from "../state";
 import { StatusKeyPicks } from "./StatusKeyPicks";
+import { useTerms } from "../terms";
 import { StockMagicLayerPanel } from "./StockMagicLayerPanel";
 import { stockMagicIndicatorKeys } from "../../model/lighting/stock-magic-layer";
 import { GLOVE80_BAR_LAYOUTS, glove80ConnectionKeys, installGlove80StatusRules, writeGlove80StatusSetup } from "../../model/lighting/status-presets";
@@ -29,6 +30,7 @@ function keyAt(keys: KeyView[], row: number, col: number): KeyView | undefined {
 
 export function StatusPresetsPanel() {
   const { bundle, state, dispatch, io } = useWorkbench();
+  const term = useTerms();
   const ruleTable = useCapability("lighting.rules");
   const numLayers = bundle.caps.num_layers;
   const wakeLayers = state.lightingOutputMode?.wake_layers ?? state.lightingControls.wake_layers;
@@ -128,9 +130,7 @@ export function StatusPresetsPanel() {
 
       {stockMagicAvailable && magicSupported && <StockMagicLayerPanel layer={layer} />}
       {stockMagicAvailable && !magicSupported && (
-        <p className="mt-2 text-small leading-relaxed text-warn">
-          Update firmware to install the stock Magic layer with layer and lock indicators.
-        </p>
+        <p className="mt-2 text-small leading-relaxed text-warn">{term("magic.needsFirmware")}</p>
       )}
       {lit && <StatusKeyPicks layer={layer} connections={predicatesSupported} />}
       {message && <p className="mt-2 text-small leading-relaxed text-mute">{message}</p>}

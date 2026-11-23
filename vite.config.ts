@@ -21,7 +21,8 @@ const wasmRoots = ["rynk-wasm", "moergo-config-wasm"].map((pkg) =>
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   test: {
-    exclude: [...configDefaults.exclude, "**/.worktrees/**"],
+    // tests/e2e is Playwright's (npm run e2e).
+    exclude: [...configDefaults.exclude, "**/.worktrees/**", "tests/e2e/**"],
     // Both wasm modules loaded once per test file, as openBundle loads them
     // before any workbench opens in the app; simulated boards without latency.
     setupFiles: ["src/test/setup.ts"],

@@ -132,7 +132,7 @@ describe("Glove80 presets", () => {
     const html = renderGlove80("Glove80");
     expect(html).toContain("Install complete Glove80 setup on Layer 2");
     expect(html).toContain("Install stock Magic layer on Layer 2");
-    expect(html).toContain("Bluetooth profiles 1–4");
+    expect(html).toContain("Bluetooth 1–4 and USB on the thumbs");
     expect(renderGlove80("Go60")).not.toContain("stock Magic layer");
     expect(renderGlove80("My Glove80 clone")).not.toContain("Glove80 Magic status cluster");
   });

@@ -16,8 +16,8 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 ## Cheap 
 
 7. **The clipboard write on a key click.** During browser checks the page wrote to the clipboard while only keys were clicked. Find out whether selecting a key triggers the copy handler; if so, clicking a key overwrites what you copied.
-8. **Shorter stock Magic layer text** (RGB Lighting → Advanced): it still carries the old Lighting screen's long explanation, and tells you to "finish batch editing".
-9. **Words that outlived what they describe.** The Undo buttons' tooltip (`ui/TopBar.tsx`) says imports and transforms start the history over; neither does (ADR 0019, 0023). The review window (`ui/draft/ReviewWindow.tsx`) says combos, macros and settings go to the keyboard as you change them; in Draft they wait for Send.
+8. ~~**Shorter stock Magic layer text** (RGB Lighting → Advanced): it still carries the old Lighting screen's long explanation, and tells you to "finish batch editing".~~ #24.
+9. ~~**Words that outlived what they describe.** The Undo buttons' tooltip (`ui/TopBar.tsx`) says imports and transforms start the history over; neither does (ADR 0019, 0023). The review window (`ui/draft/ReviewWindow.tsx`) says combos, macros and settings go to the keyboard as you change them; in Draft they wait for Send.~~ #24.
 10. ~~**Remove the overlay's leftover state.**~~ The overlay is Try out's now (`95de5d9`, ADR 0024).
 
 ## Medium
@@ -41,5 +41,5 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 ## Tests and trying it
 
 24. **Try this branch in a browser and on a keyboard.** Several keys selected, picking keys, the effects gallery, exact timing, Try out, whole-row writes, imports as commits and Live's own send have only been tested in the simulated boards; none has been tried in a browser or on a keyboard.
-25. **Screen tests that interact.** Every screen test renders static markup; none clicks. Send, drag-swap, the selection gestures and the pick flow are untested at screen level.
-26. **`DraftKeeper`'s effect** (Live's own send, the kept draft's flush) is untested; only its gate (`liveSendDue`) is.
+25. ~~**Screen tests that interact.** Every screen test renders static markup; none clicks. Send, drag-swap, the selection gestures and the pick flow are untested at screen level.~~ #21, ADR 0030.
+26. ~~**`DraftKeeper`'s effect** (Live's own send, the kept draft's flush) is untested; only its gate (`liveSendDue`) is.~~ #21.
