@@ -10,7 +10,7 @@ import { parseDocument } from "../config/document";
 import { offlineGlove80Catalog, openOfflineGlove80 } from "../session/offline/glove80";
 import { openBundle } from "../ui/bundle";
 import type { WorkbenchState } from "../model/workbench-state";
-import { bindChoices, readFlowOutput, type Flow } from "../operations/flows";
+import { flowProgram, readFlowOutput, type Flow } from "../operations/flows";
 import { nodeJq } from "../test/jq";
 import { initialWorkbenchState } from "./initial-state";
 import { ioFeaturesFor, makeIo, type WorkbenchIo } from "./io";
@@ -115,7 +115,7 @@ describe("Different typing layout on TailorKey for RMK", () => {
       const before = state().layers;
       expect(await io.runFlow(flow, {}, { ...env, board: { id: null, cols: 14 } })).toMatchObject({
         ok: false,
-        message: '"Different typing layout" is for glove80 and go60 only.',
+        message: "For the glove80 and go60 only.",
       });
       expect(state().layers).toBe(before);
     });
@@ -128,7 +128,7 @@ describe("Different typing layout on a Go60", () => {
     const keys = Array.from({ length: 5 }, () => Array.from({ length: 14 }, (): KeyAction => "Transparent"));
     [1, 2, 3, 4, 5, 8, 9, 10, 11, 12].forEach((col, i) => { keys[1][col] = key(qwerty[i]); keys[2][col] = key(qwerty[i + 10]); });
     const view = { keyboard: "go60", rows: 5, cols: 14, default_layer: 0, layers: [{ index: 0, name: "Base", keys }] };
-    const { program, lineOffset } = bindChoices(flow.choices, { layout_name: "colemak-dh" }, flow.script);
+    const { program, lineOffset } = flowProgram(flow.choices, { layout_name: "colemak-dh" }, flow.script);
     const ran = await nodeJq.run(view, program, { lineOffset, timeoutMs: 0 });
     expect(ran.ok).toBe(true);
     const output = readFlowOutput(ran.ok ? ran.output : null);

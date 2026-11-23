@@ -6,10 +6,10 @@
 
 import { describe, type Board } from "../operations/describe";
 import {
-  bindChoices,
   checkChoices,
   endLog,
   flowNotFor,
+  flowProgram,
   foldCalls,
   isPlainFlowMessage,
   logLine,
@@ -25,6 +25,22 @@ import { patchBetween } from "../sync";
 import { commitImage, factsOf } from "./apply";
 import { wantOf } from "./draft/want";
 import type { IoContext } from "./io";
+import type { ConnectedBundle } from "../model/workbench-state";
+import { resolveBoardProfile } from "../model/boards/profiles";
+
+/** The board a Flow runs on: what the registry knows of it (its name and key
+ *  groups) and what the keyboard reports (its keys and capabilities). */
+export function flowBoard(bundle: ConnectedBundle, capabilities: readonly string[]): Board {
+  const profile = resolveBoardProfile(bundle.info, bundle.caps);
+  return {
+    id: profile?.id ?? null,
+    name: profile?.name ?? bundle.info.product_name,
+    cols: bundle.caps.num_cols,
+    keyCount: bundle.model.keys.length,
+    groups: profile?.keyGroups ?? null,
+    capabilities,
+  };
+}
 
 export interface FlowEnvironment {
   jq: JqRunner;
@@ -59,7 +75,7 @@ export async function runFlow(
     return { ok: false, message, report: null, log };
   };
 
-  const notFor = flowNotFor(flow, env.board.id, env.has);
+  const notFor = flowNotFor(flow, env.board, env.has);
   if (notFor) return stop(notFor);
   for (const [id, value] of Object.entries(values)) logLine(log, `Choice ${id} = ${JSON.stringify(value)}`, true);
   const wrongChoice = checkChoices(flow.choices, values);
@@ -68,7 +84,7 @@ export async function runFlow(
   const before = wantOf(context.getState());
   const view = describe(before, env.board);
   logLine(log, `Keyboard: ${view.keyboard ?? "other"}, ${view.layers.length} layers`);
-  const { program, lineOffset } = bindChoices(flow.choices, values, flow.script);
+  const { program, lineOffset } = flowProgram(flow.choices, values, flow.script);
   const ran = await env.jq.run(view, program, { lineOffset, timeoutMs: env.timeoutMs ?? TIME_LIMIT_MS });
   log.ms = now().getTime() - started.getTime();
   if (!ran.ok) {

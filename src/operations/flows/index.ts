@@ -3,9 +3,10 @@
 export type { ChoiceType, ChoiceValue, FlowChoice } from "./choices";
 export { bindChoices, checkChoices, choiceLiteral } from "./choices";
 export type { Flow, FlowRead } from "./file";
-export { FLOW_FOLDERS, RUNS_ON, flowNotFor, readFlowFile, readFlowFiles } from "./file";
+export { FLOW_FOLDERS, RUNS_ON, flowIsElsewhere, flowNotFor, readFlowFile, readFlowFiles } from "./file";
 export type { FlowCall, FlowOutput, FlowReport } from "./fold";
 export { foldCalls, isPlainFlowMessage, readFlowOutput } from "./fold";
+export { FLOW_LIBRARY, flowProgram } from "./library";
 export type { JqResult, JqRunner } from "./jq";
 export { readableJqError, timedOut, TIME_LIMIT_MS } from "./jq";
 export type { FlowLog, FlowOutcome } from "./log";
