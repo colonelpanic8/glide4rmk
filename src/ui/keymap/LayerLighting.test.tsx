@@ -166,17 +166,13 @@ describe("try out (not saved)", () => {
 
   it("while on, says the lights are not saved and offers only a colour or none", () => {
     lightView.setTryingOut(true);
-    try {
-      const html = draw(keyboard);
-      expect(html).toContain("Not saved: these lights vanish when the keyboard restarts.");
-      expect(choice(html, "Layer below")).toContain('disabled=""');
-      expect(choice(html, "Status light")).toContain('disabled=""');
-      expect(choice(html, "Color")).not.toContain('disabled=""');
-      // The tab edits the key's try-out light, which it has none of yet.
-      expect(choice(html, "Off")).toContain('aria-checked="true"');
-      expect(html).not.toContain("Clear Base&#x27;s lights");
-    } finally {
-      lightView.setTryingOut(false);
-    }
+    const html = draw(keyboard);
+    expect(html).toContain("Not saved: these lights vanish when the keyboard restarts.");
+    expect(choice(html, "Layer below")).toContain('disabled=""');
+    expect(choice(html, "Status light")).toContain('disabled=""');
+    expect(choice(html, "Color")).not.toContain('disabled=""');
+    // The tab edits the key's try-out light, which it has none of yet.
+    expect(choice(html, "Off")).toContain('aria-checked="true"');
+    expect(html).not.toContain("Clear Base&#x27;s lights");
   });
 });

@@ -1,26 +1,16 @@
 // A draft kept from an earlier visit with this keyboard, offered back (by the
-// status chip) until it is restored or forgotten.
+// status chip) until it is restored or forgotten. The draft keeper sets it for
+// each keyboard, and it ends with the workbench (ui/workbench-store.ts).
 
-import { useSyncExternalStore } from "react";
 import { useWorkbench } from "../state";
 import { keptPatch, type KeptDraft } from "../../workbench/draft/changes";
+import { createWorkbenchStore, useWorkbenchStore } from "../workbench-store";
 
 /** A draft kept from an earlier visit, offered back until restored or forgotten. */
-let earlier: KeptDraft | null = null;
-const listeners = new Set<() => void>();
-export const setEarlier = (next: KeptDraft | null) => {
-  earlier = next;
-  for (const listener of listeners) listener();
-};
-export const earlierDraft = {
-  get: () => earlier,
-  subscribe(listener: () => void) {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-  },
-};
+export const earlierDraft = createWorkbenchStore<KeptDraft | null>(null);
+export const setEarlier = (next: KeptDraft | null) => earlierDraft.set(next);
 export function useEarlierDraft(): KeptDraft | null {
-  return useSyncExternalStore(earlierDraft.subscribe, earlierDraft.get, earlierDraft.get);
+  return useWorkbenchStore(earlierDraft);
 }
 
 /** Puts a kept draft back on top of what the keyboard has now, then forgets the offer. */
