@@ -12,6 +12,7 @@ A browser workbench for RMK/Rynk keyboards (Glove80, Go60 and plain RMK boards):
 - Core layers and `workbench/` never import `ui/`; nothing below `workbench/` imports it. Screens never import a transport or the simulated boards; they use the session interface.
 - Screens never import the generated wire package (`src/vendor/rynk-wasm`): action types come from `model/action-types.ts`, geometry from `model/keyboard.ts`. Older files on the baseline (`boundaries.baseline.json`) leave it when touched; the guard fails on a new one.
 - What a screen offers is asked of capabilities (`ui/use-capabilities.ts`), never by probing firmware or testing a nullable field (`src/architecture/probing.ts`).
+- Screens change the layout through `io`; they dispatch only their own state (selection, mode, hover), never an edit (`src/architecture/dispatching.ts`). Older ones are on its baseline and leave it when touched.
 
 ## Where things go
 - A rule about keys, layers, bindings or lighting: a pure function in `model/` with its own test (see `model/key-slots.ts`, `model/lighting/`). Logic that needs the workbench, the reference graph or the write path: `workbench/`. Screens only show it and call `io` (ADR 0017).
