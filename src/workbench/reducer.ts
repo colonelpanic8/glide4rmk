@@ -6,6 +6,7 @@
 import type { EncoderAction, KeyAction } from "../vendor/rynk-wasm/rynk_wasm";
 import type { WorkbenchAction, WorkbenchState, WritableField } from "../model/workbench-state";
 import { selectionWith } from "../model/key-selection";
+import { busyOf, withBusy } from "../model/busy-state";
 import { withDevice } from "../model/device-state";
 import { draftEditCount } from "./draft/selectors";
 import { sameValue } from "../model/deep-equal";
@@ -94,8 +95,9 @@ function withStep(before: WorkbenchState, after: WorkbenchState, join: boolean):
     sameValue(before.labels, after.labels) && sameValue(before.modules, after.modules) ? undefined : { before: notesOf(before), after: notesOf(after) };
   const history = recordStep(after.history, changes, join, notes);
   // An edit: what the last send left behind may be tried again.
-  const batchError = changes.length > 0 ? null : after.batchError;
-  return history === after.history && batchError === after.batchError ? after : { ...after, history, batchError };
+  const batchError = changes.length > 0 ? null : busyOf(after).batchError;
+  if (history === after.history && batchError === busyOf(after).batchError) return after;
+  return withBusy({ ...after, history }, { batchError });
 }
 
 export function makeWorkbenchReducer(cols: number) {
@@ -168,7 +170,7 @@ export function makeWorkbenchReducer(cols: number) {
         // Leaving Draft needs the drafted keys, encoders and slots sent or
         // discarded, never silently written or dropped.
         if (!act.enabled && draftEditCount(state) > 0) return state;
-        return { ...state, batchMode: act.enabled, batchError: null };
+        return withBusy({ ...state, batchMode: act.enabled }, { batchError: null });
       }
       case "keyStage":
         return { ...state, layers: setLayerKey(state.layers, cols, act.layer, act.row, act.col, act.action) };
@@ -180,7 +182,7 @@ export function makeWorkbenchReducer(cols: number) {
         return { ...state, [act.kind]: table };
       }
       case "batchDiscard":
-        return { ...atBase(state), batchError: null };
+        return withBusy(atBase(state), { batchError: null });
       case "draftRevert":
         return withItemsAtBase(state, act.items);
       case "wantSet":
@@ -206,9 +208,9 @@ export function makeWorkbenchReducer(cols: number) {
         return withWant({ ...state, basedOn }, applyPatch(wantOf(state), act.patch, "after"));
       }
       case "batchApplyStart":
-        return { ...state, batchBusy: true, batchError: null };
+        return withBusy(state, { batchBusy: true, batchError: null });
       case "batchApplyDone":
-        return { ...state, batchBusy: false, batchError: act.error };
+        return withBusy(state, { batchBusy: false, batchError: act.error });
       case "encoderLoaded":
         return withStored(state, [{ item: { kind: "encoder", layer: act.layer, id: act.id }, value: act.action }]);
       case "encoderWriteStart": {
@@ -239,17 +241,17 @@ export function makeWorkbenchReducer(cols: number) {
       case "defaultLayer":
         return { ...state, defaultLayer: act.layer };
       case "layerOperationStart":
-        return { ...state, layerBusy: true, layerError: null, selection: null };
+        return withBusy({ ...state, selection: null }, { layerBusy: true, layerError: null });
       case "layerOperationError":
-        return { ...state, layerBusy: false, layerError: act.message };
+        return withBusy(state, { layerBusy: false, layerError: act.message });
       case "layerMetadataSet": {
         if (!state.layerMetadata) return state;
         const layerMetadata = state.layerMetadata.slice();
         layerMetadata[act.layer] = act.metadata;
-        return { ...state, layerMetadata, layerBusy: false, layerError: null };
+        return withBusy({ ...state, layerMetadata }, { layerBusy: false, layerError: null });
       }
       case "layerOperationDone":
-        return { ...state, layerBusy: false, layerError: null };
+        return withBusy(state, { layerBusy: false, layerError: null });
       case "topicLayers":
         return withDevice(withRead(state, { defaultLayer: act.defaultLayer }), {
           activeLayers: act.activeLayers,

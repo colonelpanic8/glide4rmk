@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import { layerName } from "../layer-names";
 import { pointingDraftDirty } from "../../workbench";
-import { useDevice, useWorkbench } from "../state";
+import { useBusy, useDevice, useWorkbench } from "../state";
 import { useCapabilities } from "../use-capabilities";
 import { askConfirm, showToast } from "../messages/store";
 import { deletionBlockedMessage, layerDeletionBlockers } from "../../workbench/layer-impact";
@@ -57,6 +57,7 @@ function ListSwitch({ value, onChange }: { value: List | null; onChange: (list: 
 
 function LayerList({ onPicked }: { onPicked?: () => void }) {
   const { bundle, state, dispatch, io } = useWorkbench();
+  const busy = useBusy();
   const device = useDevice();
   const capabilities = useCapabilities();
   const menu = useRowMenu<number>();
@@ -80,7 +81,7 @@ function LayerList({ onPicked }: { onPicked?: () => void }) {
     (!capabilities.has("lighting.state") || capabilities.has("lighting.output"));
   const block = !structureSupported
     ? "This keyboard cannot change its layers yet"
-    : state.layerBusy
+    : busy.layerBusy
       ? "Wait for the layer change in progress"
       : !state.batchMode && pointingDraftDirty(state)
         ? "Wait for the pointing changes to reach the keyboard"
@@ -263,9 +264,9 @@ function LayerList({ onPicked }: { onPicked?: () => void }) {
           onClose={menu.close}
         />
       )}
-      {state.layerError && (
+      {busy.layerError && (
         <p role="alert" className="mt-1 px-1 text-small leading-relaxed text-danger">
-          {state.layerError}
+          {busy.layerError}
         </p>
       )}
     </div>

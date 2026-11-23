@@ -12,7 +12,7 @@ import type { KeyView } from "../../model/keyboard";
 import { Button, SectionLabel } from "../kit";
 import { useCapability } from "../use-capabilities";
 import { layerName } from "../layer-names";
-import { useDevice, useWorkbench } from "../state";
+import { useBusy, useDevice, useWorkbench } from "../state";
 import { StatusKeyPicks } from "./StatusKeyPicks";
 import { useTerms } from "../terms";
 import { StockMagicLayerPanel } from "./StockMagicLayerPanel";
@@ -30,6 +30,7 @@ function keyAt(keys: KeyView[], row: number, col: number): KeyView | undefined {
 
 export function StatusPresetsPanel() {
   const { bundle, state, dispatch, io } = useWorkbench();
+  const busy = useBusy();
   const device = useDevice();
   const term = useTerms();
   const ruleTable = useCapability("lighting.rules");
@@ -121,7 +122,7 @@ export function StatusPresetsPanel() {
               ))}
             </select>
           </label>
-          <Button variant="primary" className="mt-2 w-full" disabled={state.lightingBusy} onClick={installGlove80}>
+          <Button variant="primary" className="mt-2 w-full" disabled={busy.lightingBusy} onClick={installGlove80}>
             Install complete Glove80 setup on {nameOf(layer)}
           </Button>
         </div>

@@ -58,6 +58,7 @@ import type { BoardProfile } from "./boards";
 import type { KeyboardModel } from "./keyboard";
 import type { KeyboardImage, PatchEntry, SyncItem } from "../sync";
 import type { History, LayoutNotes } from "./history";
+import type { BusyFlags } from "./busy-state";
 import type { DeviceReports } from "./device-state";
 
 /** The screen on show: one section of one area (src/ui/areas.ts). */
@@ -224,8 +225,6 @@ export interface WorkbenchState {
   layerMetadata: LayerMetadata[] | null;
   pointingConfig: PointingConfig | null;
   pointingDraft: PointingConfig | null;
-  pointingBusy: boolean;
-  pointingError: string | null;
   /** `${layer}:${encoderId}` → loaded encoder action. */
   encoders: Record<string, EncoderAction>;
   lightingState: LightingState | null;
@@ -277,15 +276,9 @@ export interface WorkbenchState {
   /** Draft mode (ADR 0010): edits change what you want, and Send writes the
    *  difference; in Live each edit is written at once. */
   batchMode: boolean;
-  /** A batch apply is writing staged edits to the device. */
-  batchBusy: boolean;
-  /** Why the last send left changes in the draft; null once it left none, and
-   *  after the next edit. */
-  batchError: string | null;
-  layerBusy: boolean;
-  layerError: string | null;
-  lightingBusy: boolean;
-  lightingError: string | null;
+  /** What is being written and why the last write failed (model/busy-state.ts):
+   *  read through `busyOf`, never drafted or sent. */
+  busy: BusyFlags;
   /** LED ids to highlight (zone hover). */
   hoverLeds: number[] | null;
   /** Advanced tables, kept full-length (empty slots included). */

@@ -8,6 +8,7 @@ import type { SlotKind, WorkbenchAction, WorkbenchState } from "../model/workben
 import type { KeyboardImage } from "../sync";
 import { FIELD_STATE_KEY } from "../model/workbench-state";
 import { normalizePointingConfig } from "../model/pointing";
+import { withBusy } from "../model/busy-state";
 import { slotPendingId } from "./pending";
 
 const SETTINGS_ACTION_TYPES = [
@@ -43,30 +44,16 @@ function withSlot(image: KeyboardImage, kind: SlotKind, index: number, value: Co
 export function reduceSettings(state: WorkbenchState, act: SettingsAction): WorkbenchState {
   switch (act.type) {
     case "pointingDraftSet":
-      return {
-        ...state,
-        pointingDraft: normalizePointingConfig(act.config),
-        pointingError: null,
-      };
+      return withBusy({ ...state, pointingDraft: normalizePointingConfig(act.config) }, { pointingError: null });
     case "pointingDraftReset":
-      return {
-        ...state,
-        pointingDraft: state.pointingConfig ? structuredClone(state.pointingConfig) : null,
-        pointingError: null,
-      };
+      return withBusy({ ...state, pointingDraft: state.pointingConfig ? structuredClone(state.pointingConfig) : null }, { pointingError: null });
     case "pointingWriteStart":
-      return { ...state, pointingBusy: true, pointingError: null };
+      return withBusy(state, { pointingBusy: true, pointingError: null });
     case "pointingWriteErr":
-      return { ...state, pointingBusy: false, pointingError: act.message };
+      return withBusy(state, { pointingBusy: false, pointingError: act.message });
     case "pointingReloaded": {
       const config = normalizePointingConfig(act.config);
-      return {
-        ...state,
-        pointingConfig: config,
-        pointingDraft: structuredClone(config),
-        pointingBusy: false,
-        pointingError: null,
-      };
+      return withBusy({ ...state, pointingConfig: config, pointingDraft: structuredClone(config) }, { pointingBusy: false, pointingError: null });
     }
     case "slotWriteStart": {
       const id = slotPendingId(act.kind, act.index);

@@ -23,6 +23,7 @@ import { errorMessage } from "../../session/errors";
 import { sameValue } from "../../model/deep-equal";
 import { draftOf, draftWithBasis } from "./want";
 import type { WorkbenchDispatch } from "../io";
+import { busyOf } from "../../model/busy-state";
 
 export interface SendOptions {
   /** Asked when items you changed were also changed on the keyboard; true sends anyway. */
@@ -50,7 +51,7 @@ export type SendResult = { ok: true } | { ok: false; message: string; guarded?: 
 export async function sendStaged(deps: SendDeps, options: SendOptions = {}): Promise<SendResult> {
   const { session, getState, dispatch, features } = deps;
   const start = getState();
-  if (start.batchBusy) return { ok: false, message: "the draft is already being sent" };
+  if (busyOf(start).batchBusy) return { ok: false, message: "the draft is already being sent" };
   const patch = draftWithBasis(start);
   if (patch.length === 0) return { ok: true };
   dispatch({ type: "batchApplyStart" });

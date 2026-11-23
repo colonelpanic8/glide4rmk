@@ -8,6 +8,7 @@ import { canTravel } from "./draft/selectors";
 import { draftGroups, draftSize } from "./draft/changes";
 import { applyOperation } from "./apply";
 import type { IoContext, IoWriteResult, WorkbenchIo } from "./io";
+import { busyOf } from "../model/busy-state";
 
 type KeyIo = Pick<WorkbenchIo, "setKey" | "writeKeys" | "travel" | "applyBatch" | "loadEncoder" | "setEncoder">;
 
@@ -22,7 +23,7 @@ export function keyIo(context: IoContext): KeyIo {
   const setKey = (layer: number, row: number, col: number, action: KeyAction): Promise<IoWriteResult> => {
     const staging = getState();
     if (staging.batchMode) {
-      if (staging.batchBusy) {
+      if (busyOf(staging).batchBusy) {
         return Promise.resolve({ ok: false, message: "Batch apply is in progress" });
       }
       dispatch({ type: "keyStage", layer, row, col, action });
@@ -75,7 +76,7 @@ export function keyIo(context: IoContext): KeyIo {
     setEncoder(layer, id, action) {
       const state = getState();
       if (state.batchMode) {
-        if (!state.batchBusy) dispatch({ type: "encoderStage", layer, id, action });
+        if (!busyOf(state).batchBusy) dispatch({ type: "encoderStage", layer, id, action });
         return;
       }
       const prev = state.encoders[`${layer}:${id}`];

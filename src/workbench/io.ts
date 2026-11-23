@@ -43,6 +43,7 @@ import { lightingIo } from "./io-lighting";
 import { tryOutIo } from "./io-try-out";
 import { settingsIo } from "./io-settings";
 import { realtimeWriter, type RealtimeWriter } from "./realtime";
+import { busyOf } from "../model/busy-state";
 
 /** How the workbench narrates a change: React's dispatch has this type, and so
  *  can anything else that keeps a workbench. */
@@ -220,7 +221,7 @@ export function makeIo(
   const draft: IoContext["draft"] = (values) => {
     const state = getState();
     if (!state.batchMode) return null;
-    if (state.batchBusy) return { ok: false, message: "the draft is being sent" };
+    if (busyOf(state).batchBusy) return { ok: false, message: "the draft is being sent" };
     dispatch({ type: "wantSet", values });
     return { ok: true };
   };

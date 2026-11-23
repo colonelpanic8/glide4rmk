@@ -32,7 +32,7 @@ import {
   type PointingModeKind,
 } from "../../model/pointing";
 import { layerName } from "../layer-names";
-import { useWorkbench } from "../state";
+import { useBusy, useWorkbench } from "../state";
 import { askConfirm } from "../messages/store";
 import { PickKeycode } from "./PickKey";
 
@@ -262,6 +262,7 @@ function PointingModeEditor({ value, allowKeypad, allowCursorRemap, onChange }: 
 
 export function LayerPointing({ selectedDeviceId }: { selectedDeviceId?: number }) {
   const { bundle, state, dispatch, io } = useWorkbench();
+  const busy = useBusy();
   const [open, setOpen] = useState(selectedDeviceId !== undefined);
   const selectedCardRef = useRef<HTMLDivElement>(null);
   const [newDeviceId, setNewDeviceId] = useState("0");
@@ -447,21 +448,21 @@ export function LayerPointing({ selectedDeviceId }: { selectedDeviceId?: number 
             </div>
           </div>
 
-          {(localError || state.pointingError) && (
+          {(localError || busy.pointingError) && (
             <div className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-dim/20 px-2.5 py-2 text-small text-danger">
               <WarningIcon size={13} className="mt-0.5 shrink-0" />
-              <span className="min-w-0 flex-1">{localError ?? state.pointingError}</span>
+              <span className="min-w-0 flex-1">{localError ?? busy.pointingError}</span>
             </div>
           )}
 
           {/* Staged pointing is in the draft: Review & send writes it in Draft, Live after a pause (ADR 0018). */}
           {staged && (
-            <Button variant="ghost" disabled={state.pointingBusy} onClick={() => dispatch({ type: "pointingDraftReset" })}>
+            <Button variant="ghost" disabled={busy.pointingBusy} onClick={() => dispatch({ type: "pointingDraftReset" })}>
               Discard pointing changes
             </Button>
           )}
-          {state.pointingError && (
-            <Button variant="ghost" disabled={state.pointingBusy} onClick={() => void io.reloadPointingConfig()}>Reload from keyboard</Button>
+          {busy.pointingError && (
+            <Button variant="ghost" disabled={busy.pointingBusy} onClick={() => void io.reloadPointingConfig()}>Reload from keyboard</Button>
           )}
         </div>
       )}

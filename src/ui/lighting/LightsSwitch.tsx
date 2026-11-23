@@ -4,13 +4,14 @@
 // nothing is written while you switch.
 
 import { useMemo } from "react";
-import { useWorkbench } from "../state";
+import { useBusy, useWorkbench } from "../state";
 import { useDeviceDraft } from "../device-draft";
 import { ApplyBar } from "../kit";
 import { BigSwitch } from "../properties/BigSwitch";
 
 export function LightsSwitch() {
   const { state, io } = useWorkbench();
+  const busy = useBusy();
   const device = state.lightingState;
   const stored = useMemo(() => (device === null ? null : { on: device.output_enabled }), [device]);
   const { draft, setDraft, dirty, reset } = useDeviceDraft(stored);
@@ -32,7 +33,7 @@ export function LightsSwitch() {
           compact
           apply={{
             label: "Apply",
-            disabled: state.lightingBusy,
+            disabled: busy.lightingBusy,
             onClick: () =>
               io.setLightingState({
                 output_enabled: draft.on,

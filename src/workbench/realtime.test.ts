@@ -6,6 +6,7 @@ import { type WorkbenchIo } from "./io";
 import type { WorkbenchState } from "../model/workbench-state";
 import { draftOf } from "./draft/want";
 import { mutableLighting } from "../sync";
+import { busyOf } from "../model/busy-state";
 
 /** A simulated Glove80 with realtime lighting on, in Live or Draft. */
 async function withBoard(draft: boolean, check: (session: RynkSession, io: WorkbenchIo, state: () => WorkbenchState) => Promise<void>) {
@@ -55,7 +56,7 @@ describe("realtime lighting (ADR 0019)", () => {
       vi.spyOn(session.lighting, "setState").mockRejectedValueOnce(new Error("busy"));
       io.setLightingState({ ...lights(state()), output_brightness: 3 });
       await io.realtimeSettled();
-      expect(state().lightingError).toBe("busy");
+      expect(busyOf(state()).lightingError).toBe("busy");
       expect(draftOf(state()).changes.map(({ item }) => item.kind)).toEqual(["lightingState"]);
     });
   });

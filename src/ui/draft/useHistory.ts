@@ -11,6 +11,7 @@ import { keyActionGlyph } from "../labels";
 import { layerName, layerNamesOf } from "../layer-names";
 import { showToast } from "../messages/store";
 import { sameValue } from "../../model/deep-equal";
+import { busyOf } from "../../model/busy-state";
 import { useOs, type Os } from "../preferences";
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -73,7 +74,7 @@ export function useHistory(state: WorkbenchState, io: WorkbenchIo, dispatch: (ac
     [io],
   );
 
-  const writing = hasPendingConfigurationWrite(state) || state.batchBusy;
+  const writing = hasPendingConfigurationWrite(state) || busyOf(state).batchBusy;
   const { past, future } = state.history;
   return useMemo(
     () => ({

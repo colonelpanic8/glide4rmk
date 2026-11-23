@@ -12,7 +12,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { LightingExtensionParam, LightingExtensionState } from "../../model/lighting-types";
 import type { ExtensionParamWrite } from "../../workbench";
 import { paramEffects } from "../../workbench";
-import { useWorkbench } from "../state";
+import { useBusy, useWorkbench } from "../state";
 import { useDeviceDraft } from "../device-draft";
 import { SETTING_KEYS, readSetting, writeSetting } from "../settings";
 import { same } from "../../model/deep-equal";
@@ -32,6 +32,7 @@ const ON_VALUE = 128;
 
 export function useEffectsDraft() {
   const { bundle, state, io } = useWorkbench();
+  const { lightingBusy, lightingError } = useBusy();
   const extension = state.lightingExtension;
   const extensionLayers = state.lightingExtensionLayers;
 
@@ -140,8 +141,8 @@ export function useEffectsDraft() {
       }),
     defaults: (block: ParamBlock) => setParamDrafts((current) => ({ ...current, [block.effect]: block.items.map((param) => param.default) })),
     dirty,
-    busy: state.lightingBusy,
-    error: state.lightingError,
+    busy: lightingBusy,
+    error: lightingError,
     apply: () => draft && io.setExtensionState({ ...draft }, paramWrites, overlayDraft),
     revert() {
       resetDraft();

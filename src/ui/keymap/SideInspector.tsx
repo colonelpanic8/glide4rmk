@@ -10,7 +10,7 @@ import type {
 
 
 import { encoderPendingId, isDrafted } from "../../workbench";
-import { useWorkbench } from "../state";
+import { useBusy, useWorkbench } from "../state";
 import { ActionEditor } from "./ActionEditor";
 
 import { LayerPointing } from "./LayerPointing";
@@ -125,6 +125,7 @@ function EncoderInspector({ id }: { id: number }) {
 
 function PointingInspector({ id }: { id: number }) {
   const { bundle, state, io } = useWorkbench();
+  const busy = useBusy();
   const label =
     bundle.model.pointingDevices.find((device) => device.id === id)?.label ??
     `Pointing device ${id}`;
@@ -138,19 +139,19 @@ function PointingInspector({ id }: { id: number }) {
       </div>
       {state.pointingDraft ? (
         <LayerPointing selectedDeviceId={id} />
-      ) : state.pointingError ? (
+      ) : busy.pointingError ? (
         // The read failed; that is not the same as the firmware saying it has
         // no pointing configuration, so offer the re-read rather than blaming
         // the board for a limitation it may not have.
         <div className="flex flex-col gap-2 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2.5 text-body leading-relaxed text-warn">
-          <span>Could not read this keyboard's pointing configuration: {state.pointingError}</span>
+          <span>Could not read this keyboard's pointing configuration: {busy.pointingError}</span>
           <Button
             variant="ghost"
             className="self-start"
-            disabled={state.pointingBusy}
+            disabled={busy.pointingBusy}
             onClick={() => void io.reloadPointingConfig()}
           >
-            {state.pointingBusy && <SpinnerIcon size={13} />} Retry read
+            {busy.pointingBusy && <SpinnerIcon size={13} />} Retry read
           </Button>
         </div>
       ) : (

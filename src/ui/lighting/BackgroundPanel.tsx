@@ -5,8 +5,8 @@
 // while you drag. In Layout properties' RGB Lighting tab.
 
 import { useMemo } from "react";
-import type { LightingBackgroundMode } from "../../vendor/rynk-wasm/rynk_wasm";
-import { useWorkbench } from "../state";
+import type { LightingBackgroundMode } from "../../model/lighting-types";
+import { useBusy, useWorkbench } from "../state";
 import { useDeviceDraft } from "../device-draft";
 import { cssRgb, hsvToRgb } from "../../model/lighting/color";
 import { ApplyBar, Segmented, cx } from "../kit";
@@ -71,6 +71,7 @@ function wireHsvCss(hue: number, saturation: number, value: number): string {
 
 export function BackgroundPanel() {
   const { state, io } = useWorkbench();
+  const busy = useBusy();
   const device = state.lightingState;
 
   const mutable = useMemo(
@@ -169,7 +170,7 @@ export function BackgroundPanel() {
             compact
             apply={{
               label: "Apply",
-              disabled: state.lightingBusy,
+              disabled: busy.lightingBusy,
               onClick: () => io.setLightingState(JSON.parse(JSON.stringify(draft))),
             }}
             discard={{ label: "Revert", onClick: reset }}

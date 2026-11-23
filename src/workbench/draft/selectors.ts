@@ -4,6 +4,7 @@
 import type { WorkbenchState } from "../../model/workbench-state";
 import { pointingConfigsEqual } from "../../model/pointing";
 import { draftOf } from "./want";
+import { busyOf } from "../../model/busy-state";
 
 /** How many keys, encoders and slots the draft changes, unsent. */
 export function draftEditCount(state: WorkbenchState): number {
@@ -15,17 +16,18 @@ export function pointingDraftDirty(state: WorkbenchState): boolean {
 }
 
 export function hasPendingConfigurationWrite(state: WorkbenchState): boolean {
+  const busy = busyOf(state);
   return (
-    state.lightingBusy ||
-    state.pointingBusy ||
-    state.batchBusy ||
+    busy.lightingBusy ||
+    busy.pointingBusy ||
+    busy.batchBusy ||
     Object.values(state.pending).some((item) => item.status === "pending")
   );
 }
 
 /** Whether Undo or Redo may go now: there is a step, and nothing is being written. */
 export function canTravel(state: WorkbenchState, direction: "undo" | "redo"): boolean {
-  if (state.batchBusy || hasPendingConfigurationWrite(state)) return false;
+  if (busyOf(state).batchBusy || hasPendingConfigurationWrite(state)) return false;
   return (direction === "undo" ? state.history.past : state.history.future).length > 0;
 }
 
@@ -33,10 +35,11 @@ export function canTravel(state: WorkbenchState, direction: "undo" | "redo"): bo
  *  now. Not after a send left changes behind (it failed, or the keyboard
  *  changed them too): those wait for the next edit or an explicit Send. */
 export function liveSendDue(state: WorkbenchState): boolean {
-  return !state.batchMode && !state.batchBusy && !state.lightingBusy && state.batchError === null && draftOf(state).changes.length > 0;
+  const busy = busyOf(state);
+  return !state.batchMode && !busy.batchBusy && !busy.lightingBusy && busy.batchError === null && draftOf(state).changes.length > 0;
 }
 
 /** Live: whether changes a send left behind wait for an explicit Send. */
 export function sendWaits(state: WorkbenchState): boolean {
-  return !state.batchMode && state.batchError !== null && draftOf(state).changes.length > 0;
+  return !state.batchMode && busyOf(state).batchError !== null && draftOf(state).changes.length > 0;
 }

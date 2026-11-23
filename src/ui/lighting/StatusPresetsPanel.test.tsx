@@ -90,12 +90,10 @@ describe("Glove80 presets", () => {
         lightingControls: { wake_layers: 0 },
         layerMetadata: null,
         runtimeConditionalDraft: [],
-        lightingBusy: false,
         lightingExtension: null,
         batchMode: false,
         pending: {},
-        pointingBusy: false,
-        batchBusy: false,
+        busy: { lightingBusy: false, pointingBusy: false, batchBusy: false },
       },
       dispatch: () => {},
     });

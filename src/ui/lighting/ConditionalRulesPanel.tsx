@@ -24,6 +24,7 @@ import type {
   LightingSplitLink,
 } from "../../model/lighting-types";
 import { useDevice, useWorkbench } from "../state";
+import { busyOf } from "../../model/busy-state";
 import { conditionalTablesEqual } from "../../model/lighting/compare";
 import { ApplyBar, Button, SectionLabel, Segmented, TextInput, cx } from "../kit";
 import { useCapability } from "../use-capabilities";
@@ -34,8 +35,7 @@ import { describeEffect, effectRgb } from "../../model/lighting/effect";
 import { EffectEditor } from "./EffectEditor";
 import { keyAddressWithLegend } from "../key-address";
 import { layerName } from "../layer-names";
-import { appendRule, moveRule, newRule, removeRule, replaceRule, retargetLayer, rulesOnLayer } from "../../model/lighting/rules";
-import type { Rule, Rules } from "../../model/lighting/rules";
+import { appendRule, moveRule, newRule, removeRule, replaceRule, retargetLayer, rulesOnLayer, type Rule, type Rules } from "../../model/lighting/rules";
 import { RULES, hasLayerIndicatorConditions, hasLightingFeature } from "../../session/lighting-features";
 import { maskHasLayer, setLayerInMask } from "../../model/lighting/wake-layers";
 import { useTextContext } from "../useKeyText";
@@ -982,16 +982,16 @@ export function ConditionalRulesPanel() {
         <ApplyBar
           className="mt-2"
           compact
-          busy={state.lightingBusy}
+          busy={busyOf(state).lightingBusy}
           apply={{
             label: "Apply rules",
             title: "Replace the whole rule table on the keyboard with this order",
-            disabled: state.lightingBusy,
+            disabled: busyOf(state).lightingBusy,
             onClick: () => io.applyConditionalScenes(rules),
           }}
           discard={{
             label: "Revert",
-            disabled: state.lightingBusy,
+            disabled: busyOf(state).lightingBusy,
             onClick: () => dispatch({ type: "conditionalDraftReset" }),
           }}
         />
