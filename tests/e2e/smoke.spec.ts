@@ -40,3 +40,17 @@ for (const board of BOARDS) {
     expect(errors).toEqual([]);
   });
 }
+
+// A layout file opens on the board it is for, with no keyboard connected.
+for (const [file, keys] of [
+  ["src/test/fixtures/go60-factory-default.json", 60],
+  ["src/test/fixtures/glove80-plain.toml", 80],
+] as const) {
+  test(`${file.split("/").pop()}: opens on its own board (${keys} keys), no console error`, async ({ page }) => {
+    const errors = collectErrors(page);
+    await page.goto("/");
+    await page.locator("input[type=file]").setInputFiles(file);
+    await expect(page.locator("svg [data-key-row][data-key-col][role=button]")).toHaveCount(keys);
+    expect(errors).toEqual([]);
+  });
+}

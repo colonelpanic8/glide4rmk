@@ -121,7 +121,7 @@ const LEGEND_ACTIONS: Record<string, KeyAction> = {
   L4: layerOn(3),
 };
 
-function actionForLegend(label: string, rightHalf: boolean): KeyAction {
+export function actionForLegend(label: string, rightHalf: boolean): KeyAction {
   switch (label) {
     case "Shift":
       return hid(rightHalf ? "RShift" : "LShift");

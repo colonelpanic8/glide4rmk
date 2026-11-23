@@ -1,14 +1,14 @@
 // One workbench for core tests: a board (a simulated one, a layout file opened
-// as the offline Glove80, or a session a test made itself), opened the way the
+// on its own offline board, or a session a test made itself), opened the way the
 // app opens it (`openBundle`), with the real reducer and the real `io`, in
 // Draft or in Live. A test names its board and its mode, and what it is about.
 
 import { readFileSync } from "node:fs";
 import "./wasm";
 import { resolveCapabilities, firmwareFactsOf, type CapabilitySet } from "../capabilities";
-import { parseDocument } from "../config/document";
 import { mockProvider, type BoardSpec } from "../session/mock/board";
-import { offlineGlove80Catalog, openOfflineGlove80, type OfflineGlove80Options } from "../session/offline/glove80";
+import type { OfflineBoardOptions } from "../session/offline/board";
+import { openOfflineDocument } from "../session/offline/document";
 import type { RynkSession } from "../session/types";
 import type { ConnectedBundle, WorkbenchAction, WorkbenchState } from "../model/workbench-state";
 import { initialWorkbenchState } from "../workbench/initial-state";
@@ -18,20 +18,22 @@ import { flowBoard, type FlowEnvironment } from "../workbench/flows";
 import { openBundle } from "../workbench/open";
 import { nodeJq } from "./jq";
 
-/** The layout files tests open on the offline Glove80. */
+/** The layout files tests open, each on the offline board it is for. */
 const FIXTURES = {
   /** TailorKey for RMK: the golden for round-trips and Flows. */
   tailorkey: "src/test/fixtures/glove80-tailorkey-qwerty.toml",
   /** Three layers, no home-row mods, no combos, no Magic layer. */
   plain: "src/test/fixtures/glove80-plain.toml",
+  /** MoErgo's Go60 factory layout, as MoErgo JSON: four layers. */
+  go60: "src/test/fixtures/go60-factory-default.json",
 } as const;
 
 export type FixtureName = keyof typeof FIXTURES;
 
-/** A layout file, opened as the offline Glove80 with these surfaces. */
+/** A layout file, opened on its own offline board with these surfaces. */
 export interface TestFixture {
   fixture: FixtureName;
-  board?: OfflineGlove80Options;
+  board?: OfflineBoardOptions;
 }
 
 /** What a test opens: a simulated board, a fixture, or a session it made. */
@@ -72,8 +74,7 @@ const isFixture = (board: TestBoard): board is TestFixture => "fixture" in board
 async function sessionOf(board: TestBoard): Promise<RynkSession> {
   if (isSession(board)) return board;
   if (isFixture(board)) {
-    const { snapshot } = parseDocument(fixtureText(board.fixture), offlineGlove80Catalog());
-    return openOfflineGlove80(snapshot, board.board);
+    return openOfflineDocument(fixtureText(board.fixture), board.board).session;
   }
   return mockProvider(board).connect();
 }

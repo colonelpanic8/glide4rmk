@@ -264,7 +264,7 @@ export function ConnectScreen({
             New Glove80 layout
           </button>
         </div>
-        <p className="mt-2 px-1 text-small text-faint">Glove80 TOML and MoErgo JSON files.</p>
+        <p className="mt-2 px-1 text-small text-faint">Glove80 and Go60 TOML or MoErgo JSON files.</p>
 
         <p className="mt-8 text-center text-small text-faint">
           Files and connections stay local — nothing leaves this machine.

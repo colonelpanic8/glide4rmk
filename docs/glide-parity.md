@@ -22,7 +22,7 @@ What GLIDE4RMK took from GLIDE, feature by feature: GLIDE's files (in `moosylog/
 | `themes-settings` | Themes and settings | `dev/core/themes.js` `dev/ui/themeEditor.jsx` `dev/ui/settingsPanel.jsx` `dev/ui/appearanceTab.jsx` | `src/ui/theme` `src/ui/SettingsPanel.tsx` `src/ui/preferences.ts` | f6de792 | 765427c |
 | `guard` | Guard | `dev/ui/guard.jsx` `dev/core/capabilities/changeGuard.js` | `src/domain/guard.ts` `src/ui/guard` | fece887 | 1652c5a |
 | `operations` | Operations | `dev/core/operations.js` | `src/operations/catalog.ts` | unknown | — |
-| `board-geometry` | Glove80 geometry | `dev/core/boards/boards.generated.js` `dev/boards` | `src/model/boards` `src/session/mock/glove80.ts` | a685f3d | f64f7a1 |
+| `board-geometry` | Glove80 and Go60 geometry | `dev/core/boards/boards.generated.js` `dev/boards` | `src/model/boards` `src/session/mock/glove80.ts` `src/session/offline/go60.ts` | a685f3d | #44 |
 | `flow-mirror-halves` | Mirror halves Flow | `dev/flows/shared/mirror-halves.flows` | `flows/shared/mirror-halves.flows` `src/model/boards/key-groups.ts` | 0e41d34 | #36 |
 
 ## Not ported yet

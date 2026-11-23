@@ -2,7 +2,7 @@
 // registry; simulated providers are loaded only in an explicitly opted-in build.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { initConfigWasm, parseDocument } from "./config/document";
+import { initConfigWasm } from "./config/document";
 import { sessionProviders } from "./session";
 import { RECONNECT_DELAYS_MS, retryReconnect } from "./session/reconnect";
 import type { RynkSession, SessionProvider, SessionTarget } from "./session/types";
@@ -113,23 +113,16 @@ export default function App() {
       setOfflineBusy(true);
       let session: RynkSession | null = null;
       try {
-        const offline = await import("./session/offline/glove80");
+        const { openOfflineDocument } = await import("./session/offline/document");
         await initConfigWasm();
         const sourceText = file ? await file.text() : null;
-        const parsed =
-          sourceText === null
-            ? null
-            : parseDocument(
-                sourceText,
-                offline.offlineGlove80Catalog(),
-                offline.offlineGlove80Topology(),
-              );
-        session = offline.openOfflineGlove80(parsed?.snapshot);
+        const opened = openOfflineDocument(sourceText);
+        session = opened.session;
         const loaded = await openBundle(session);
         loaded.workspace = {
           name: file?.name ?? "untitled-glove80.toml",
           sourceText,
-          format: parsed?.format ?? "toml",
+          format: opened.parsed?.format ?? "toml",
         };
         adopt(loaded, null);
       } catch (error) {
