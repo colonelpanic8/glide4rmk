@@ -1,14 +1,17 @@
-
 name: Build and deploy GLIDE4RMK
 
 on:
   push:
     branches:
-      - main
+      - master
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -18,8 +21,34 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # The WASM clients take about six minutes to build with Nix and change
+      # only with flake.nix, flake.lock and nix/: keep the built files and
+      # build them again only when one of those changes.
+      - name: Restore WASM clients
+        id: wasm
+        uses: actions/cache@v4
+        with:
+          path: wasm-out
+          key: wasm-${{ runner.os }}-${{ hashFiles('flake.nix', 'flake.lock', 'nix/**') }}
+
       - name: Install Nix
+        if: steps.wasm.outputs.cache-hit != 'true'
         uses: DeterminateSystems/determinate-nix-action@v3
+
+      - name: Build WASM clients
+        if: steps.wasm.outputs.cache-hit != 'true'
+        run: |
+          nix build .#rynk-wasm --out-link result-rynk-wasm
+          nix build .#moergo-config-wasm --out-link result-moergo-config-wasm
+          mkdir -p wasm-out
+          cp -rL result-rynk-wasm wasm-out/rynk-wasm
+          cp -rL result-moergo-config-wasm wasm-out/moergo-config-wasm
+
+      - name: Put WASM clients in place
+        run: |
+          mkdir -p src/vendor
+          rm -rf src/vendor/rynk-wasm src/vendor/moergo-config-wasm
+          cp -r wasm-out/rynk-wasm wasm-out/moergo-config-wasm src/vendor/
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -30,8 +59,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Not `npm run build`: its prebuild would build the WASM clients again.
       - name: Build GLIDE4RMK
-        run: npm run build
+        run: npx tsc -b && npx vite build
 
       - name: Deploy to Cloudflare
         env:
