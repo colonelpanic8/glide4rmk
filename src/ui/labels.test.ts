@@ -111,3 +111,11 @@ describe("keyActionGlyph", () => {
     expect(keyActionGlyph({ Morse: 0 } as KeyAction, [], MAC)).toEqual({ text: "Mo0" });
   });
 });
+
+describe("a layer-mod-tap", () => {
+  const lmt = { LayerModTap: [2, "LShift", "Space"] } as KeyAction;
+  it("reads as what it taps and what it holds, never as unknown", () => {
+    expect(keyActionDescription(lmt, { os: "win", names: [undefined, undefined, "Nav"] })).toBe("Tap ␣ / hold Nav with Shift");
+    expect(keyActionGlyph(lmt, [], { os: "mac", names: [undefined, undefined, "Nav"] })).toMatchObject({ sub: "⇧Nav", subLayer: true });
+  });
+});

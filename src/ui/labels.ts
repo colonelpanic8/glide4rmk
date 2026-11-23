@@ -354,6 +354,11 @@ export function keyActionGlyph(action: KeyAction, morse: readonly Morse[], text:
     const glyph = { text: label(slots.tap) };
     return slots.hold !== null ? withHold(glyph, slots.hold) : { ...glyph, sub: `2×${label(slots.doubleTap ?? "No")}` };
   }
+  if ("LayerModTap" in action) {
+    const [layer, modifier, tap] = action.LayerModTap;
+    const hold = withModifierText(heldModifiers({ Key: { Hid: modifier } })!, layerRef(text.names, layer, `L${layer}`), text.os);
+    return { text: capText({ Key: { Hid: tap } }), sub: hold, subLayer: true };
+  }
   return { text: "?" };
 }
 
@@ -370,6 +375,10 @@ export function keyActionDescription(action: KeyAction, text: TextContext): stri
     return `Tap ${actionLabel(tap, text) || "·"} / hold ${actionLabel(hold, text) || "·"} · ${timing}`;
   }
   if ("Morse" in action) return `Morse pattern slot ${action.Morse}`;
+  if ("LayerModTap" in action) {
+    const [layer, modifier, tap] = action.LayerModTap;
+    return `Tap ${hidLabel(tap, text.os)} / hold ${layerRef(text.names, layer, `layer ${layer}`)} with ${hidLabel(modifier, text.os)}`;
+  }
   return "Unknown action";
 }
 
