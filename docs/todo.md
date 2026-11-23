@@ -2,7 +2,7 @@
 
 What is left to do, cheapest first within each group. Take one item per session; strike it here when it ships, with its commit. Decisions go in an ADR, not here.
 
-## Architecture first (`docs/architecture-review.md`, "The plan, validated")
+## Architecture first (`docs/architecture-review.md`: "The plan, validated", then "Do now" and "Plan")
 
 In this order; decisions in ADR 0017 and an update of ADR 0002.
 
