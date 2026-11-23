@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { Action, KeyAction, Morse } from "../vendor/rynk-wasm/rynk_wasm";
+import type { Action, Fork, KeyAction, Morse } from "../vendor/rynk-wasm/rynk_wasm";
 import { DEFAULT_TAP_HOLD_PROFILE } from "./morse";
-import { emptyMorse } from "./slots";
+import { emptyFork, emptyMorse } from "./slots";
 import {
   DOUBLE_TAP_PATTERN,
   HOLD_PATTERN,
@@ -128,7 +128,7 @@ describe("planning slot writes", () => {
   it("copies a shared entry rather than changing the other keys", () => {
     const morse = [entry([TAP_PATTERN, A], [DOUBLE_TAP_PATTERN, B]), emptyMorse()];
     const writes = planSlotWrites({ Morse: 0 } as KeyAction, { tap: B, hold: null, doubleTap: B }, morse, new Map([[0, 2]]));
-    expect(writes?.map((write) => (write.kind === "morse" ? write.index : write.binding))).toEqual([1, { Morse: 1 }]);
+    expect(writes?.map((write) => (write.kind === "key" ? write.binding : write.index))).toEqual([1, { Morse: 1 }]);
   });
 
   it("leaves the entry when a key loses its double tap, so undo brings it back", () => {
@@ -139,6 +139,25 @@ describe("planning slot writes", () => {
     expect(planSlotWrites({ Morse: 0 } as KeyAction, "Transparent", morse, new Map([[0, 1]]))).toEqual([
       { kind: "key", binding: "Transparent" },
     ]);
+  });
+
+  it("keeps a morse key that still holds a morse key, with its entry's own timing", () => {
+    const timed = { ...entry([TAP_PATTERN, A], [HOLD_PATTERN, SHIFT]), profile: { ...emptyMorse().profile, hold_timeout_ms: 250 } };
+    expect(planSlotWrites({ Morse: 0 } as KeyAction, { tap: B, hold: SHIFT, doubleTap: null }, [timed], new Map([[0, 1]]))).toEqual([
+      { kind: "morse", index: 0, entry: { ...entry([TAP_PATTERN, B], [HOLD_PATTERN, SHIFT]), profile: timed.profile } },
+    ]);
+  });
+
+  it("copies the forks on a shared morse key along with its entry, so the copy keeps its double tap", () => {
+    const shared = entry([TAP_PATTERN, A], [HOLD_PATTERN, SHIFT]);
+    const caps: Fork = { ...emptyFork(), trigger: { Morse: 0 }, positive_output: { Single: B } as KeyAction };
+    const writes = planSlotWrites({ Morse: 0 } as KeyAction, { tap: B, hold: SHIFT, doubleTap: null }, [shared, emptyMorse()], new Map([[0, 2]]), [caps, emptyFork()]);
+    expect(writes).toEqual([
+      { kind: "morse", index: 1, entry: entry([TAP_PATTERN, B], [HOLD_PATTERN, SHIFT]) },
+      { kind: "fork", index: 1, fork: { ...caps, trigger: { Morse: 1 } } },
+      { kind: "key", binding: { Morse: 1 } },
+    ]);
+    expect(planSlotWrites({ Morse: 0 } as KeyAction, { tap: B, hold: SHIFT, doubleTap: null }, [shared, emptyMorse()], new Map([[0, 2]]), [caps])).toBeNull();
   });
 
   it("swaps two slots as GLIDE does, dropping a hold left empty", () => {

@@ -5,9 +5,10 @@
 // set to fall through to the layer below, bound to a morse entry with other
 // patterns, or bound some other way (LayerModTap) has no slots here. Pure.
 
-import type { Action, KeyAction, Morse, MorseProfile } from "../vendor/rynk-wasm/rynk_wasm";
+import type { Action, Fork, KeyAction, Morse, MorseProfile } from "../vendor/rynk-wasm/rynk_wasm";
+import { same } from "./deep-equal";
 import { DEFAULT_TAP_HOLD_PROFILE, elementsToPattern } from "./morse";
-import { emptyMorseProfile } from "./slots";
+import { emptyMorseProfile, forkIsEmpty } from "./slots";
 
 export type Slot = "tap" | "hold" | "doubleTap";
 
@@ -142,31 +143,50 @@ export function morseUses(layers: readonly (readonly KeyAction[])[]): Map<number
   return uses;
 }
 
-export type SlotWrite = { kind: "morse"; index: number; entry: Morse } | { kind: "key"; binding: KeyAction };
+export type SlotWrite =
+  | { kind: "morse"; index: number; entry: Morse }
+  | { kind: "fork"; index: number; fork: Fork }
+  | { kind: "key"; binding: KeyAction };
 
 /** The writes, in order, that give a key new slot values (or make it fall
  *  through); `null` when a double tap needs a morse entry and none is free.
  *  A key with a double tap gets a morse entry of its own: its current one when
  *  no other key shares it, else a free one, written before the key points at
  *  it. A key that loses its double tap leaves its entry as it was, so undoing
- *  the key edit brings the double tap back; an entry no key uses is free again. */
+ *  the key edit brings the double tap back; an entry no key uses is free again.
+ *  A morse key that keeps a hold stays a morse key, so it keeps its entry's
+ *  own timing; when it gets a copy, the forks that fire on it are copied to
+ *  fire on the copy (in free fork slots), so it keeps working as before. */
 export function planSlotWrites(
   current: KeyAction,
   next: SlotValues | "Transparent",
   morse: readonly Morse[],
   uses: ReadonlyMap<number, number>,
+  forks: readonly Fork[] = [],
 ): SlotWrite[] | null {
   const slots = slotsOf(current, morse);
   const base = slots.kind === "slots" ? slots : emptySlots();
   const key = (binding: KeyAction): SlotWrite[] =>
     JSON.stringify(binding) === JSON.stringify(current) ? [] : [{ kind: "key", binding }];
   if (next === "Transparent") return key("Transparent");
-  if (next.doubleTap === null) return key(bindingOf({ ...next, profile: base.profile, tapOnly: base.tapOnly }));
+  const keepsEntry = base.morse !== null && next.hold !== null;
+  if (next.doubleTap === null && !keepsEntry) return key(bindingOf({ ...next, profile: base.profile, tapOnly: base.tapOnly }));
 
   const owned = base.morse !== null && (uses.get(base.morse.index) ?? 0) <= 1 ? base.morse.index : null;
   const index = owned ?? freeMorseEntry(morse, uses);
   if (index === -1) return null;
-  return [{ kind: "morse", index, entry: morseOf(next, base.morse?.profile) }, ...key({ Morse: index })];
+  const binding: KeyAction = { Morse: index };
+  const copied = owned === null && base.morse !== null ? forkCopies(current, binding, forks) : [];
+  if (copied === null) return null;
+  return [{ kind: "morse", index, entry: morseOf(next, base.morse?.profile) }, ...copied, ...key(binding)];
+}
+
+/** The forks on `from`, each copied to fire on `to` in a free slot; null when there are too few. */
+function forkCopies(from: KeyAction, to: KeyAction, forks: readonly Fork[]): SlotWrite[] | null {
+  const free = forks.flatMap((fork, index) => (forkIsEmpty(fork) ? [index] : []));
+  const on = forks.flatMap((fork, index) => (same(fork.trigger, from) ? [index] : []));
+  if (on.length > free.length) return null;
+  return on.map((index, i) => ({ kind: "fork" as const, index: free[i], fork: { ...forks[index], trigger: to } }));
 }
 
 /** A morse entry no key uses: an empty one first, else one a key let go of. */

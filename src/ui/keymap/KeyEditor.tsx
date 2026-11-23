@@ -78,16 +78,18 @@ export function KeyEditor({ size = 310 }: { size?: number }) {
   const commit = (next: KeyAction) => io.setKey(layer, row, col, next);
   /** Writes the morse entry (when the plan has one) before the key, and stops at the first failure. */
   const apply = async (next: SlotValues | "Transparent") => {
-    const writes = planSlotWrites(action, next, state.morse, uses);
+    const writes = planSlotWrites(action, next, state.morse, uses, state.forks);
     if (!writes) {
-      showToast("No double tap added: every morse entry is in use", {
-        tone: "danger",
-      });
+      showToast("Not changed: this key needs a tap pattern or fork of its own, and every slot is in use", { tone: "danger" });
       return;
     }
     for (const write of writes) {
       const result =
-        write.kind === "morse" ? await io.setSlot("morse", write.index, write.entry) : await commit(write.binding);
+        write.kind === "morse"
+          ? await io.setSlot("morse", write.index, write.entry)
+          : write.kind === "fork"
+            ? await io.setSlot("forks", write.index, write.fork)
+            : await commit(write.binding);
       if (!result.ok) return;
     }
   };
