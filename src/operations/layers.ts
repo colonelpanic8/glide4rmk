@@ -1,4 +1,4 @@
-// Layers: move, delete and duplicate, with every reference to a layer
+// Layers: add, rename, move, delete and duplicate, with every reference to a layer
 // rewritten (layers/management.ts plans them). Pure.
 
 import type { KeyboardImage } from "../sync/image";
@@ -89,12 +89,28 @@ export const duplicateLayer: Operation<{ layer: number; name?: string }> = {
   },
 };
 
-/** Why a new layer cannot have this name, or null. */
-function layerNameProblem(image: KeyboardImage, name: string): string | null {
+/** Why a layer cannot have this name, or null; `own` is the layer being renamed. */
+function layerNameProblem(image: KeyboardImage, name: string, own?: number): string | null {
   if (!name) return "a layer needs a name";
   if (new TextEncoder().encode(name).length > 32) return "a layer's name has at most 32 UTF-8 bytes";
-  return image.metadata.some((slot) => slot.occupied && slot.name === name) ? `there is a layer called ${name} already` : null;
+  return image.metadata.some((slot, index) => index !== own && slot.occupied && slot.name === name) ? `there is a layer called ${name} already` : null;
 }
+
+export const renameLayer: Operation<{ layer: number; name: string }> = {
+  name: "rename_layer",
+  description: "Gives a layer another name, unique on the keyboard; what names the layer by its slot is unchanged.",
+  inputs: [layerField, { name: "name", kind: "string", description: "Its new name, at most 32 UTF-8 bytes." }],
+  run(image, { layer, name }) {
+    if (image.metadata.length === 0) return failed("this firmware does not support persistent layer metadata");
+    if (!image.metadata[layer]?.occupied) return failed(`layer ${layer} is not in use`);
+    const trimmed = name.trim();
+    const problem = layerNameProblem(image, trimmed, layer);
+    if (problem) return failed(problem);
+    if (image.metadata[layer].name === trimmed) return { ok: true, image };
+    const metadata = image.metadata.map((slot, index) => (index === layer ? { occupied: true, name: trimmed } : slot));
+    return { ok: true, image: { ...image, metadata } };
+  },
+};
 
 export const addLayer: Operation<{ name: string; after: number }> = {
   name: "add_layer",

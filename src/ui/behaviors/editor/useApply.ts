@@ -13,7 +13,7 @@ export function useApply<K extends LibraryKind>(kind: K, slot: number | null) {
   return async (value: BehaviorValues[K], name: string): Promise<boolean> => {
     const behavior = { kind, value } as AnyBehavior;
     const done =
-      slot === null ? await io.apply("create_behavior", { ...behavior, name }) : await io.apply("set_behavior", { ...behavior, slot, name });
+      slot === null ? await io.apply("add_behavior", { ...behavior, name }) : await io.apply("update_behavior", { ...behavior, slot, name });
     showToast(done.ok ? `${one} saved` : `${one} not saved: ${done.message}`, { tone: done.ok ? "ok" : "danger" });
     return done.ok;
   };

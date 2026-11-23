@@ -1,6 +1,6 @@
 # 0020. The Behavior Library: names beside the slots, one editor, every edit an operation
 
-**Status:** Accepted. Takes GLIDE's organization and flow for behaviors (`moosylog/glide-src`: `docs/specs/ui/behaviors.md`, `dev/ui/behaviorLists.jsx`, `behaviorEditor.jsx`, `behaviorUsage.jsx`), not its code. Builds on ADR 0018 (the draft is a wanted image) and ADR 0019 (operations).
+**Status:** Accepted. Takes GLIDE's organization and flow for behaviors (`moosylog/glide-src`: `docs/specs/ui/behaviors.md`, `dev/ui/behaviorLists.jsx`, `behaviorEditor.jsx`, `behaviorUsage.jsx`), not its code. Builds on ADR 0018 (the draft is a wanted image) and ADR 0019 (operations); its operation names amended by 0031 (`add_behavior`, `update_behavior`).
 
 ## Context
 

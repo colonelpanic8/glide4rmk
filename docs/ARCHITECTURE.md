@@ -121,7 +121,7 @@ Through `sync/` (fresh read, three-way check, only the difference, read back): S
 
 Not yet:
 
-- **Direct Live writes** from `workbench/io-*.ts`: `keymap.setKey` (one key), `keymap.setEncoder`, `combos.set` / `morse.set` / `forks.set` (`io.setSlot`), `behavior.set`, `behavior.setHoldTriggerPositions`, `keymap.setDefaultLayer`, `keymap.setLayerMetadata` (rename), `lighting.setState`, `lighting.scenes.setLayerPolicy`, `lighting.setWakeLayers`, `lighting.setExtensionState` / `setExtensionLayers` / `setExtensionParam`. In Draft each of these changes what you want instead.
+- **Direct Live writes** from `workbench/io-*.ts`: `keymap.setKey` (one key), `keymap.setEncoder`, `combos.set` / `morse.set` / `forks.set` (`io.setSlot`), `behavior.set`, `behavior.setHoldTriggerPositions`, `keymap.setDefaultLayer`, `lighting.setState`, `lighting.scenes.setLayerPolicy`, `lighting.setWakeLayers`, `lighting.setExtensionState` / `setExtensionLayers` / `setExtensionParam`. In Draft each of these changes what you want instead.
 - **Whole tables in either mode:** `io.applyScenes` and `io.applyConditionalScenes` (`io-lighting.ts`), used by the condition-rules panel's Apply rules, the lighting key presets and the stock Magic layer; the presets write their keys one by one before the table (todo 10, 11).
 - **Try-out lights:** `lighting.replaceOverlay` and `clearOverlay` (`io-try-out.ts`), never stored.
 - **The Device screen** calls the session itself for Bluetooth pairings, automatic transport switching and split latency; `io` reboots to the bootloader and resets storage.

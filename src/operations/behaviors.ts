@@ -58,7 +58,7 @@ function placed(
 }
 
 export const createBehavior: Operation<AnyBehavior & { name?: string; description?: string }> = {
-  name: "create_behavior",
+  name: "add_behavior",
   description: "Adds a behavior in the first free slot of its kind, with a name and a description.",
   inputs: [
     KIND_FIELD,
@@ -99,7 +99,7 @@ const NAME_FIELD: InputField = { name: "name", kind: "string", description: "Its
 const DESCRIPTION_FIELD: InputField = { name: "description", kind: "string", optional: true, description: "What it is for; left out keeps the one it has." };
 
 export const setBehavior: Operation<AnyBehavior & { slot: number; name?: string; description?: string }> = {
-  name: "set_behavior",
+  name: "update_behavior",
   description: "Sets what one behavior slot holds, and its name and description when given (an editor's Apply).",
   inputs: [
     KIND_FIELD,
