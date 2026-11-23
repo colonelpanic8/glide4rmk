@@ -41,6 +41,10 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 29. **Maintenance mode and the split link, live.** The session reads both (`session.device.maintenanceMode()`, `splitTransport()`), and rules can test them, but no topic carries them, so the workbench neither reads nor keeps them (#34). If a screen or a rules preview needs them, read them at connect into `state.device` and refresh them (on `LightingChange`, say); until then rules on them preview as unknown.
 30. **MoErgo JSON cannot be saved with tap patterns or user keys.** Export to MoErgo JSON stops with "runtime action TD(0) cannot be represented by the MoErgo editor JSON format" (or `USER(13)`) as soon as one key is a tap pattern or a user key. Opening a MoErgo or GLIDE layout with home-row mods works (its hold-taps become tap patterns), but saving it back as MoErgo JSON then fails; TailorKey and the simulated Glove80's stock layout (its Bluetooth keys) cannot be exported as MoErgo JSON at all. TOML is not affected. The refusal is the MoErgo converter's (`moergo-config-wasm`, built from `colonelpanic8/moergo-rmk`, `flake.nix`), so the fix starts there: write a tap pattern as a hold-tap behavior and a user key as what MoErgo calls it, or say which keys stop the export. It also blocks running GLIDE's Flows unchanged (`docs/architecture-review.md`, P6).
 
+## Parked
+
+31. **More RMK keyboards.** What it would take, and why the protocol decides it: `docs/more-rmk-keyboards.md`. Waits on a conversation with colonelpanic8 about upstreaming the fork's Rynk additions.
+
 ## Tests and trying it
 
 24. **Try this branch in a browser and on a keyboard.** Several keys selected, picking keys, the effects gallery, exact timing, Try out, whole-row writes, imports as commits and Live's own send have only been tested in the simulated boards; none has been tried in a browser or on a keyboard.
