@@ -2,7 +2,7 @@
 // start of its message, then the totals (after GLIDE's scripts/testQuiet.mjs).
 // A failing test can otherwise print a whole keymap as a diff.
 //   npm run t -- src/sync src/ui/draft/sendStaged.test.ts      (no paths: everything)
-// Unlike `npm test` it does not build the WASM clients first (`npm run wasm`).
+// Unlike `npm test` it does not check the WASM clients first (`npm run wasm`).
 import { spawnSync } from "node:child_process";
 import { readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

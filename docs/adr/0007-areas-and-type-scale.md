@@ -1,6 +1,6 @@
 # 0007. Six areas, named type sizes
 
-**Status:** Accepted
+**Status:** Accepted. The area rail and the Library superseded by 0008.
 
 ## Context
 

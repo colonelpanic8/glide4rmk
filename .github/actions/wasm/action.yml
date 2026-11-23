@@ -1,20 +1,39 @@
 name: WASM clients
 description: >
-  Puts the Rynk and MoErgo config WASM clients in src/vendor. They take about
-  six minutes to build with Nix and change only with flake.nix, flake.lock and
-  nix/, so they are cached by those files' hash and built only on a miss.
-  A cache saved on master is read by every branch; one saved on a branch only
-  by that branch.
+  Puts the Rynk and MoErgo config WASM clients in src/vendor, with the WASM key
+  (scripts/wasm-key.mjs: the hash of flake.nix, flake.lock and nix/) beside them
+  as src/vendor/WASM_KEY, so `npm test` and `npm run build` skip Nix. They take
+  about six minutes to build with Nix and change only with those files, so they
+  are cached by that key and built only on a miss. A cache saved on master is
+  read by every branch; one saved on a branch only by that branch.
+  With publish-branch set (the deploy on master), the clients and WASM_KEY are
+  also pushed to that branch whenever its WASM_KEY differs, for
+  scripts/setup-session.sh to fetch without Nix.
+
+inputs:
+  publish-branch:
+    description: Branch to push the clients and WASM_KEY to when it is stale; empty to not publish.
+    required: false
+    default: ""
+  token:
+    description: Token with contents write, for publish-branch.
+    required: false
+    default: ""
 
 runs:
   using: composite
   steps:
+    - name: WASM key
+      id: key
+      shell: bash
+      run: echo "key=$(node scripts/wasm-key.mjs)" >> "$GITHUB_OUTPUT"
+
     - name: Restore WASM clients
       id: cache
       uses: actions/cache@v4
       with:
         path: wasm-out
-        key: wasm-${{ runner.os }}-${{ hashFiles('flake.nix', 'flake.lock', 'nix/**') }}
+        key: wasm-${{ runner.os }}-${{ steps.key.outputs.key }}
 
     - name: Install Nix
       if: steps.cache.outputs.cache-hit != 'true'
@@ -32,7 +51,48 @@ runs:
 
     - name: Put WASM clients in place
       shell: bash
+      env:
+        WASM_KEY: ${{ steps.key.outputs.key }}
       run: |
         mkdir -p src/vendor
         rm -rf src/vendor/rynk-wasm src/vendor/moergo-config-wasm
         cp -r wasm-out/rynk-wasm wasm-out/moergo-config-wasm src/vendor/
+        echo "$WASM_KEY" > src/vendor/WASM_KEY
+
+    - name: Publish WASM clients to ${{ inputs.publish-branch }}
+      if: inputs.publish-branch != ''
+      shell: bash
+      env:
+        WASM_KEY: ${{ steps.key.outputs.key }}
+        BRANCH: ${{ inputs.publish-branch }}
+        TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+        url="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}"
+        check=$(mktemp -d)
+        git -C "$check" init -q
+        if git -C "$check" fetch -q --depth 1 "$url" "refs/heads/$BRANCH" 2>/dev/null \
+          && [ "$(git -C "$check" show FETCH_HEAD:WASM_KEY 2>/dev/null | tr -d '[:space:]')" = "$WASM_KEY" ]; then
+          echo "$BRANCH already holds the clients for ${WASM_KEY:0:12}."
+          exit 0
+        fi
+        out=$(mktemp -d)
+        cp -r wasm-out/rynk-wasm wasm-out/moergo-config-wasm "$out/"
+        chmod -R u+w "$out"
+        # wasm-pack's .gitignore ("*") would keep every file out of the commit.
+        find "$out" -name .gitignore -delete
+        echo "$WASM_KEY" > "$out/WASM_KEY"
+        cat > "$out/README.md" <<EOF
+        # WASM clients built by CI
+
+        Built with Nix from ${GITHUB_REPOSITORY}@${GITHUB_SHA} by the deploy on master.
+        WASM_KEY is \`node scripts/wasm-key.mjs\` of that commit: the hash of flake.nix,
+        flake.lock and nix/. \`scripts/setup-session.sh\` copies these into src/vendor/
+        and warns when WASM_KEY differs from the checkout's own. Force-pushed, one commit.
+        EOF
+        git -C "$out" init -q -b "$BRANCH"
+        git -C "$out" add -A
+        git -C "$out" -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+          commit -qm "WASM clients for ${WASM_KEY:0:12}, built from ${GITHUB_SHA}"
+        git -C "$out" push -qf "$url" "$BRANCH"
+        echo "Pushed the clients for ${WASM_KEY:0:12} to $BRANCH."
