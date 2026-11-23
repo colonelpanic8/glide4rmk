@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { mockProvider } from "../session/mock/board";
 import { glove80Board } from "../session/mock/glove80";
-import { openBundle } from "./bundle";
+import { openBundle } from "./open";
 
 // The order things happen in: the wasm modules must be loaded before the board
 // is read, so no screen can call into them before they are ready.

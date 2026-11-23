@@ -33,8 +33,25 @@ export function offlineGlove80Topology(): LightingTopology {
   return glove80Board.topology;
 }
 
+/** What the offline Glove80 has besides keys and behaviors; both on unless
+ *  turned off, as a stock Glove80 has them. Off, the board is built as
+ *  firmware without that surface: no pointing configuration, and a lighting
+ *  surface that answers "unsupported". */
+export interface OfflineGlove80Options {
+  pointing?: boolean;
+  lighting?: boolean;
+}
+
 /** Build a Glove80-shaped editing surface from a parsed configuration snapshot. */
-export function offlineGlove80Board(snapshot?: RuntimeSnapshot): BoardSpec {
+export function offlineGlove80Board(snapshot?: RuntimeSnapshot, options: OfflineGlove80Options = {}): BoardSpec {
+  const board = glove80Surface(snapshot);
+  const { pointing = true, lighting = true } = options;
+  if (!pointing) delete board.pointingConfig;
+  if (!lighting) board.capabilities = { ...board.capabilities, lighting_enabled: false };
+  return board;
+}
+
+function glove80Surface(snapshot?: RuntimeSnapshot): BoardSpec {
   const layers = structuredClone(snapshot?.layers ?? defaultLayers());
   const behaviors = snapshot?.behaviors;
   const lighting = snapshot?.lighting;
@@ -135,6 +152,6 @@ export function offlineGlove80Board(snapshot?: RuntimeSnapshot): BoardSpec {
   };
 }
 
-export function openOfflineGlove80(snapshot?: RuntimeSnapshot): RynkSession {
-  return memorySession(offlineGlove80Board(snapshot), "offline");
+export function openOfflineGlove80(snapshot?: RuntimeSnapshot, options: OfflineGlove80Options = {}): RynkSession {
+  return memorySession(offlineGlove80Board(snapshot, options), "offline");
 }

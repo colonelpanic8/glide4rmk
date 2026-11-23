@@ -80,6 +80,17 @@ describe("the rules themselves", () => {
   });
 });
 
+describe("tests", () => {
+  it("of the core layers never import the screens; other rules hold for production code only", () => {
+    const violations = findViolations({
+      "src/workbench/a.test.ts": 'import { openBundle } from "../ui/bundle";\nimport { m } from "../session/mock/board";',
+      "src/config/b.test.ts": 'import { h } from "../test/harness";',
+      "src/ui/c.test.tsx": 'import type { K } from "../vendor/rynk-wasm/rynk_wasm";',
+    });
+    expect(violations.map((v) => `${v.rule} ${v.from}`)).toEqual(["core-never-imports-ui src/workbench/a.test.ts"]);
+  });
+});
+
 describe("operations (ADR 0019)", () => {
   it("are pure, below the workbench and above the write path", () => {
     const violations = findViolations({

@@ -1,3 +1,4 @@
+import { withTestWorkbench } from "../test/harness";
 import { describe, expect, it, vi } from "vitest";
 import { mockProvider, storedSegmentsOf } from "../session/mock/board";
 import { glove80Board } from "../session/mock/glove80";
@@ -5,7 +6,7 @@ import type { RynkSession } from "../session/types";
 import type { KeyAction, Morse } from "../vendor/rynk-wasm/rynk_wasm";
 import { emptyMorse } from "../model/slots";
 import { noLabels, withLabel } from "../model/behavior-labels";
-import { openBundle } from "../ui/bundle";
+import { openBundle } from "./open";
 import { initialWorkbenchState } from "./initial-state";
 import { ioFeaturesFor, keepingCurrent, makeIo, type IoOptions, type WorkbenchIo } from "./io";
 import { makeWorkbenchReducer } from "./reducer";
@@ -20,23 +21,13 @@ async function withBoard(
   check: (session: RynkSession, io: WorkbenchIo, state: () => WorkbenchState) => Promise<void>,
   options: Partial<IoOptions> = {},
 ) {
-  const session = await mockProvider({
+  const board = {
     ...glove80Board,
     defaultLayers: glove80Board.defaultLayers.map((layer, index) =>
       layer.map((action, offset) => (index === 0 && offset < 2 ? letter(offset === 0 ? "A" : "B") : action)),
     ),
-  }).connect();
-  try {
-    const bundle = await openBundle(session);
-    let state: WorkbenchState = { ...initialWorkbenchState(bundle), batchMode: draft };
-    const reducer = makeWorkbenchReducer(bundle.caps.num_cols);
-    const io = makeIo(session, () => state, (action) => { state = reducer(state, action); }, {
-      cols: bundle.caps.num_cols, onDisconnect: () => {}, features: ioFeaturesFor(bundle), ...options,
-    });
-    await check(session, io, () => state);
-  } finally {
-    await session.close();
-  }
+  };
+  await withTestWorkbench(board, { mode: draft ? "draft" : "live", io: options }, ({ session, io, state }) => check(session, io, state));
 }
 
 const swap = { a: { layer: 0, row: 0, col: 0 }, b: { layer: 0, row: 0, col: 1 } };

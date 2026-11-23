@@ -43,7 +43,7 @@ What this buys, concretely:
 ```
 
 The picture is the intent. What the tests enforce (`src/architecture/boundaries.ts`, ADR 0001; a new violation fails, old ones are listed in `boundaries.baseline.json` and may only go) is narrower:
-
+- Nothing below `ui/` imports `ui/` or the app shell; neither do the core layers' tests (they open a workbench with `src/test/harness.ts`).
 - Nothing below `ui/` imports `ui/` or the app shell.
 - Nothing below `workbench/` imports `workbench/`, and nothing below `operations/` imports `operations/`.
 - `operations/` imports only `model/`, `domain/`, `layers/`, the wire types and the pure parts of `sync/` (`image`, `items`, `patch`, `plan`).
@@ -57,7 +57,7 @@ The layers from `sync/` down to `session/` are not ordered among themselves, and
 | Layer | Holds | Never imports (tested) |
 |---|---|---|
 | `ui/` | Screens (`Workbench.tsx`, areas in `areas.ts`), the context (`state.tsx`), hooks, words (`terms.ts`, `labels.ts`), themes, key faces, the canvas, Guard's questions (`guard/`), module stores for a pick of keys, the lit view and Layout properties (ended by `workbench-end.ts`) | a transport or simulated board, the wire package |
-| `workbench/` | `initial-state`, `reducer` (+ `reduce-lighting`, `reduce-settings`), `pending`, `lighting-drafts`, `io` (+ `io-keys`, `io-layers`, `io-lighting`, `io-settings`, `io-import`, `io-try-out`), `apply` (`commitImage`), `labels`, `draft/`, `usage`, `layer-impact` | `ui/`, a transport |
+| `workbench/` | `open` (`openBundle`: the connect-time read), `initial-state`, `reducer` (+ `reduce-lighting`, `reduce-settings`), `pending`, `lighting-drafts`, `io` (+ `io-keys`, `io-layers`, `io-lighting`, `io-settings`, `io-import`, `io-try-out`), `apply` (`commitImage`), `labels`, `draft/`, `usage`, `layer-impact` | `ui/`, a transport |
 | `operations/` | Each operation (`keys`, `layers`, `lighting`, `transform`, `behaviors` with their slots and Copy text), the `catalog` with `runOperation`, input checks, Guard's view of an image (ADR 0019, 0020); `describe` and `flows/`: the .flows file, choices, jq contract, the fold of a script's calls (ADR 0025) | a session, a reader or writer, `config/`, `workbench/`, `ui/` |
 | `sync/` | `image`, `items`, `patch`, `plan`, `read`, `write`, `conflicts` (ADR 0012, 0021, `docs/sync.md`) | `operations/`, `workbench/`, `ui/`, a transport |
 | `layers/`, `config/`, `domain/`, `firmware/` | Layer rewrites; layout files (`transfer`, `import-layout`, `document`); the graph and Guard (ADR 0011); firmware releases | `operations/`, `workbench/`, `ui/` |

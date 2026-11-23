@@ -5,7 +5,7 @@ import { initSync as initRynkSync } from "../../vendor/rynk-wasm/rynk_wasm";
 import { parseDocument } from "../../config/document";
 import { offlineGlove80Catalog, openOfflineGlove80 } from "../../session/offline/glove80";
 import { renderInWorkbench } from "../../test/workbench";
-import { openBundle } from "../bundle";
+import { openBundle } from "../../workbench/open";
 import { initialWorkbenchState } from "../../workbench";
 import { BehaviorLibrary, LibraryEntry } from "./BehaviorLibrary";
 

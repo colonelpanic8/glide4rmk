@@ -2,40 +2,27 @@
 // keyboard's overlay, when, and that none of it touches the draft, what you
 // want or the history, until "Keep these lights" makes it one change.
 
+import { withTestWorkbench } from "../test/harness";
 import { describe, expect, it, vi } from "vitest";
-import { mockProvider } from "../session/mock/board";
 import { glove80Board } from "../session/mock/glove80";
 import type { WorkbenchState } from "../model/workbench-state";
 import type { RynkSession } from "../session/types";
 import { DEFAULT_TIMING } from "../model/lighting/effect";
 import { tryOutPlan } from "../model/lighting/try-out";
 import type { KeyLight } from "../model/lighting/key-light";
-import { openBundle } from "../ui/bundle";
 import { ledNodesOf } from "./apply";
 import { draftOf, wantOf } from "./draft/want";
-import { initialWorkbenchState } from "./initial-state";
-import { ioFeaturesFor, makeIo, type WorkbenchIo } from "./io";
+import { type WorkbenchIo } from "./io";
 import { TRY_OUT_PAUSE_MS } from "./io-try-out";
 import { lightingDraftFor } from "./lighting-drafts";
-import { makeWorkbenchReducer } from "./reducer";
 
 const color = (r: number, g: number, b: number): KeyLight => ({ kind: "color", color: { r, g, b }, effect: "Solid", timing: DEFAULT_TIMING });
 const RED = color(255, 0, 0);
 const BLUE = color(0, 0, 255);
 
 async function onBoard(draft: boolean, check: (io: WorkbenchIo, state: () => WorkbenchState, session: RynkSession) => Promise<void>) {
-  const session = await mockProvider({ ...glove80Board, seedScenes: [] }).connect();
-  try {
-    const bundle = await openBundle(session);
-    let state: WorkbenchState = { ...initialWorkbenchState(bundle), batchMode: draft };
-    const reducer = makeWorkbenchReducer(bundle.caps.num_cols);
-    const io = makeIo(session, () => state, (action) => { state = reducer(state, action); }, {
-      cols: bundle.caps.num_cols, onDisconnect: () => {}, features: ioFeaturesFor(bundle), ledNodes: ledNodesOf(bundle),
-    });
-    await check(io, () => state, session);
-  } finally {
-    await session.close();
-  }
+  await withTestWorkbench({ ...glove80Board, seedScenes: [] }, { mode: draft ? "draft" : "live", io: (bundle) => ({ ledNodes: ledNodesOf(bundle) }) },
+    ({ io, state, session }) => check(io, state, session));
 }
 
 /** Gives keys a try-out light, as the tab and Paint do. */

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { glove80Board } from "../session/mock/glove80";
 import { mockProvider } from "../session/mock/board";
 import { describeBuild, parseBuildLabel } from "../session/build-identity";
-import { openBundle } from "../ui/bundle";
+import { openBundle } from "../workbench/open";
 import {
   firmwareUpdateStatus,
   parseGithubRelease,

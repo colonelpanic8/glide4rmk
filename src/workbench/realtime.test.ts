@@ -1,32 +1,16 @@
+import { withTestWorkbench } from "../test/harness";
 import { describe, expect, it, vi } from "vitest";
-import { mockProvider } from "../session/mock/board";
 import { glove80Board } from "../session/mock/glove80";
 import type { RynkSession } from "../session/types";
-import { openBundle } from "../ui/bundle";
-import { initialWorkbenchState } from "./initial-state";
-import { ioFeaturesFor, makeIo, type WorkbenchIo } from "./io";
-import { makeWorkbenchReducer } from "./reducer";
+import { type WorkbenchIo } from "./io";
 import type { WorkbenchState } from "../model/workbench-state";
 import { draftOf } from "./draft/want";
 import { mutableLighting } from "../sync";
 
 /** A simulated Glove80 with realtime lighting on, in Live or Draft. */
 async function withBoard(draft: boolean, check: (session: RynkSession, io: WorkbenchIo, state: () => WorkbenchState) => Promise<void>) {
-  const session = await mockProvider(glove80Board).connect();
-  try {
-    const bundle = await openBundle(session);
-    let state: WorkbenchState = { ...initialWorkbenchState(bundle), batchMode: draft };
-    const reducer = makeWorkbenchReducer(bundle.caps.num_cols);
-    const io = makeIo(session, () => state, (action) => (state = reducer(state, action)), {
-      cols: bundle.caps.num_cols,
-      onDisconnect: () => {},
-      features: ioFeaturesFor(bundle),
-      realtimeLighting: () => true,
-    });
-    await check(session, io, () => state);
-  } finally {
-    await session.close();
-  }
+  await withTestWorkbench(glove80Board, { mode: draft ? "draft" : "live", io: { realtimeLighting: () => true } },
+    ({ session, io, state }) => check(session, io, state));
 }
 
 const lights = (state: WorkbenchState) => mutableLighting(state.lightingState!);

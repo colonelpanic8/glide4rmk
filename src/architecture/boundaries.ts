@@ -23,6 +23,8 @@ export interface BoundaryRule {
   why: string;
   /** Whether `from` importing `to` breaks the rule. */
   breaks(from: string, to: string): boolean;
+  /** Whether the rule also holds for test files (production code only otherwise). */
+  tests?: boolean;
 }
 
 const LAYER_FOLDERS = new Set([
@@ -49,8 +51,9 @@ const BACKENDS = ["webhid", "webserial", "webbluetooth", "native", "native-ble",
 export const BOUNDARY_RULES: BoundaryRule[] = [
   {
     id: "core-never-imports-ui",
-    why: "Logic must run without the screen: session, config, model, layers, firmware, sync and the workbench never import ui or the app shell.",
+    why: "Logic must run without the screen: session, config, model, layers, firmware, sync and the workbench never import ui or the app shell, nor do their tests.",
     breaks: (from, to) => CORE_LAYERS.has(layerOf(from)) && ["ui", "app"].includes(layerOf(to)),
+    tests: true,
   },
   {
     id: "capabilities-are-self-contained",
@@ -139,11 +142,13 @@ export function resolveSpecifier(from: string, specifier: string): string | unde
   return normalize(`${dir}/${specifier}`).replace(/\.(tsx?|jsx?|css|json|wasm)$/, "");
 }
 
-/** Whether a file is production code the rules apply to. */
+const isTest = (path: string) => /\.test\.(ts|tsx)$/.test(path);
+
+/** Whether a file is source the rules apply to: production code, and tests
+ *  for the rules that say so. */
 export function isChecked(path: string): boolean {
   return (
     /^src\/.*\.(ts|tsx)$/.test(path) &&
-    !/\.test\.(ts|tsx)$/.test(path) &&
     !path.startsWith("src/vendor/") &&
     !path.startsWith("src/architecture/")
   );
@@ -158,6 +163,7 @@ export function findViolations(files: Record<string, string>): Violation[] {
       const to = resolveSpecifier(from, specifier);
       if (to === undefined) continue;
       for (const rule of BOUNDARY_RULES) {
+        if (isTest(from) && !rule.tests) continue;
         if (rule.breaks(from, to)) violations.push({ rule: rule.id, from, to });
       }
     }

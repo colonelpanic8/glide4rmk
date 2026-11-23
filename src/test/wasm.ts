@@ -1,5 +1,5 @@
 // Loads both wasm modules from disk before a test file runs (from setup.ts). The app loads
-// them in openBundle (ui/bundle.ts) before any workbench opens; Node cannot
+// them in openBundle (workbench/open.ts) before any workbench opens; Node cannot
 // fetch them the way the browser does, so tests compile them here instead,
 // and the app's loader then finds them ready.
 

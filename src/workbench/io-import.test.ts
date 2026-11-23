@@ -1,3 +1,4 @@
+import { withTestWorkbench } from "../test/harness";
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { initSync } from "../vendor/moergo-config-wasm/moergo_config_wasm";
@@ -14,11 +15,8 @@ import type { RuntimeLightingRule, RynkSession } from "../session/types";
 import { encodeMacros, hidStep } from "../model/macros";
 import { emptyMorse } from "../model/slots";
 import { addPointingDevice, normalizePointingConfig, pointingConfigsEqual } from "../model/pointing";
-import { openBundle } from "../ui/bundle";
 import type { ConnectedBundle, WorkbenchState } from "../model/workbench-state";
-import { initialWorkbenchState } from "./initial-state";
-import { ioFeaturesFor, makeIo, type IoOptions, type WorkbenchIo } from "./io";
-import { makeWorkbenchReducer } from "./reducer";
+import { type IoOptions, type WorkbenchIo } from "./io";
 import { draftOf } from "./draft/want";
 
 beforeAll(() => {
@@ -50,25 +48,17 @@ async function onBoard(
     prepare?: (bundle: ConnectedBundle) => void;
   } = {},
 ) {
-  try {
-    const bundle = await openBundle(session);
-    options.connected?.(bundle);
-    let state: WorkbenchState = { ...initialWorkbenchState(bundle), batchMode: draft };
-    const reducer = makeWorkbenchReducer(bundle.caps.num_cols);
-    const io = makeIo(session, () => state, (action) => { state = reducer(state, action); }, {
-      cols: bundle.caps.num_cols, onDisconnect: () => {}, features: ioFeaturesFor(bundle), ...options,
-    });
-    options.prepare?.(bundle);
+  const { connected, prepare, ...ioOptions } = options;
+  await withTestWorkbench(session, { mode: draft ? "draft" : "live", io: ioOptions, connected }, async ({ bundle, io, state }) => {
+    prepare?.(bundle);
     const file = (edit: (snapshot: RuntimeSnapshot) => void) => {
-      const snapshot = structuredClone(snapshotFromState(state));
+      const snapshot = structuredClone(snapshotFromState(state()));
       edit(snapshot);
       return renderDocument(snapshot, catalog, "toml");
     };
-    const importText = (text: string) => io.importLayout(readImport({ text, bundle, state, catalog }));
-    await check({ session, bundle, io, state: () => state, file, importText });
-  } finally {
-    await session.close();
-  }
+    const importText = (text: string) => io.importLayout(readImport({ text, bundle, state: state(), catalog }));
+    await check({ session, bundle, io, state, file, importText });
+  });
 }
 
 /** A simulated Glove80 holding only what a TOML file round-trips (a file

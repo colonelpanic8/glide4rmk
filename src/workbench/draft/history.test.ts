@@ -1,14 +1,11 @@
+import { withTestWorkbench } from "../../test/harness";
 import { describe, expect, it } from "vitest";
 import type { KeyAction } from "../../model/action-types";
-import { mockProvider } from "../../session/mock/board";
 import { glove80Board } from "../../session/mock/glove80";
 import type { RynkSession } from "../../session/types";
-import { openBundle } from "../../ui/bundle";
-import type { WorkbenchState } from "../../model/workbench-state";
+import type { WorkbenchAction, WorkbenchState } from "../../model/workbench-state";
 import type { PatchEntry } from "../../sync";
-import { initialWorkbenchState } from "../initial-state";
-import { ioFeaturesFor, makeIo, type WorkbenchIo } from "../io";
-import { makeWorkbenchReducer } from "../reducer";
+import { type WorkbenchIo } from "../io";
 import { emptyHistory, HISTORY_LIMIT, recordStep, travel, type History } from "./history";
 import { draftOf } from "./want";
 import { noLabels, withLabel, type BehaviorLabels } from "../../model/behavior-labels";
@@ -60,18 +57,8 @@ describe("the history (pure)", () => {
 });
 
 /** A simulated Glove80 with the io the workbench uses, in Draft or in Live. */
-async function workbench(draft: boolean, check: (h: { session: RynkSession; io: WorkbenchIo; state: () => WorkbenchState; dispatch: (a: Parameters<ReturnType<typeof makeWorkbenchReducer>>[1]) => void }) => Promise<void>) {
-  const session = await mockProvider(glove80Board).connect();
-  try {
-    const bundle = await openBundle(session);
-    let state: WorkbenchState = { ...initialWorkbenchState(bundle), batchMode: draft };
-    const reducer = makeWorkbenchReducer(bundle.caps.num_cols);
-    const dispatch = (action: Parameters<typeof reducer>[1]) => { state = reducer(state, action); };
-    const io = makeIo(session, () => state, dispatch, { cols: bundle.caps.num_cols, onDisconnect: () => {}, features: ioFeaturesFor(bundle) });
-    await check({ session, io, state: () => state, dispatch });
-  } finally {
-    await session.close();
-  }
+async function workbench(draft: boolean, check: (h: { session: RynkSession; io: WorkbenchIo; state: () => WorkbenchState; dispatch: (a: WorkbenchAction) => void }) => Promise<void>) {
+  await withTestWorkbench(glove80Board, { mode: draft ? "draft" : "live" }, ({ session, io, state, dispatch }) => check({ session, io, state, dispatch }));
 }
 
 describe("one history in Draft", () => {

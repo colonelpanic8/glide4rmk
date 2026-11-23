@@ -10,8 +10,9 @@
 //    the live `state.`, which asks for presence the long way round.
 //
 // Not covered: reading a live value (`state.lightingOutputMode.wake_layers`),
-// which is use of the value rather than a presence test. `state.tsx` and
-// `bundle.ts` build and seed that state and are exempt.
+// which is use of the value rather than a presence test. `state.tsx` seeds
+// that state and is exempt; the connect-time read (`workbench/open.ts`) is
+// not a screen.
 //
 // Pure: it works on file text, so the rule can be tested without a file system.
 
@@ -27,7 +28,7 @@ export const PROBE_WHY =
 const BUNDLE_READ = new RegExp(`\\bbundle\\.(?:${FIELDS})\\b`, "g");
 const NULL_TEST = new RegExp(`\\b(?:state|bundle)\\.(?:${FIELDS})\\s*(?:!==|===|!=|==)\\s*null\\b`, "g");
 
-const EXEMPT = new Set(["src/ui/state.tsx", "src/ui/bundle.ts"]);
+const EXEMPT = new Set(["src/ui/state.tsx"]);
 
 /** Whether the guard applies to a file: production code under src/ui. */
 export function isProbeChecked(path: string): boolean {

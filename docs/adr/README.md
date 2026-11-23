@@ -35,6 +35,7 @@ The table is built from each record's `# NNNN. Title` and `**Status:**` line by 
 | [0026](0026-key-editor-behavior-and-timing.md) | The key editor names the behavior, edits its timing, and shows a fork's double tap | Accepted |
 | [0027](0027-flows-know-the-board.md) | Flows know the board: key groups, a jq library, needs_keys | Accepted |
 | [0028](0028-add-ons-in-the-layout.md) | A keyboard's add-ons are kept in the layout | Accepted |
+| [0029](0029-opening-a-keyboard-and-the-test-harness.md) | Opening a keyboard is the workbench's; one harness for core tests | Accepted |
 <!-- /adr-index -->
 
 The glossary is in [../glossary.md](../glossary.md).

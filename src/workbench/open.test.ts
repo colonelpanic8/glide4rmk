@@ -5,8 +5,8 @@ import { ortho60Board } from "../session/mock/ortho60";
 import { glove80Board } from "../session/mock/glove80";
 import type { RynkSession } from "../session/types";
 import { unsupported } from "../session/unsupported";
-import { openBundle } from "./bundle";
-import { initialWorkbenchState, type ConnectedBundle } from "../workbench";
+import { openBundle } from "./open";
+import { initialWorkbenchState, type ConnectedBundle } from ".";
 
 async function readBundle(
   setup: (session: RynkSession) => void,

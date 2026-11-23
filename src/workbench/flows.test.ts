@@ -1,14 +1,11 @@
+import { withTestWorkbench } from "../test/harness";
 import { describe, expect, it, vi } from "vitest";
-import { mockProvider } from "../session/mock/board";
 import { glove80Board } from "../session/mock/glove80";
 import type { RynkSession } from "../session/types";
 import type { KeyAction } from "../vendor/rynk-wasm/rynk_wasm";
-import { openBundle } from "../ui/bundle";
 import { readFlowFile, type Flow, type JqRunner } from "../operations/flows";
 import { nodeJq } from "../test/jq";
-import { initialWorkbenchState } from "./initial-state";
-import { ioFeaturesFor, makeIo, type IoOptions, type WorkbenchIo } from "./io";
-import { makeWorkbenchReducer } from "./reducer";
+import { type IoOptions, type WorkbenchIo } from "./io";
 import type { WorkbenchState } from "../model/workbench-state";
 import { draftOf } from "./draft/want";
 import type { FlowEnvironment } from "./flows";
@@ -20,18 +17,7 @@ async function withBoard(
   check: (session: RynkSession, io: WorkbenchIo, state: () => WorkbenchState) => Promise<void>,
   options: Partial<IoOptions> = {},
 ) {
-  const session = await mockProvider(glove80Board).connect();
-  try {
-    const bundle = await openBundle(session);
-    let state: WorkbenchState = { ...initialWorkbenchState(bundle), batchMode: draft };
-    const reducer = makeWorkbenchReducer(bundle.caps.num_cols);
-    const io = makeIo(session, () => state, (action) => { state = reducer(state, action); }, {
-      cols: bundle.caps.num_cols, onDisconnect: () => {}, features: ioFeaturesFor(bundle), ...options,
-    });
-    await check(session, io, () => state);
-  } finally {
-    await session.close();
-  }
+  await withTestWorkbench(glove80Board, { mode: draft ? "draft" : "live", io: options }, ({ session, io, state }) => check(session, io, state));
 }
 
 /** A Flow whose script is `script`, with a `letter` choice. */
