@@ -143,11 +143,30 @@ export function exportDocument(
       `Cannot export an incomplete device snapshot. Reconnect and try again.\n\nFailed reads:\n- ${incompleteReads.join("\n- ")}`,
     );
   }
-  const text = renderDocument(snapshotFromState(state, bluetoothNameOf(previous, catalog, topology)), catalog, format, previous);
+  const snapshot = inUse(snapshotFromState(state, bluetoothNameOf(previous, catalog, topology)));
+  const text = renderDocument(snapshot, catalog, format, previous);
   // What the keyboard does not store: the behaviors' names and descriptions
   // (ADR 0020), and the add-on modules the layout turns on (ADR 0028).
   const labelled = format === "toml" ? withTomlLabels(text, state.labels) : text;
   return withModules(labelled, format, state.modules);
+}
+
+/** A file lists the layers in use: vacant slots after the last one are left out,
+ *  as a renderer would name them and reading the file back would occupy them.
+ *  Every slot stays when the firmware keeps no layer metadata; a slot that is
+ *  the default layer, wakes the lights or holds a scene is kept. */
+function inUse(snapshot: RuntimeSnapshot): RuntimeSnapshot {
+  const names = snapshot.layer_names;
+  if (!names) return snapshot;
+  const used = [
+    names.findLastIndex((slot) => slot.occupied),
+    snapshot.default_layer,
+    ...(snapshot.lighting?.wake_layers ?? []),
+    ...(snapshot.lighting?.scenes ?? []).map((cell) => cell.layer),
+  ];
+  const kept = Math.max(0, ...used) + 1;
+  if (kept >= snapshot.layers.length) return snapshot;
+  return { ...snapshot, layers: snapshot.layers.slice(0, kept), layer_names: names.slice(0, kept) };
 }
 
 /** The BLE advertising name the document being replaced carries. The keyboard

@@ -4,9 +4,10 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { initSync } from "../vendor/moergo-config-wasm/moergo_config_wasm";
 import { initSync as initRynkSync } from "../vendor/rynk-wasm/rynk_wasm";
 import type { KeyAction, Morse } from "../vendor/rynk-wasm/rynk_wasm";
-import { renderDocument, snapshotFromState, type RuntimeSnapshot } from "../config/document";
-import { readImport } from "../config/transfer";
+import { parseDocument, renderDocument, snapshotFromState, type RuntimeSnapshot } from "../config/document";
+import { exportDocument, readImport } from "../config/transfer";
 import { storedSegmentsOf } from "../session/mock/board";
+import { glove80Board } from "../session/mock/glove80";
 import { offlineGlove80Catalog, openOfflineGlove80 } from "../session/offline/glove80";
 import { keymapSegments } from "../session/flash-writes";
 import { RULES } from "../session/lighting-features";
@@ -273,5 +274,20 @@ describe("importing lighting rules", () => {
       expect((await importText(text)).written).toEqual({ ok: true });
       expect(await session.lighting.conditionalScenes.read()).toEqual(wanted);
     }, { prepare: (bundle) => { bundle.lightingCaps = { ...bundle.lightingCaps!, features: RULES }; } });
+  });
+});
+
+describe("exporting a keyboard with vacant layer slots", () => {
+  it("lists the layers in use, so reading the file back occupies no vacant slot", async () => {
+    // Base, Lower and Magic (which wakes the lights) in use; the fourth slot vacant.
+    const board = { ...glove80Board, layerNames: ["Base", "Lower", "Magic"] };
+    await withTestWorkbench(board, { mode: "draft" }, async ({ bundle, io, state }) => {
+      expect(state().layerMetadata!.map((slot) => slot.occupied)).toEqual([true, true, true, false]);
+      const text = exportDocument(state(), catalog, "toml");
+      expect(parseDocument(text, catalog).snapshot.layers).toHaveLength(3);
+      expect((await io.importLayout(readImport({ text, bundle, state: state(), catalog }))).written).toEqual({ ok: true });
+      expect(draftOf(state()).changes.map(({ item }) => item.kind)).not.toContain("layerMetadata");
+      expect(state().layerMetadata!.map((slot) => slot.occupied)).toEqual([true, true, true, false]);
+    });
   });
 });
