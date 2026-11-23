@@ -1,9 +1,9 @@
 // BLE profile slots and split-peripheral status.
 
 import { useEffect, useState } from "react";
-import type { BleStatus, PeripheralStatus } from "../../vendor/rynk-wasm/rynk_wasm";
+import type { BleStatus, PeripheralStatus } from "../../model/device-state";
 import { errorMessage } from "../../session/errors";
-import { useWorkbench } from "../state";
+import { useDevice, useWorkbench } from "../state";
 import { Button, Chip, Panel, SectionLabel, cx } from "../kit";
 import { BatteryGlyph, BleIcon } from "../icons";
 import { readBleStatus } from "./ble-status";
@@ -15,7 +15,8 @@ const BLE_STATE_LABEL: Record<string, string> = {
 };
 
 export function BleCard() {
-  const { bundle, state, dispatch } = useWorkbench();
+  const { bundle, dispatch } = useWorkbench();
+  const device = useDevice();
   const { caps, session } = bundle;
   const [peripherals, setPeripherals] = useState<Array<PeripheralStatus | null>>([]);
   const [arming, setArming] = useState<number | null>(null);
@@ -28,10 +29,10 @@ export function BleCard() {
 
   // The connection topic carries BLE state, so the card reads what the rest of
   // the workbench already has instead of keeping a second, staler copy.
-  const status = state.connection?.ble ?? fallback;
+  const status = device.connection?.ble ?? fallback;
 
   useEffect(() => {
-    if (state.connection !== null) return;
+    if (device.connection !== null) return;
     let cancelled = false;
     readBleStatus(session).then(
       (result) => {
@@ -42,7 +43,7 @@ export function BleCard() {
       (error) => { if (!cancelled) setError(errorMessage(error)); },
     );
     return () => { cancelled = true; };
-  }, [session, state.connection, dispatch]);
+  }, [session, device.connection, dispatch]);
 
   useEffect(() => {
     if (!caps.is_split || caps.num_split_peripherals === 0) return;

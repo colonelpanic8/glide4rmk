@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import { layerName } from "../layer-names";
 import { pointingDraftDirty } from "../../workbench";
-import { useWorkbench } from "../state";
+import { useDevice, useWorkbench } from "../state";
 import { useCapabilities } from "../use-capabilities";
 import { askConfirm, showToast } from "../messages/store";
 import { deletionBlockedMessage, layerDeletionBlockers } from "../../workbench/layer-impact";
@@ -57,6 +57,7 @@ function ListSwitch({ value, onChange }: { value: List | null; onChange: (list: 
 
 function LayerList({ onPicked }: { onPicked?: () => void }) {
   const { bundle, state, dispatch, io } = useWorkbench();
+  const device = useDevice();
   const capabilities = useCapabilities();
   const menu = useRowMenu<number>();
   const rows = useRowDrag((from, to) => void io.moveLayer(from, to));
@@ -231,7 +232,7 @@ function LayerList({ onPicked }: { onPicked?: () => void }) {
               <span className={cx("min-w-0 flex-1 truncate text-body font-semibold", active ? "text-accent" : "text-ink")}>
                 {label}
               </span>
-              {layer === state.currentLayer && layer !== state.uiLayer && (
+              {layer === device.currentLayer && layer !== state.uiLayer && (
                 <span title="Active on the keyboard now" className="size-1.5 shrink-0 rounded-full bg-ok" />
               )}
             </button>

@@ -1,12 +1,12 @@
 // Host lock-LED state, pushed live by the firmware. Shown in both the live
 // view's header and the device tab's connection card.
 
-import { useWorkbench } from "../state";
+import { useDevice } from "../state";
 import { cx } from "../kit";
 
 export function LockIndicators({ title = "Host lock indicators, live" }: { title?: string }) {
-  const { state } = useWorkbench();
-  const indicator = state.ledIndicator;
+  const device = useDevice();
+  const indicator = device.ledIndicator;
   if (!indicator) return null;
   const items: Array<{ label: string; on: boolean }> = [
     { label: "Num", on: indicator.num_lock },

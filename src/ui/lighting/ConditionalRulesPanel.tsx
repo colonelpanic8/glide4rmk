@@ -22,8 +22,8 @@ import type {
   LightingOutputMode,
   LightingSplitForce,
   LightingSplitLink,
-} from "../../vendor/rynk-wasm/rynk_wasm";
-import { useWorkbench } from "../state";
+} from "../../model/lighting-types";
+import { useDevice, useWorkbench } from "../state";
 import { conditionalTablesEqual } from "../../model/lighting/compare";
 import { ApplyBar, Button, SectionLabel, Segmented, TextInput, cx } from "../kit";
 import { useCapability } from "../use-capabilities";
@@ -102,6 +102,7 @@ function LevelField({
 
 export function ConditionalRulesPanel() {
   const { bundle, state, dispatch, io } = useWorkbench();
+  const device = useDevice();
   const text = useTextContext();
   const ruleTable = useCapability("lighting.rules");
   const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
@@ -111,13 +112,12 @@ export function ConditionalRulesPanel() {
   const ledLabels = useMemo(() => {
     const labels = new Map<number, string>();
     for (const key of bundle.model.keys) {
-      if (key.ledId !== undefined) {
-        const label = lightingKeyLegend(text, key, state.layers, bundle.caps.num_cols, LIVE_VIEW, state.activeLayers, state.defaultLayer);
-        labels.set(key.ledId, keyAddressWithLegend({ ...key, label }));
-      }
+      if (key.ledId === undefined) continue;
+      const label = lightingKeyLegend(text, key, state.layers, bundle.caps.num_cols, LIVE_VIEW, device.activeLayers, state.defaultLayer);
+      labels.set(key.ledId, keyAddressWithLegend({ ...key, label }));
     }
     return labels;
-  }, [bundle.model, bundle.caps.num_cols, state.layers, state.activeLayers, state.defaultLayer, text]);
+  }, [bundle.model, bundle.caps.num_cols, state.layers, device.activeLayers, state.defaultLayer, text]);
 
   const ledOptions = useMemo(
     () => [...ledLabels.keys()].sort((a, b) => a - b),

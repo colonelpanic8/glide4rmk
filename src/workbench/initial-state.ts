@@ -14,10 +14,7 @@ export function initialWorkbenchState(bundle: ConnectedBundle): WorkbenchState {
     basedOn: [],
     mode: "keymap",
     uiLayer: bundle.currentLayer,
-    currentLayer: bundle.currentLayer,
     defaultLayer: bundle.defaultLayer,
-    activeLayers: bundle.activeLayers,
-    layerStateComplete: bundle.layerStateComplete,
     layers: bundle.layers,
     layerMetadata: bundle.layerMetadata,
     pointingConfig: bundle.pointingConfig
@@ -29,11 +26,6 @@ export function initialWorkbenchState(bundle: ConnectedBundle): WorkbenchState {
     pointingBusy: false,
     pointingError: bundle.pointingReadError ?? null,
     encoders: {},
-    battery: bundle.battery,
-    peripheralBattery: bundle.peripheralBattery,
-    connection: bundle.connection,
-    maintenanceMode: bundle.maintenanceMode,
-    splitTransport: bundle.splitTransport,
     lightingState: bundle.lightingState,
     lightingOutputMode: bundle.lightingOutputMode,
     applied,
@@ -75,8 +67,18 @@ export function initialWorkbenchState(bundle: ConnectedBundle): WorkbenchState {
     morseHoldTriggerPositions: bundle.morseHoldTriggerPositions,
     autoMouseLayerCapacity: bundle.autoMouseLayerCapacity,
     autoMouseLayers: bundle.autoMouseLayers,
-    ledIndicator: bundle.ledIndicator,
-    modifierState: bundle.modifierState,
+    device: {
+      battery: bundle.battery,
+      peripheralBattery: bundle.peripheralBattery,
+      connection: bundle.connection,
+      maintenanceMode: bundle.maintenanceMode,
+      splitTransport: bundle.splitTransport,
+      currentLayer: bundle.currentLayer,
+      activeLayers: bundle.activeLayers,
+      layerStateComplete: bundle.layerStateComplete,
+      ledIndicator: bundle.ledIndicator,
+      modifierState: bundle.modifierState,
+    },
   };
   return { ...opened, base: storedImage(opened) };
 }

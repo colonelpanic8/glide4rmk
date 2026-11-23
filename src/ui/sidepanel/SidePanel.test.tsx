@@ -15,7 +15,7 @@ function panel(overrides: Record<string, unknown> = {}) {
         { occupied: false },
       ],
       uiLayer: 1,
-      currentLayer: 0,
+      device: { currentLayer: 0 },
       defaultLayer: 0,
       layers: [],
       combos: [],

@@ -6,6 +6,7 @@ import { createContext, useContext } from "react";
 import type { Dispatch } from "react";
 import type { ConnectedBundle, WorkbenchAction, WorkbenchState } from "../model/workbench-state";
 import type { WorkbenchIo } from "../workbench";
+import { deviceOf, type DeviceReports } from "../model/device-state";
 
 export interface WorkbenchContextValue {
   bundle: ConnectedBundle;
@@ -31,4 +32,9 @@ export function useWorkbench(): WorkbenchContextValue {
   const ctx = useContext(WorkbenchContext);
   if (!ctx) throw new Error("useWorkbench outside WorkbenchContext");
   return ctx;
+}
+
+/** What the keyboard reports about itself (battery, links, layers on, modifiers, LEDs). */
+export function useDevice(): DeviceReports {
+  return deviceOf(useWorkbench().state);
 }

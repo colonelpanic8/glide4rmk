@@ -16,7 +16,7 @@ describe("status setups", () => {
         runtimeConditionalStatus: { capacity: 32 },
         lightingCaps: null,
       },
-      state: { layers: [[], [], []], currentLayer: 0, lightingOutputMode: null, lightingControls: { wake_layers: 0 }, layerMetadata: null },
+      state: { layers: [[], [], []], device: { currentLayer: 0 }, lightingOutputMode: null, lightingControls: { wake_layers: 0 }, layerMetadata: null },
     });
     expect(renderToStaticMarkup(<WorkbenchContext value={value}><StatusPresetsPanel /></WorkbenchContext>)).toBe("");
   });
@@ -85,7 +85,7 @@ describe("Glove80 presets", () => {
       },
       state: {
         layers: Array.from({ length: 6 }, () => []),
-        currentLayer: 0,
+        device: { currentLayer: 0 },
         lightingOutputMode: null,
         lightingControls: { wake_layers: 0 },
         layerMetadata: null,

@@ -4,11 +4,11 @@
 // backed by the firmware's complete active-layer snapshot.
 
 import { useMemo } from "react";
-import type { ModifierCombination } from "../../vendor/rynk-wasm/rynk_wasm";
+import type { ModifierCombination } from "../../model/action-types";
 import type { KeyView } from "../../model/keyboard";
 import { BoardWell, KeyboardCanvas } from "../KeyboardCanvas";
 import type { KeyDecor } from "../KeyboardCanvas";
-import { useWorkbench } from "../state";
+import { useDevice, useWorkbench } from "../state";
 import { useCapabilities } from "../use-capabilities";
 import { cssEmissiveRgb, hsvToRgb } from "../../model/lighting/color";
 import { InspectorShell, Panel, Row, SectionLabel, cx } from "../kit";
@@ -41,9 +41,9 @@ const MODIFIER_LABELS: Array<[keyof ModifierCombination, string]> = [
 ];
 
 function ModifierRow() {
-  const { state } = useWorkbench();
-  if (!state.modifierState) return null;
-  const active = MODIFIER_LABELS.filter(([key]) => state.modifierState?.[key]);
+  const device = useDevice();
+  if (!device.modifierState) return null;
+  const active = MODIFIER_LABELS.filter(([key]) => device.modifierState?.[key]);
   return (
     <Row label="Resolved modifiers">
       <span className="flex flex-wrap justify-end gap-1">
@@ -65,8 +65,9 @@ function ModifierRow() {
 /** Every layer's authoritative active/default status, ordered by index. */
 function LayerStack() {
   const { bundle, state } = useWorkbench();
+  const device = useDevice();
   const numLayers = bundle.caps.num_layers;
-  const activeLayers = new Set(state.activeLayers);
+  const activeLayers = new Set(device.activeLayers);
 
   const litLayers = useMemo(() => {
     const set = new Set<number>();
@@ -84,7 +85,7 @@ function LayerStack() {
         {rows.map((i) => {
           const active = activeLayers.has(i);
           const isDefault = i === state.defaultLayer;
-          const known = state.layerStateComplete || active || isDefault;
+          const known = device.layerStateComplete || active || isDefault;
 
           let note: string;
           let title: string | undefined;
@@ -140,13 +141,14 @@ function LayerStack() {
 
 export function LiveMode() {
   const { bundle, state } = useWorkbench();
+  const device = useDevice();
   const text = useTextContext();
   const layerNames = text.names;
   const capabilities = useCapabilities();
   const cols = bundle.caps.num_cols;
   // Only a firmware that cannot report resolved modifiers needs the matrix
   // fallback; on everything else the poll stays off.
-  const pressedIndices = useMatrixPoll(state.modifierState === null);
+  const pressedIndices = useMatrixPoll(device.modifierState === null);
   const lighting = state.lightingState;
   const outputOn = state.lightingOutputMode?.effective_enabled ?? lighting?.output_enabled ?? false;
   const wakeLayers = state.lightingOutputMode
@@ -161,15 +163,15 @@ export function LiveMode() {
 
   const shiftActive = useMemo(
     () => {
-      const reported = reportedShiftState(state.modifierState);
+      const reported = reportedShiftState(device.modifierState);
       if (reported !== null) return reported;
       return pressedIndices.some((index) =>
         keyActionHoldsShift(
-          effectiveAction(state.layers, state.activeLayers, state.defaultLayer, index),
+          effectiveAction(state.layers, device.activeLayers, state.defaultLayer, index),
         ),
       );
     },
-    [pressedIndices, state.activeLayers, state.defaultLayer, state.layers, state.modifierState],
+    [pressedIndices, device.activeLayers, state.defaultLayer, state.layers, device.modifierState],
   );
 
   const lit = useMemo(
@@ -178,25 +180,25 @@ export function LiveMode() {
         state.compiledScenes,
         state.scenes,
         state.applied,
-        state.activeLayers,
+        device.activeLayers,
         state.defaultLayer,
         state.compiledScenePolicy,
         state.scenePolicy,
         state.conditionalScenes,
-        new Map([[0, state.battery], [1, state.peripheralBattery]]),
+        new Map([[0, device.battery], [1, device.peripheralBattery]]),
         state.lightingOutputMode,
       ),
     [
       state.compiledScenes,
       state.scenes,
       state.applied,
-      state.activeLayers,
+      device.activeLayers,
       state.defaultLayer,
       state.compiledScenePolicy,
       state.scenePolicy,
       state.conditionalScenes,
-      state.battery,
-      state.peripheralBattery,
+      device.battery,
+      device.peripheralBattery,
       state.lightingOutputMode,
     ],
   );
@@ -204,7 +206,7 @@ export function LiveMode() {
   const bindingGlyph = (key: KeyView): KeyDecor["glyph"] => {
     const action = effectiveAction(
       state.layers,
-      state.activeLayers,
+      device.activeLayers,
       state.defaultLayer,
       key.row * cols + key.col,
     );
@@ -226,7 +228,7 @@ export function LiveMode() {
     };
   };
 
-  const activeLabel = [...new Set([state.defaultLayer, ...state.activeLayers])]
+  const activeLabel = [...new Set([state.defaultLayer, ...device.activeLayers])]
     .sort((a, b) => a - b)
     .join(" | ");
 
@@ -390,7 +392,7 @@ export function LiveMode() {
                 {bundle.info.serial_number || "—"}
               </Row>
               <Row label="Transport">{KIND_LABEL[bundle.session.kind] ?? bundle.session.kind}</Row>
-              {state.connection && <Row label="Preferred">{state.connection.preferred}</Row>}
+              {device.connection && <Row label="Preferred">{device.connection.preferred}</Row>}
               <ModifierRow />
             </div>
           </Panel>

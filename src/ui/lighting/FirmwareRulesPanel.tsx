@@ -4,7 +4,7 @@
 import { useCallback, useMemo } from "react";
 import { keyAddressWithLegend } from "../key-address";
 import { layerName } from "../layer-names";
-import { useWorkbench } from "../state";
+import { useDevice, useWorkbench } from "../state";
 import { SectionLabel } from "../kit";
 import { effectColor } from "./decor";
 import { firmwareRuleGroups } from "../../model/lighting/firmware-rules";
@@ -15,15 +15,16 @@ import { useTextContext } from "../useKeyText";
 
 export function FirmwareRulesPanel() {
   const { bundle, state } = useWorkbench();
+  const device = useDevice();
   const text = useTextContext();
   const total = state.compiledScenes.length + state.conditionalScenes.length;
   const activeLayers = useMemo(
-    () => previewActiveLayers(LIVE_VIEW, state.activeLayers, state.defaultLayer),
-    [state.activeLayers, state.defaultLayer],
+    () => previewActiveLayers(LIVE_VIEW, device.activeLayers, state.defaultLayer),
+    [device.activeLayers, state.defaultLayer],
   );
   const batteries = useMemo(
-    () => new Map([[0, state.battery], [1, state.peripheralBattery]]),
-    [state.battery, state.peripheralBattery],
+    () => new Map([[0, device.battery], [1, device.peripheralBattery]]),
+    [device.battery, device.peripheralBattery],
   );
   const labels = useMemo(() => {
     const result = new Map<number, string>();
@@ -31,13 +32,13 @@ export function FirmwareRulesPanel() {
       if (key.ledId !== undefined) {
         const label = lightingKeyLegend(
           text, key, state.layers, bundle.caps.num_cols,
-          LIVE_VIEW, state.activeLayers, state.defaultLayer,
+          LIVE_VIEW, device.activeLayers, state.defaultLayer,
         );
         result.set(key.ledId, keyAddressWithLegend({ ...key, label }));
       }
     }
     return result;
-  }, [bundle.model, bundle.caps.num_cols, state.layers, state.activeLayers, state.defaultLayer, text]);
+  }, [bundle.model, bundle.caps.num_cols, state.layers, device.activeLayers, state.defaultLayer, text]);
   const nameOf = useCallback(
     (layer: number) => layerName(state.layerMetadata, layer),
     [state.layerMetadata],
