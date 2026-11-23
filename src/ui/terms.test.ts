@@ -39,6 +39,18 @@ describe("terms", () => {
     }
   });
 
+  it("fills a term's placeholders, and leaves one it is not given", () => {
+    expect(termFor("magic.install", "technical", { layer: "Magic" })).toBe("Install stock Magic layer on Magic");
+    expect(termFor("magic.installed", "friendly", { layer: "Magic" })).toBe("Magic is the Magic layer now. A key that holds it on opens it.");
+    expect(termFor("magic.install", "friendly")).toBe("Make {layer} the Magic layer");
+  });
+
+  it("uses no word for what the app no longer has", () => {
+    for (const [id, term] of Object.entries(TERMS)) {
+      for (const text of [term.technical, term.friendly]) expect(text, id).not.toMatch(/batch|start(s)? (the history )?over/i);
+    }
+  });
+
   it("falls back to the default for anything that is not a voice", () => {
     expect(normalizeWording("friendly")).toBe("friendly");
     expect(normalizeWording("technical")).toBe("technical");
