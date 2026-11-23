@@ -36,6 +36,7 @@ The table is built from each record's `# NNNN. Title` and `**Status:**` line by 
 | [0027](0027-flows-know-the-board.md) | Flows know the board: key groups, a jq library, needs_keys | Accepted |
 | [0028](0028-add-ons-in-the-layout.md) | A keyboard's add-ons are kept in the layout | Accepted |
 | [0029](0029-opening-a-keyboard-and-the-test-harness.md) | Opening a keyboard is the workbench's; one harness for core tests | Accepted |
+| [0030](0030-screen-tests-that-click.md) | Screen tests that click: happy-dom, per test file, on the core harness | Accepted |
 | [0031](0031-operation-names-as-glides.md) | Operation names as GLIDE's; a layer's name is an operation | Accepted |
 <!-- /adr-index -->
 
