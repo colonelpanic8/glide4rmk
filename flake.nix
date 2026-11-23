@@ -144,13 +144,26 @@
         # The `glove80.toml` / MoErgo JSON round-trip, compiled to wasm. The
         # browser and the `moergo-control` CLI run the same parser, validator
         # and renderer, so a file cannot mean one thing here and another there.
+        #
+        # `moergoRmkPatches` are changes to the model this repository needs and
+        # has not yet landed upstream, applied in order on top of the pin. Each
+        # is a `git format-patch` commit against `moergo-rmk`, ready to send
+        # there; drop it when the pin moves past it.
+        moergoRmkPatches = [
+          # MoErgo JSON export of tap patterns, macros, combos and mod-morphs
+          # (docs/todo.md 30).
+          ./nix/patches/moergo-rmk-export-tap-patterns.patch
+        ];
         moergo-config-wasm = rustPlatform.buildRustPackage {
           pname = "moergo-config-wasm";
           version = "0.0.0-${builtins.substring 0 8 moergoRmkRev}";
 
-          src = pkgs.runCommand "moergo-rmk-with-rmk" { } ''
+          src = pkgs.runCommand "moergo-rmk-with-rmk" { nativeBuildInputs = [ pkgs.patch ]; } ''
             cp -r ${moergo-rmk} "$out"
             chmod -R u+w "$out"
+            for change in ${pkgs.lib.escapeShellArgs (map (change: "${change}") moergoRmkPatches)}; do
+              patch -p1 -d "$out" < "$change"
+            done
             rm -rf "$out/dependencies/rmk"
             mkdir -p "$out/dependencies"
             cp -r ${rmk} "$out/dependencies/rmk"
@@ -180,7 +193,7 @@
             runHook preInstall
             mkdir -p "$out"
             cp -r crates/moergo-config-wasm/pkg/. "$out/"
-            echo '{"input":"moergo-rmk","rev":"${moergoRmkRev}"}' > "$out/build-rev.json"
+            echo '{"input":"moergo-rmk","rev":"${moergoRmkRev}","patches":${builtins.toJSON (map baseNameOf moergoRmkPatches)}}' > "$out/build-rev.json"
             runHook postInstall
           '';
 

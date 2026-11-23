@@ -1,0 +1,4192 @@
+From 9feef866b1050bde8dfbaa79d6166a21f110c6ed Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 23 Nov 2026 19:03:10 +0100
+Subject: [PATCH] Export tap patterns, macros, combos and mod-morphs to MoErgo
+ JSON
+
+snapshot_to_moergo_json wrote only what a VIA keycode can carry, so a
+layout with a morse (TD(n)), a macro, an autoshift tap-hold or several
+USER keys could not be exported at all, and a profiled tap-hold lost its
+timing silently. Export now writes the editor definitions the import
+lowers back to the same runtime values (moergo/raise.rs, the inverse of
+lower.rs):
+
+- TD(n) tap/hold as a hold-tap: modifier/key (bilateral ones with the
+  other hand's hold-trigger-key-positions), layer/key, autoshift over a
+  shift macro, sticky modifier over a &sticky_key; taps-only as a
+  tap-dance.
+- MT/LT/TH with a named morse profile as a hold-tap carrying its timing.
+- MACRO(n) as a macro; forks as mod-morphs on the keys they rewrite;
+  the snapshot's combos (LMT as the window-switcher macro).
+- USER keys mapped where MoErgo has an equivalent; every binding that
+  has none is listed with its location and reason, all at once.
+- A template's definitions are reused by content, never repeated; the
+  ones its keymap used and the export replaced are removed, so a
+  re-import does not drop layers a stale home-row-mod macro names.
+
+Import mirrors it: tapDances are read, a &kp/&kp hold-tap is a mod-tap,
+a &mo hold-tap may restrict its hold by position, a mod-morph or
+tap-dance step may name a custom behavior, and a combo's &to is TO
+(as on a key) rather than DF.
+
+Tests: TailorKey bilateral and Engrammer exports round-trip to the same
+snapshot with and without a template, and re-export over their own
+output is unchanged; TailorKey for RMK's TOML round-trips key for key
+apart from the 13 bindings ZMK has no equivalent for, which the export
+names.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01QpAvhekAu35RCnRCUtmvDL
+---
+ crates/moergo-config/src/moergo/behaviors.rs  |   21 +-
+ crates/moergo-config/src/moergo/lower.rs      |   76 +-
+ crates/moergo-config/src/moergo/mod.rs        |   94 +-
+ crates/moergo-config/src/moergo/raise.rs      | 1233 ++++++++++
+ .../fixtures/glove80-tailorkey-qwerty.toml    | 2161 +++++++++++++++++
+ crates/moergo-config/tests/moergo_export.rs   |  399 +++
+ 6 files changed, 3961 insertions(+), 23 deletions(-)
+ create mode 100644 crates/moergo-config/src/moergo/raise.rs
+ create mode 100644 crates/moergo-config/tests/fixtures/glove80-tailorkey-qwerty.toml
+ create mode 100644 crates/moergo-config/tests/moergo_export.rs
+
+diff --git a/crates/moergo-config/src/moergo/behaviors.rs b/crates/moergo-config/src/moergo/behaviors.rs
+index 02414b0..4ccedd6 100644
+--- a/crates/moergo-config/src/moergo/behaviors.rs
++++ b/crates/moergo-config/src/moergo/behaviors.rs
+@@ -1,7 +1,8 @@
+ //! Typed view of the behavior tables in a MoErgo Glove80 Layout Editor export.
+ //!
+-//! The editor stores custom ZMK behaviors in four sibling arrays next to
+-//! `layers`: `holdTaps`, `macros`, `combos` and `inputListeners`. Older exports
++//! The editor stores custom ZMK behaviors in sibling arrays next to `layers`:
++//! `holdTaps`, `tapDances`, `macros`, `modMorphs`, `combos` and
++//! `inputListeners`. Older exports
+ //! (and anything authored by hand) instead carry a devicetree blob in
+ //! `custom_defined_behaviors`, which this module deliberately does not parse —
+ //! [`BehaviorTables::from_layout`] reports it so the caller can say which keys
+@@ -92,6 +93,16 @@ impl HoldTap {
+     }
+ }
+ 
++/// A `zmk,behavior-tap-dance` node: binding `i` runs after `i + 1` taps.
++#[derive(Clone, Debug, Deserialize)]
++#[serde(rename_all = "camelCase")]
++pub(crate) struct TapDance {
++    pub name: String,
++    #[serde(default)]
++    pub bindings: Vec<Binding>,
++    pub tapping_term_ms: Option<u32>,
++}
++
+ /// A `zmk,behavior-mod-morph` node: one key whose output depends on which
+ /// modifiers are held. The first case with no `mods` is the default output.
+ #[derive(Clone, Debug, Deserialize)]
+@@ -148,6 +159,7 @@ pub(crate) struct Combo {
+ #[derive(Clone, Debug, Default)]
+ pub(crate) struct BehaviorTables {
+     pub hold_taps: Vec<HoldTap>,
++    pub tap_dances: Vec<TapDance>,
+     pub macros: Vec<Macro>,
+     pub combos: Vec<Combo>,
+     pub mod_morphs: Vec<ModMorph>,
+@@ -164,6 +176,7 @@ impl BehaviorTables {
+     pub fn from_layout(layout: &Map<String, Value>) -> Result<Self> {
+         Ok(Self {
+             hold_taps: table(layout, "holdTaps")?,
++            tap_dances: table(layout, "tapDances")?,
+             macros: table(layout, "macros")?,
+             combos: table(layout, "combos")?,
+             mod_morphs: table(layout, "modMorphs")?,
+@@ -181,6 +194,10 @@ impl BehaviorTables {
+         self.hold_taps.iter().find(|entry| entry.name == name)
+     }
+ 
++    pub fn tap_dance(&self, name: &str) -> Option<&TapDance> {
++        self.tap_dances.iter().find(|entry| entry.name == name)
++    }
++
+     pub fn mod_morph_named(&self, name: &str) -> Option<&ModMorph> {
+         self.mod_morphs.iter().find(|morph| morph.name == name)
+     }
+diff --git a/crates/moergo-config/src/moergo/lower.rs b/crates/moergo-config/src/moergo/lower.rs
+index cefbe54..61dfc36 100644
+--- a/crates/moergo-config/src/moergo/lower.rs
++++ b/crates/moergo-config/src/moergo/lower.rs
+@@ -301,6 +301,9 @@ impl<'a> Lowering<'a> {
+         if let Some(hold_tap) = self.tables.hold_tap(name) {
+             return self.lower_hold_tap(&hold_tap.clone(), params, here);
+         }
++        if let Some(dance) = self.tables.tap_dance(name) {
++            return self.lower_tap_dance(&dance.clone(), here);
++        }
+         if let Some(entry) = self.tables.macro_named(name) {
+             let entry = entry.clone();
+             if let Some((hold_tap, forwarded)) = self.forwarded_hold_tap(&entry, params) {
+@@ -520,8 +523,14 @@ impl<'a> Lowering<'a> {
+         // Both sides are built by spelling the equivalent VIA keycode and
+         // decoding it, which keeps this path on the same conversion the keymap
+         // already trusts instead of assembling typed actions by hand.
+-        let (tap_action, hold_action) = if HrmIdiom::is_member(hold_tap) {
+-            // Home row mod: hold is always a plain modifier.
++        let plain_mod_tap = hold_tap.hold_binding() == "&kp" && hold_tap.tap_binding() == "&kp";
++        // A layer hold is read first: restricting it to the other hand's keys
++        // is a bilateral layer-tap, not the home-row-mod idiom below.
++        let (tap_action, hold_action) = if hold_tap.hold_binding() != "&mo"
++            && (HrmIdiom::is_member(hold_tap) || plain_mod_tap)
++        {
++            // Home row mod, or any `&kp`/`&kp` hold-tap: hold is a plain
++            // modifier and tap a plain key.
+             let modifier = param_text(params, 0)
+                 .with_context(|| format!("{} {} is missing its modifier", here(), hold_tap.name))?;
+             let modifier = super::zmk_modifier(&modifier)
+@@ -591,6 +600,44 @@ impl<'a> Lowering<'a> {
+         self.intern(morse)
+     }
+ 
++    /// Lowers a tap-dance into a morse of taps only: binding `i` answers
++    /// `i + 1` taps, and the dance's tapping term is the gap between them.
++    fn lower_tap_dance(
++        &mut self,
++        dance: &super::behaviors::TapDance,
++        here: &dyn Fn() -> String,
++    ) -> Result<u16> {
++        if dance.bindings.len() < 2 {
++            bail!(
++                "{} tap-dance {} needs at least two steps",
++                here(),
++                dance.name
++            );
++        }
++        let mut morse = Morse {
++            profile: MorseProfile::const_default()
++                .with_gap_timeout_ms(dance.tapping_term_ms.and_then(|ms| u16::try_from(ms).ok())),
++            ..Morse::default()
++        };
++        let mut pattern = TAP;
++        for (step, binding) in dance.bindings.iter().enumerate() {
++            let code = self
++                .convert_binding(binding, here)
++                .with_context(|| format!("{} tap {}", dance.name, step + 1))?;
++            let action = single_action(code)
++                .with_context(|| format!("{} {} tap {}", here(), dance.name, step + 1))?;
++            if morse.put(pattern, action).is_err() {
++                bail!(
++                    "{} tap-dance {} has more steps than a Rynk morse holds",
++                    here(),
++                    dance.name
++                );
++            }
++            pattern = pattern.followed_by_tap();
++        }
++        self.intern(morse)
++    }
++
+     /// Lowers the combo table.
+     ///
+     /// ZMK matches a combo on key *positions*, and so does Rynk's
+@@ -693,8 +740,9 @@ impl<'a> Lowering<'a> {
+         out
+     }
+ 
+-    /// A mod-morph case's output as a VIA keycode, through the same converter
+-    /// the keymap path uses so a nested `LS(N9)` resolves identically.
++    /// A mod-morph case's or tap-dance step's output as a VIA keycode, through
++    /// the same converter the keymap path uses so a nested `LS(N9)` resolves
++    /// identically.
+     fn convert_binding(&mut self, binding: &Binding, here: &dyn Fn() -> String) -> Result<u16> {
+         match binding.name() {
+             "&kp" => {
+@@ -707,7 +755,20 @@ impl<'a> Lowering<'a> {
+                     .with_context(|| format!("{} &kp is missing its keycode", here()))?;
+                 super::zmk_keycode_param_to_via(&param, &here())
+             }
+-            other => bail!("{} mod-morph case '{other}' has no Rynk equivalent", here()),
++            other
++                if self.tables.hold_tap(other).is_some()
++                    || self.tables.tap_dance(other).is_some()
++                    || self.tables.macro_named(other).is_some() =>
++            {
++                // A custom behavior is one keycode for a cell (a morse index,
++                // a macro trigger), so a step may name one.
++                let params: Vec<Value> = binding.params.iter().map(Binding::to_value).collect();
++                self.resolve(other, &params, here)
++            }
++            other => bail!(
++                "{} '{other}' has no Rynk equivalent as a single step",
++                here()
++            ),
+         }
+     }
+ 
+@@ -735,7 +796,9 @@ impl<'a> Lowering<'a> {
+             "&to" => binding
+                 .param_u8(0)
+                 .and_then(|layer| self.remap_layer(layer as usize))
+-                .map(|layer| KeyAction::Single(Action::DefaultLayer(layer))),
++                // ZMK's `&to` keeps only the default layer and this one on,
++                // which is RMK's `TO`, exactly as a keymap cell reads it.
++                .map(|layer| KeyAction::Single(Action::LayerToggleOnly(layer))),
+             "&sl" => binding
+                 .param_u8(0)
+                 .and_then(|layer| self.remap_layer(layer as usize))
+@@ -769,6 +832,7 @@ impl<'a> Lowering<'a> {
+             }
+             other
+                 if self.tables.hold_tap(other).is_some()
++                    || self.tables.tap_dance(other).is_some()
+                     || self.tables.macro_named(other).is_some()
+                     || self.tables.mod_morph_named(other).is_some() =>
+             {
+diff --git a/crates/moergo-config/src/moergo/mod.rs b/crates/moergo-config/src/moergo/mod.rs
+index e97df50..0619150 100644
+--- a/crates/moergo-config/src/moergo/mod.rs
++++ b/crates/moergo-config/src/moergo/mod.rs
+@@ -8,6 +8,7 @@
+ 
+ mod behaviors;
+ mod lower;
++mod raise;
+ 
+ use anyhow::{bail, Context, Result};
+ use serde_json::{json, Map, Value};
+@@ -293,18 +294,25 @@ pub fn snapshot_to_moergo_json(
+         }
+     }
+ 
+-    let names = snapshot
++    let names: Vec<String> = snapshot
+         .layers
+         .iter()
+         .enumerate()
+         .map(|(index, _)| {
+-            Value::String(
+-                labels
+-                    .and_then(|config| config.layers.get(index))
+-                    .map_or_else(|| format!("Layer {index}"), |layer| layer.name.clone()),
+-            )
++            labels
++                .and_then(|config| config.layers.get(index))
++                .map_or_else(|| format!("Layer {index}"), |layer| layer.name.clone())
+         })
+         .collect();
++
++    // Keys whose behavior needs a named definition (tap patterns, profiled
++    // tap-holds, macros) get one in the document's tables; everything else
++    // goes through the keycode converter. A key that fits neither is named
++    // with its reason, and every such key is listed rather than only the
++    // first, so one export says how much of the layout does not fit.
++    let template_layout = layout.clone();
++    let mut raising = raise::Raising::new(&snapshot.behaviors, labels, layout);
++    let mut refusals = Vec::new();
+     let mut layers = Vec::with_capacity(snapshot.layers.len());
+     for (layer_index, matrix) in snapshot.layers.iter().enumerate() {
+         if matrix.len() != LAYER_SIZE {
+@@ -315,18 +323,65 @@ pub fn snapshot_to_moergo_json(
+         }
+         let mut editor = Vec::with_capacity(MOERGO_TO_MATRIX.len());
+         for (editor_index, offset) in MOERGO_TO_MATRIX.iter().copied().enumerate() {
+-            editor.push(via_to_binding(
+-                crate::action_to_code(matrix[offset], layer_index, offset)?,
+-                layer_index,
++            let cell = raise::Cell {
++                layer: layer_index,
++                layer_name: &names[layer_index],
+                 editor_index,
+                 offset,
+-            )?);
++            };
++            match raising.cell_binding(matrix[offset], &cell) {
++                Ok(binding) => editor.push(binding),
++                Err(why) => {
++                    refusals.push(format!("{}: {why}", cell.describe()));
++                    editor.push(zero_binding("&none"));
++                }
++            }
+         }
+         layers.push(Value::Array(editor));
+     }
++    // Rynk manages combos now (the import lowers them), so the snapshot's
++    // combos replace the template's: those name layers by the template's
++    // numbering, which the import may have changed.
++    let combos = match raising.combos() {
++        Some(Ok(combos)) => Some(combos),
++        Some(Err(combo_refusals)) => {
++            refusals.extend(combo_refusals);
++            None
++        }
++        None => None,
++    };
++    refusals.extend(raising.unused_forks());
++    if !refusals.is_empty() {
++        bail!(
++            "{} binding{} cannot be written as MoErgo JSON:\n  {}",
++            refusals.len(),
++            if refusals.len() == 1 { "" } else { "s" },
++            refusals.join("\n  ")
++        );
++    }
++
++    let added = raising.added().to_vec();
++    for (table, definition) in added {
++        let entries = layout
++            .entry(table.key())
++            .or_insert_with(|| Value::Array(Vec::new()));
++        if !entries.is_array() {
++            *entries = Value::Array(Vec::new());
++        }
++        if let Some(entries) = entries.as_array_mut() {
++            entries.push(definition);
++        }
++    }
+     layout.insert("keyboard".into(), Value::String("glove80".into()));
+-    layout.insert("layer_names".into(), Value::Array(names));
++    layout.insert(
++        "layer_names".into(),
++        Value::Array(names.into_iter().map(Value::String).collect()),
++    );
+     layout.insert("layers".into(), Value::Array(layers));
++    if let Some(combos) = combos {
++        layout.insert("combos".into(), Value::Array(combos));
++    }
++    raise::prune_superseded(&template_layout, layout);
+ 
+     let mut text =
+         serde_json::to_string_pretty(&root).context("could not serialize MoErgo JSON")?;
+@@ -1168,10 +1223,19 @@ fn via_basic_to_zmk(code: u16) -> Result<&'static str> {
+         0xe5 => "RSHFT",
+         0xe6 => "RALT",
+         0xe7 => "RGUI",
+-        _ => bail!(
+-            "basic runtime keycode {} has no MoErgo name",
+-            keycodes::format_keycode(code)
+-        ),
++        // The import's consumer-page aliases (`zmk_keycode_to_via`), read back.
++        _ => match keycodes::format_keycode(code).as_str() {
++            "KC_BRMN" => "C_BRI_MIN",
++            "KC_BRMX" => "C_BRI_MAX",
++            "KC_BRAU" => "C_BRI_AUTO",
++            "KC_MSEL" => "C_MEDIA_HOME",
++            "KC_CALC" => "K_CALC",
++            "KC_WHOM" => "K_WWW",
++            _ => bail!(
++                "basic runtime keycode {} has no MoErgo name",
++                keycodes::format_keycode(code)
++            ),
++        },
+     };
+     Ok(name)
+ }
+diff --git a/crates/moergo-config/src/moergo/raise.rs b/crates/moergo-config/src/moergo/raise.rs
+new file mode 100644
+index 0000000..133f8cf
+--- /dev/null
++++ b/crates/moergo-config/src/moergo/raise.rs
+@@ -0,0 +1,1233 @@
++//! Raising of Rynk runtime behaviors back into MoErgo editor definitions.
++//!
++//! This is the inverse of [`super::lower`]. A keymap cell that holds a morse
++//! (`TD(n)`), a profiled tap-hold or a macro trigger has no single editor
++//! binding; it needs a named behavior in one of the document's tables and a
++//! key that names it. Each definition written here is the shape the import
++//! lowers back to the same runtime value, so an import, export and import
++//! again yields the same snapshot.
++//!
++//! Definitions are interned by their content: keys that share a behavior share
++//! one definition, and a definition the template document already carries is
++//! reused by name rather than added a second time.
++
++use std::collections::BTreeSet;
++
++use rynk::rmk_types::action::{Action, KeyAction, KeyboardAction, LightAction};
++use rynk::rmk_types::combo::ComboDefinition;
++use rynk::rmk_types::fork::{Fork, StateBits};
++use rynk::rmk_types::keyboard_macros::MacroOp;
++use rynk::rmk_types::keycode::{HidKeyCode, KeyCode};
++use rynk::rmk_types::modifier::{ModifierCombination, ModifierKey};
++use rynk::rmk_types::morse::{Morse, MorseMode, MorsePattern, MorseProfile, HOLD, TAP};
++use serde_json::{json, Map, Value};
++
++use crate::{BehaviorSnapshot, MorseProfileEntry, RuntimeConfig, COLS};
++
++/// Glove80 editor positions of the thumb keys, by hand.
++const LEFT_THUMBS: [usize; 6] = [52, 53, 54, 69, 70, 71];
++const RIGHT_THUMBS: [usize; 6] = [55, 56, 57, 72, 73, 74];
++
++/// The tapping term ZMK uses when a behavior names none, written when the
++/// runtime profile leaves the hold timeout to the firmware default and the
++/// snapshot does not say what that default is.
++const ZMK_TAPPING_TERM_MS: u16 = 200;
++
++/// The behavior tables a MoErgo document keeps definitions in.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub(crate) enum Table {
++    HoldTaps,
++    TapDances,
++    Macros,
++    StickyKeys,
++    ModMorphs,
++}
++
++impl Table {
++    pub const ALL: [Table; 5] = [
++        Table::HoldTaps,
++        Table::TapDances,
++        Table::Macros,
++        Table::StickyKeys,
++        Table::ModMorphs,
++    ];
++
++    pub fn key(self) -> &'static str {
++        match self {
++            Table::HoldTaps => "holdTaps",
++            Table::TapDances => "tapDances",
++            Table::Macros => "macros",
++            Table::StickyKeys => "stickyKeys",
++            Table::ModMorphs => "modMorphs",
++        }
++    }
++}
++
++/// Which half of the keyboard an editor key is on.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++enum Hand {
++    Left,
++    Right,
++}
++
++impl Hand {
++    fn of(editor_index: usize) -> Self {
++        let offset = super::MOERGO_TO_MATRIX[editor_index];
++        if offset % usize::from(COLS) < 7 {
++            Hand::Left
++        } else {
++            Hand::Right
++        }
++    }
++
++    fn suffix(self) -> &'static str {
++        match self {
++            Hand::Left => "left",
++            Hand::Right => "right",
++        }
++    }
++
++    /// ZMK's `hold-trigger-key-positions` for a bilateral hold on this hand:
++    /// every key of the other hand, plus this hand's own thumbs, which is the
++    /// set TailorKey-style layouts write and what Rynk's unilateral tap means.
++    fn trigger_positions(self) -> Vec<usize> {
++        let own_thumbs = match self {
++            Hand::Left => LEFT_THUMBS,
++            Hand::Right => RIGHT_THUMBS,
++        };
++        (0..super::MOERGO_TO_MATRIX.len())
++            .filter(|&index| Hand::of(index) != self || own_thumbs.contains(&index))
++            .collect()
++    }
++}
++
++/// Where a cell is, for the messages that name it.
++pub(crate) struct Cell<'a> {
++    pub layer: usize,
++    pub layer_name: &'a str,
++    pub editor_index: usize,
++    pub offset: usize,
++}
++
++impl Cell<'_> {
++    pub fn describe(&self) -> String {
++        format!(
++            "layer {} ({}), editor key {} (r{},c{})",
++            self.layer,
++            self.layer_name,
++            self.editor_index,
++            self.offset / usize::from(COLS),
++            self.offset % usize::from(COLS)
++        )
++    }
++}
++
++/// A key that cannot be written, with the reason in the user's terms.
++type Refusal = String;
++
++pub(crate) struct Raising<'a> {
++    behaviors: &'a BehaviorSnapshot,
++    labels: Option<&'a RuntimeConfig>,
++    default_profile: MorseProfile,
++    /// Definitions already in the document, by table, so equal content is
++    /// reused rather than repeated.
++    existing: Vec<(Table, Value)>,
++    /// Every behavior name in use, so a new definition never shadows one.
++    taken: BTreeSet<String>,
++    /// Definitions this export adds, in the order they were first needed.
++    added: Vec<(Table, Value)>,
++    /// The snapshot's forks, and whether a key carried each one.
++    forks: Vec<(Fork, bool)>,
++    /// The combo timeout the template's combos agree on, kept when the
++    /// snapshot does not say (an imported layout has no global setting).
++    template_combo_timeout: Option<u64>,
++    /// The template's combos, so one that says the same thing keeps its name
++    /// and description.
++    template_combos: Vec<Value>,
++}
++
++impl<'a> Raising<'a> {
++    pub fn new(
++        behaviors: &'a BehaviorSnapshot,
++        labels: Option<&'a RuntimeConfig>,
++        layout: &Map<String, Value>,
++    ) -> Self {
++        let mut existing = Vec::new();
++        let mut taken = BTreeSet::new();
++        for table in Table::ALL {
++            for entry in layout
++                .get(table.key())
++                .and_then(Value::as_array)
++                .into_iter()
++                .flatten()
++            {
++                if let Some(name) = entry.get("name").and_then(Value::as_str) {
++                    taken.insert(name.to_owned());
++                }
++                existing.push((table, entry.clone()));
++            }
++        }
++        let default_profile = behaviors
++            .config
++            .as_ref()
++            .map_or_else(MorseProfile::const_default, |config| {
++                config.morse_default_profile
++            });
++        let forks = behaviors
++            .forks
++            .as_deref()
++            .unwrap_or_default()
++            .iter()
++            .map(|fork| (*fork, false))
++            .collect();
++        let mut timeouts: Vec<u64> = layout
++            .get("combos")
++            .and_then(Value::as_array)
++            .into_iter()
++            .flatten()
++            .filter_map(|combo| combo.get("timeoutMs").and_then(Value::as_u64))
++            .collect();
++        timeouts.sort_unstable();
++        timeouts.dedup();
++        Self {
++            behaviors,
++            labels,
++            default_profile,
++            existing,
++            taken,
++            added: Vec::new(),
++            forks,
++            template_combo_timeout: (timeouts.len() == 1).then(|| timeouts[0]),
++            template_combos: layout
++                .get("combos")
++                .and_then(Value::as_array)
++                .cloned()
++                .unwrap_or_default(),
++        }
++    }
++
++    /// The editor binding for one keymap cell, or the reason it has none.
++    ///
++    /// A cell whose action a fork rewrites becomes a mod-morph: MoErgo binds
++    /// the modifier swap to the key, where Rynk matches it on the action.
++    pub fn cell_binding(&mut self, action: KeyAction, cell: &Cell) -> Result<Value, Refusal> {
++        let Some(index) = self
++            .forks
++            .iter()
++            .position(|(fork, _)| fork.trigger == action)
++        else {
++            return self.unforked_binding(action, cell);
++        };
++        self.forks[index].1 = true;
++        let fork = self.forks[index].0;
++        let named = || format!("{} (a fork)", action_label(action));
++        let mods = fork_condition(&fork).map_err(|why| format!("{}: {why}", named()))?;
++        let default = self.unforked_binding(action, cell)?;
++        let positive = self.unforked_binding(fork.positive_output, cell)?;
++        for binding in [&default, &positive] {
++            let value = binding
++                .get("value")
++                .and_then(Value::as_str)
++                .unwrap_or_default();
++            if value != "&kp" && !self.defines(value) {
++                return Err(format!(
++                    "{}: a MoErgo mod-morph is read back only when both outputs are keys or \
++                     behaviors of this file, and one is {value}",
++                    named()
++                ));
++            }
++        }
++        let keep = modifier_names(fork.kept_modifiers);
++        let mut definition = Map::new();
++        definition.insert(
++            "cases".into(),
++            json!([
++                { "binding": default, "mods": [], "keepMods": [] },
++                { "binding": positive, "mods": mods, "keepMods": keep }
++            ]),
++        );
++        let label = self
++            .labels
++            .and_then(|labels| labels.forks.get(index))
++            .map(|fork| fork.name.clone())
++            .filter(|name| !name.is_empty())
++            .unwrap_or_else(|| "mod_morph".to_owned());
++        let name = self.intern(Table::ModMorphs, &label, definition);
++        Ok(json!({ "value": name }))
++    }
++
++    fn unforked_binding(&mut self, action: KeyAction, cell: &Cell) -> Result<Value, Refusal> {
++        if action == KeyAction::Single(Action::User(12))
++            && Hand::of(cell.editor_index) == Hand::Left
++        {
++            return Err(left_half_bootloader());
++        }
++        if let Some(binding) = self.binding(action, cell)? {
++            return Ok(binding);
++        }
++        plain_binding(action, cell)
++    }
++
++    /// Forks no key carried. MoErgo's mod-morph lives on a key, so these
++    /// cannot be written.
++    pub fn unused_forks(&self) -> Vec<Refusal> {
++        self.forks
++            .iter()
++            .filter(|(_, used)| !used)
++            .map(|(fork, _)| {
++                format!(
++                    "the fork on {} matches no key; a MoErgo mod-morph exists only on a key",
++                    action_label(fork.trigger)
++                )
++            })
++            .collect()
++    }
++
++    fn defines(&self, name: &str) -> bool {
++        self.existing
++            .iter()
++            .chain(&self.added)
++            .any(|(_, entry)| entry.get("name").and_then(Value::as_str) == Some(name))
++    }
++
++    /// The snapshot's combos as editor combos, or `None` when the snapshot
++    /// does not manage combos and the template's should stand.
++    pub fn combos(&mut self) -> Option<Result<Vec<Value>, Vec<Refusal>>> {
++        let combos = self.behaviors.combos.clone()?;
++        let mut out = Vec::new();
++        let mut refusals = Vec::new();
++        let mut names = BTreeSet::new();
++        let timeout = self
++            .behaviors
++            .config
++            .as_ref()
++            .map(|config| u64::from(config.combo_timeout_ms))
++            .or(self.template_combo_timeout);
++        for (index, definition) in combos.iter().enumerate() {
++            let label = self
++                .labels
++                .and_then(|labels| labels.combos.get(index))
++                .map(|combo| combo.name.clone())
++                .filter(|name| !name.is_empty())
++                .unwrap_or_else(|| format!("combo {index}"));
++            let ComboDefinition::Positions(combo) = definition else {
++                refusals.push(format!(
++                    "combo '{label}' matches on key actions; MoErgo combos match key positions"
++                ));
++                continue;
++            };
++            let positions: Option<Vec<usize>> = combo
++                .positions
++                .iter()
++                .map(|position| {
++                    let offset =
++                        usize::from(position.row) * usize::from(COLS) + usize::from(position.col);
++                    super::MOERGO_TO_MATRIX
++                        .iter()
++                        .position(|&cell| cell == offset)
++                })
++                .collect();
++            let Some(positions) = positions.filter(|positions| !positions.is_empty()) else {
++                refusals.push(format!(
++                    "combo '{label}' uses a matrix position the Glove80 has no key at"
++                ));
++                continue;
++            };
++            let cell = Cell {
++                layer: combo.layer.map_or(0, usize::from),
++                layer_name: "combo",
++                editor_index: positions[0],
++                offset: super::MOERGO_TO_MATRIX[positions[0]],
++            };
++            let binding = match combo.output {
++                KeyAction::LayerModTap(layer, modifier, key) => {
++                    self.window_switcher(layer, modifier, key)
++                }
++                output => self.cell_binding(output, &cell),
++            };
++            let binding = match binding {
++                Ok(binding) => binding,
++                Err(why) => {
++                    refusals.push(format!("combo '{label}': {why}"));
++                    continue;
++                }
++            };
++            let layers = json!([combo.layer.map_or(-1, i64::from)]);
++            let same = self.template_combos.iter().find(|entry| {
++                entry.get("binding") == Some(&binding)
++                    && entry.get("keyPositions") == Some(&json!(positions))
++                    && entry.get("layers") == Some(&layers)
++                    && entry
++                        .get("name")
++                        .and_then(Value::as_str)
++                        .is_some_and(|name| !names.contains(name))
++            });
++            let description = same
++                .and_then(|entry| entry.get("description"))
++                .cloned()
++                .unwrap_or_else(|| json!(""));
++            let mut name = same
++                .and_then(|entry| entry.get("name"))
++                .and_then(Value::as_str)
++                .map_or_else(|| combo_name(&label, index), str::to_owned);
++            let stem = name.clone();
++            let mut suffix = 2;
++            while !names.insert(name.clone()) {
++                name = format!("{stem}_{suffix}");
++                suffix += 1;
++            }
++            let mut entry = Map::new();
++            entry.insert("name".into(), json!(name));
++            entry.insert("description".into(), description);
++            entry.insert("binding".into(), binding);
++            entry.insert("keyPositions".into(), json!(positions));
++            entry.insert("layers".into(), layers);
++            if let Some(timeout) = timeout {
++                entry.insert("timeoutMs".into(), json!(timeout));
++            }
++            out.push(Value::Object(entry));
++        }
++        Some(if refusals.is_empty() {
++            Ok(out)
++        } else {
++            Err(refusals)
++        })
++    }
++
++    /// `LMT(layer, mod, key)`: hold a modifier and a layer while tapping a key
++    /// once, written as the parameterized macro the import reads back as one
++    /// (`holds_modifier_with_layer`, `chord_tap_key`). Only a combo output
++    /// is read back this way.
++    fn window_switcher(
++        &mut self,
++        layer: u8,
++        modifier: ModifierKey,
++        key: HidKeyCode,
++    ) -> Result<Value, Refusal> {
++        let tap = super::via_basic_to_zmk(key as u16).map_err(|error| error.to_string())?;
++        let placeholder = || json!({ "value": "MACRO_PLACEHOLDER", "params": [] });
++        let mut definition = Map::new();
++        definition.insert("params".into(), json!(["code", "layer"]));
++        definition.insert("waitMs".into(), json!(0));
++        definition.insert("tapMs".into(), json!(0));
++        definition.insert(
++            "bindings".into(),
++            json!([
++                { "value": "&macro_press" },
++                { "value": "&macro_param_1to1" },
++                { "value": "&kp", "params": [placeholder()] },
++                { "value": "&macro_param_2to1" },
++                { "value": "&mo", "params": [placeholder()] },
++                { "value": "&macro_tap" },
++                { "value": "&kp", "params": [{ "value": tap, "params": [] }] },
++                { "value": "&macro_pause_for_release" },
++                { "value": "&macro_release" },
++                { "value": "&macro_param_1to1" },
++                { "value": "&kp", "params": [placeholder()] },
++                { "value": "&macro_param_2to1" },
++                { "value": "&mo", "params": [placeholder()] }
++            ]),
++        );
++        let name = self.intern(Table::Macros, &format!("window_switch_{tap}"), definition);
++        Ok(json!({
++            "value": name,
++            "params": [
++                { "value": modifier_key_name(modifier), "params": [] },
++                { "value": layer, "params": [] }
++            ]
++        }))
++    }
++
++    /// The definitions this export adds to each table.
++    pub fn added(&self) -> &[(Table, Value)] {
++        &self.added
++    }
++
++    /// The editor binding for a cell that names a behavior definition, or
++    /// `Ok(None)` when the plain keycode path already represents it exactly.
++    pub fn binding(&mut self, action: KeyAction, cell: &Cell) -> Result<Option<Value>, Refusal> {
++        match action {
++            KeyAction::Morse(index) => self.morse(index, cell).map(Some),
++            KeyAction::TapHold(tap, hold, profile) => {
++                let named = self.profile_entry(profile).cloned();
++                match named {
++                    Some(entry) => self
++                        .tap_hold(tap, hold, entry.profile, Some(&entry.name), cell)
++                        .map(Some),
++                    // Without a named profile, `&mt`/`&lt` say it exactly; only
++                    // the shapes they cannot carry need a definition.
++                    None if is_autoshift(tap, hold) => self
++                        .tap_hold(tap, hold, MorseProfile::const_default(), None, cell)
++                        .map(Some),
++                    None => Ok(None),
++                }
++            }
++            KeyAction::Single(Action::TriggerMacro(index)) => self.trigger_macro(index).map(Some),
++            KeyAction::Single(action) => refusal_for(action).map_or(Ok(None), Err),
++            _ => Ok(None),
++        }
++    }
++
++    fn profile_entry(&self, index: u8) -> Option<&MorseProfileEntry> {
++        self.behaviors
++            .morse_profiles
++            .as_deref()
++            .unwrap_or_default()
++            .iter()
++            .find(|entry| entry.index == index)
++    }
++
++    fn morse_label(&self, index: u8) -> Option<&str> {
++        let name = self.labels?.morses.get(usize::from(index))?.name.as_str();
++        // The import names its morses `morse N`; that says nothing worth
++        // keeping as a behavior name.
++        (!name.is_empty() && !name.starts_with("morse ")).then_some(name)
++    }
++
++    fn morse(&mut self, index: u8, cell: &Cell) -> Result<Value, Refusal> {
++        let morse = self
++            .behaviors
++            .morses
++            .as_deref()
++            .unwrap_or_default()
++            .get(usize::from(index))
++            .cloned()
++            .ok_or_else(|| format!("TD({index}) names a tap pattern the layout does not define"))?;
++        let label = self.morse_label(index).map(str::to_owned);
++        let patterns: Vec<MorsePattern> =
++            morse.actions.iter().map(|(pattern, _)| *pattern).collect();
++
++        if patterns.len() == 2 && patterns.contains(&TAP) && patterns.contains(&HOLD) {
++            let tap = morse.get(TAP).unwrap_or(Action::No);
++            let hold = morse.get(HOLD).unwrap_or(Action::No);
++            return self.tap_hold(tap, hold, morse.profile, label.as_deref(), cell);
++        }
++        if let Some(taps) = tap_sequence(&morse) {
++            if taps.len() == 1 {
++                // One tap and nothing else is the key itself.
++                return plain_binding(KeyAction::Single(taps[0]), cell)
++                    .map_err(|why| format!("TD({index}) taps {why}"));
++            }
++            return self.tap_dance(index, &taps, morse.profile, label.as_deref(), cell);
++        }
++        Err(format!(
++            "TD({index}) is a tap pattern ({}) that MoErgo can only express as a hold-tap \
++             (one tap, one hold) or a tap-dance (taps only, at most five)",
++            describe_patterns(&morse)
++        ))
++    }
++
++    /// A tap and a hold, written as the hold-tap whose lowering yields them.
++    fn tap_hold(
++        &mut self,
++        tap: Action,
++        hold: Action,
++        profile: MorseProfile,
++        label: Option<&str>,
++        cell: &Cell,
++    ) -> Result<Value, Refusal> {
++        let what = || format!("tap {} / hold {}", action_text(tap), action_text(hold));
++        let unilateral = profile.unilateral_tap() == Some(true);
++        let hand = Hand::of(cell.editor_index);
++
++        let (shape, bindings, params): (&str, [String; 2], [Value; 2]) = match (tap, hold) {
++            (Action::Key(KeyCode::Hid(key)), Action::Modifier(modifiers)) => {
++                let modifier = single_modifier(modifiers).ok_or_else(|| {
++                    format!(
++                        "{} holds several modifiers at once; a MoErgo hold-tap holds one",
++                        what()
++                    )
++                })?;
++                (
++                    if unilateral { "hrm" } else { "mod_tap" },
++                    ["&kp".into(), "&kp".into()],
++                    [json!(modifier), json!(basic_name(key, &what)?)],
++                )
++            }
++            (Action::Key(KeyCode::Hid(key)), Action::LayerOn(layer)) => (
++                "layer_tap",
++                ["&mo".into(), "&kp".into()],
++                [json!(layer), json!(basic_name(key, &what)?)],
++            ),
++            (Action::Key(KeyCode::Hid(key)), Action::KeyWithModifier(..))
++                if is_autoshift(tap, hold) =>
++            {
++                let wrapper = self.shift_wrapper();
++                let key = basic_name(key, &what)?;
++                (
++                    "autoshift",
++                    [wrapper, "&kp".into()],
++                    [json!(key), json!(key)],
++                )
++            }
++            (Action::OneShotModifier(armed), held) => {
++                let armed = single_modifier(armed).ok_or_else(|| {
++                    format!(
++                        "{} arms several modifiers; MoErgo's sticky key arms one",
++                        what()
++                    )
++                })?;
++                let held = match held {
++                    Action::Key(KeyCode::Hid(key)) if is_modifier_key(key) => {
++                        basic_name(key, &what)?.to_owned()
++                    }
++                    Action::Modifier(modifiers) => single_modifier(modifiers)
++                        .ok_or_else(|| format!("{} holds several modifiers at once", what()))?,
++                    _ => {
++                        return Err(format!(
++                            "{}: a sticky modifier can only be held as a modifier",
++                            what()
++                        ))
++                    }
++                };
++                let sticky = self.sticky_key();
++                (
++                    "sticky_mod_tap",
++                    ["&kp".into(), sticky],
++                    [json!(held), json!(armed)],
++                )
++            }
++            _ => {
++                return Err(format!(
++                    "{} has no MoErgo hold-tap form: the import reads a hold-tap only as \
++                     modifier/key, layer/key, autoshift or sticky modifier",
++                    what()
++                ))
++            }
++        };
++        if unilateral && !matches!(shape, "hrm" | "layer_tap") {
++            return Err(format!(
++                "{} decides its hold by hand, which MoErgo expresses only for a modifier or \
++                 layer hold",
++                what()
++            ));
++        }
++
++        let mut definition = Map::new();
++        definition.insert("bindings".into(), json!(bindings));
++        definition.extend(self.timing(profile));
++        if unilateral {
++            definition.insert(
++                "holdTriggerKeyPositions".into(),
++                json!(hand.trigger_positions()),
++            );
++        }
++        let base = match (label, unilateral) {
++            (Some(label), true) => format!("{label}_{}", hand.suffix()),
++            (Some(label), false) => label.to_owned(),
++            (None, true) => format!("{shape}_{}", hand.suffix()),
++            (None, false) => shape.to_owned(),
++        };
++        let name = self.intern(Table::HoldTaps, &base, definition);
++        Ok(json!({
++            "value": name,
++            "params": params.iter().map(|value| json!({ "value": value, "params": [] })).collect::<Vec<_>>(),
++        }))
++    }
++
++    /// The hold-tap timing fields of a runtime profile. Fields the profile
++    /// leaves to the firmware are filled from the snapshot's default profile,
++    /// because ZMK requires a tapping term on every hold-tap.
++    fn timing(&self, profile: MorseProfile) -> Map<String, Value> {
++        let mut fields = Map::new();
++        let term = profile
++            .hold_timeout_ms()
++            .or(self.default_profile.hold_timeout_ms())
++            .unwrap_or(ZMK_TAPPING_TERM_MS);
++        fields.insert("tappingTermMs".into(), json!(term));
++        if let Some(flavor) = profile.mode().map(flavor_of) {
++            fields.insert("flavor".into(), json!(flavor));
++        }
++        if let Some(ms) = profile.quick_tap_timeout_ms() {
++            fields.insert("quickTapMs".into(), json!(ms));
++        }
++        if let Some(ms) = profile.prior_idle_time_ms() {
++            fields.insert("requirePriorIdleMs".into(), json!(ms));
++        }
++        if profile.hold_trigger_on_release() == Some(true) {
++            fields.insert("holdTriggerOnRelease".into(), json!(true));
++        }
++        fields
++    }
++
++    fn tap_dance(
++        &mut self,
++        index: u8,
++        taps: &[Action],
++        profile: MorseProfile,
++        label: Option<&str>,
++        cell: &Cell,
++    ) -> Result<Value, Refusal> {
++        let mut bindings = Vec::with_capacity(taps.len());
++        for (count, action) in taps.iter().enumerate() {
++            let binding = match action {
++                Action::Key(KeyCode::Hid(_)) | Action::KeyWithModifier(..) => {
++                    plain_binding(KeyAction::Single(*action), cell)
++                }
++                _ => Err(action_text(*action)),
++            }
++            .map_err(|_| {
++                format!(
++                    "TD({index}) sends {} on {} tap{}; a MoErgo tap-dance is read back only \
++                     when every step is a key",
++                    action_text(*action),
++                    count + 1,
++                    if count == 0 { "" } else { "s" }
++                )
++            })?;
++            bindings.push(binding);
++        }
++        let term = profile
++            .gap_timeout_ms()
++            .or(self.default_profile.gap_timeout_ms())
++            .unwrap_or(ZMK_TAPPING_TERM_MS);
++        let mut definition = Map::new();
++        definition.insert("tappingTermMs".into(), json!(term));
++        definition.insert("bindings".into(), Value::Array(bindings));
++        let name = self.intern(Table::TapDances, label.unwrap_or("tap_dance"), definition);
++        Ok(json!({ "value": name }))
++    }
++
++    fn trigger_macro(&mut self, index: u8) -> Result<Value, Refusal> {
++        let ops = self
++            .behaviors
++            .macros
++            .as_deref()
++            .unwrap_or_default()
++            .get(usize::from(index))
++            .cloned()
++            .ok_or_else(|| format!("MACRO({index}) names a macro the layout does not define"))?;
++        let mut bindings = Vec::new();
++        let mut mode: Option<&str> = None;
++        for op in &ops {
++            let (step, action) = match op {
++                MacroOp::Tap(action) => ("&macro_tap", action),
++                MacroOp::Press(action) => ("&macro_press", action),
++                MacroOp::Release(action) => ("&macro_release", action),
++                other => {
++                    return Err(format!(
++                        "MACRO({index}) has a {} step; the import reads back only key taps, \
++                         presses and releases",
++                        macro_op_text(other)
++                    ))
++                }
++            };
++            let code = match action {
++                Action::Key(KeyCode::Hid(key)) => *key as u16,
++                Action::KeyWithModifier(key, modifiers) => {
++                    (u16::from(modifiers.into_packed_bits()) << 8) | *key as u16
++                }
++                other => {
++                    return Err(format!(
++                        "MACRO({index}) steps through {}; the import reads back only keys",
++                        action_text(*other)
++                    ))
++                }
++            };
++            let key = if code > 0xff {
++                super::modified_to_zmk(code)
++            } else {
++                super::via_basic_to_zmk(code).map(str::to_owned)
++            }
++            .map_err(|error| format!("MACRO({index}) {error}"))?;
++            if mode != Some(step) {
++                bindings.push(json!({ "value": step }));
++                mode = Some(step);
++            }
++            bindings.push(json!({ "value": "&kp", "params": [{ "value": key, "params": [] }] }));
++        }
++        if bindings.is_empty() {
++            return Err(format!("MACRO({index}) is empty"));
++        }
++        let label = self
++            .labels
++            .and_then(|labels| labels.macros.get(usize::from(index)))
++            .map(|entry| entry.name.clone())
++            .filter(|name| !name.is_empty())
++            .unwrap_or_else(|| format!("macro_{index}"));
++        let mut definition = Map::new();
++        definition.insert("waitMs".into(), json!(0));
++        definition.insert("tapMs".into(), json!(0));
++        definition.insert("bindings".into(), Value::Array(bindings));
++        let name = self.intern(Table::Macros, &label, definition);
++        Ok(json!({ "value": name }))
++    }
++
++    /// The macro an autoshift hold-tap holds: shift around its parameter. The
++    /// import recognizes exactly this shape (`is_shift_wrapper`).
++    fn shift_wrapper(&mut self) -> String {
++        let mut definition = Map::new();
++        definition.insert("params".into(), json!(["code"]));
++        definition.insert("waitMs".into(), json!(0));
++        definition.insert("tapMs".into(), json!(0));
++        definition.insert(
++            "bindings".into(),
++            json!([
++                { "value": "&macro_press" },
++                { "value": "&kp", "params": [{ "value": "LSHFT", "params": [] }] },
++                { "value": "&macro_tap" },
++                { "value": "&macro_param_1to1" },
++                { "value": "&kp", "params": [{ "value": "MACRO_PLACEHOLDER", "params": [] }] },
++                { "value": "&macro_release" },
++                { "value": "&kp", "params": [{ "value": "LSHFT", "params": [] }] }
++            ]),
++        );
++        self.intern(Table::Macros, "autoshift_shift", definition)
++    }
++
++    /// The sticky key a sticky-modifier hold-tap taps. The import recognizes
++    /// it by the `&sticky_key` prefix of its name.
++    fn sticky_key(&mut self) -> String {
++        let mut definition = Map::new();
++        definition.insert("bindings".into(), json!(["&kp"]));
++        self.intern(Table::StickyKeys, "sticky_key_oneshot", definition)
++    }
++
++    /// Returns the name of a definition with this content, adding it under a
++    /// fresh name derived from `base` when neither the template nor this export
++    /// has one yet.
++    fn intern(&mut self, table: Table, base: &str, definition: Map<String, Value>) -> String {
++        let content = Value::Object(definition.clone());
++        let same = |entry: &Value| {
++            let mut entry = entry.clone();
++            if let Some(object) = entry.as_object_mut() {
++                for key in ["name", "description", "descriptorId"] {
++                    object.remove(key);
++                }
++            }
++            entry == content
++        };
++        for (existing_table, entry) in self.existing.iter().chain(&self.added) {
++            if *existing_table == table && same(entry) {
++                if let Some(name) = entry.get("name").and_then(Value::as_str) {
++                    return name.to_owned();
++                }
++            }
++        }
++
++        let mut stem = behavior_stem(base);
++        // A stem in ZMK's reserved space (`macro_…`) stays reserved with any
++        // suffix, so move it out before counting.
++        if is_builtin(&format!("&{stem}")) {
++            stem.insert_str(0, "my_");
++        }
++        let mut name = format!("&{stem}");
++        let mut suffix = 2;
++        while self.taken.contains(&name) || is_builtin(&name) {
++            name = format!("&{stem}_{suffix}");
++            suffix += 1;
++        }
++        self.taken.insert(name.clone());
++        let mut entry = Map::new();
++        entry.insert("name".into(), json!(name));
++        entry.insert("description".into(), json!(""));
++        entry.extend(definition);
++        self.added.push((table, Value::Object(entry)));
++        name
++    }
++}
++
++/// Why a single action has no MoErgo binding, when that is known ahead of the
++/// keycode table: these are keys this firmware has and ZMK does not.
++fn refusal_for(action: Action) -> Option<Refusal> {
++    let why = match action {
++        // Bluetooth profiles and clears have `&bt` forms; the right half's
++        // bootloader key is `&bootloader` (the caller refuses a left-half one).
++        Action::User(0..=3 | 10..=12) => return None,
++        Action::User(13) => {
++            "USER(13) switches the link between the halves (Bluetooth or automatic); \
++             ZMK has no such key"
++        }
++        Action::User(id) => {
++            return Some(format!(
++                "USER({id}) is a key this firmware assigns at build time; MoErgo has no \
++                 equivalent"
++            ))
++        }
++        Action::Light(LightAction::BacklightToggle) => {
++            "BL_TOGG turns the key lighting output on and off; MoErgo's firmware has no \
++             backlight behavior (&bl)"
++        }
++        Action::Light(LightAction::BacklightUp | LightAction::BacklightDown) => {
++            "BL_UP/BL_DOWN change the key lighting output's brightness; MoErgo's firmware has no \
++             backlight behavior (&bl)"
++        }
++        Action::Light(
++            LightAction::BacklightOn
++            | LightAction::BacklightOff
++            | LightAction::BacklightStep
++            | LightAction::BacklightToggleBreathing,
++        ) => "this backlight key has no MoErgo equivalent; MoErgo's firmware has no &bl",
++        Action::Key(KeyCode::Hid(
++            HidKeyCode::MouseAccel0 | HidKeyCode::MouseAccel1 | HidKeyCode::MouseAccel2,
++        )) => "KC_ACL0-2 set the mouse-key speed; ZMK's mouse keys have no speed steps",
++        Action::DefaultLayer(layer) | Action::PersistentDefaultLayer(layer) => {
++            return Some(format!(
++                "DF({layer}) changes the default layer; ZMK has no such behavior"
++            ))
++        }
++        Action::KeyboardControl(KeyboardAction::MaintenanceModeToggle) => {
++            "MAINT_LOCK_TOG toggles this firmware's maintenance lock; ZMK has no such key"
++        }
++        _ => return None,
++    };
++    Some(why.to_owned())
++}
++
++/// The refusal for a `USER(12)` on the left half, which the keycode path
++/// cannot place because it only knows `&bootloader` on the right.
++pub(crate) fn left_half_bootloader() -> Refusal {
++    "USER(12) restarts the right half into its bootloader; on a left-half key MoErgo's \
++     &bootloader would restart the left half instead"
++        .to_owned()
++}
++
++fn is_autoshift(tap: Action, hold: Action) -> bool {
++    matches!(
++        (tap, hold),
++        (Action::Key(KeyCode::Hid(key)), Action::KeyWithModifier(shifted, modifiers))
++            if key == shifted && modifiers == ModifierCombination::LSHIFT
++    )
++}
++
++/// A morse whose patterns are 1..n taps and nothing else, as its actions in
++/// tap-count order.
++fn tap_sequence(morse: &Morse) -> Option<Vec<Action>> {
++    let count = morse.actions.len();
++    if count == 0 || count > 5 {
++        return None;
++    }
++    let mut pattern = TAP;
++    let mut actions = Vec::with_capacity(count);
++    for _ in 0..count {
++        actions.push(morse.get(pattern)?);
++        pattern = pattern.followed_by_tap();
++    }
++    Some(actions)
++}
++
++fn describe_patterns(morse: &Morse) -> String {
++    morse
++        .actions
++        .iter()
++        .map(|(pattern, action)| format!("{} {}", pattern_text(*pattern), action_text(*action)))
++        .collect::<Vec<_>>()
++        .join(", ")
++}
++
++/// A morse pattern in dots and dashes, `.` a tap and `-` a hold.
++fn pattern_text(pattern: MorsePattern) -> String {
++    let bits = pattern.to_u16();
++    let length = pattern.pattern_length();
++    (0..length)
++        .rev()
++        .map(|bit| if bits & (1 << bit) != 0 { '-' } else { '.' })
++        .collect()
++}
++
++fn plain_binding(action: KeyAction, cell: &Cell) -> Result<Value, Refusal> {
++    let code = crate::rynk_keycode::to_via_keycode(action);
++    if code == 0 && !matches!(action, KeyAction::No) {
++        return Err(format!("{action:?}"));
++    }
++    super::via_to_binding(code, cell.layer, cell.editor_index, cell.offset)
++        .map_err(|error| strip_location(&format!("{error:#}"), cell))
++}
++
++/// The keycode converter prefixes its errors with the cell; the caller adds
++/// its own, richer location.
++pub(crate) fn strip_location(message: &str, cell: &Cell) -> String {
++    let prefix = super::location(cell.layer, cell.editor_index, cell.offset);
++    message
++        .strip_prefix(&prefix)
++        .map(str::trim_start)
++        .unwrap_or(message)
++        .to_owned()
++}
++
++fn basic_name(key: HidKeyCode, what: &dyn Fn() -> String) -> Result<&'static str, Refusal> {
++    super::via_basic_to_zmk(key as u16).map_err(|error| format!("{}: {error}", what()))
++}
++
++fn is_modifier_key(key: HidKeyCode) -> bool {
++    (0xe0..=0xe7).contains(&(key as u16))
++}
++
++/// The ZMK name of a combination of exactly one modifier.
++fn single_modifier(modifiers: ModifierCombination) -> Option<String> {
++    let bits = modifiers.into_packed_bits();
++    (bits & 0x0f)
++        .is_power_of_two()
++        .then(|| super::modifier_bits_to_zmk(bits).ok())?
++}
++
++fn flavor_of(mode: MorseMode) -> &'static str {
++    match mode {
++        MorseMode::Normal => "tap-preferred",
++        MorseMode::HoldOnOtherPress => "hold-preferred",
++        MorseMode::PermissiveHold => "balanced",
++        MorseMode::TapUnlessInterrupted => "tap-unless-interrupted",
++    }
++}
++
++fn action_text(action: Action) -> String {
++    let code = crate::rynk_keycode::to_via_keycode(KeyAction::Single(action));
++    if code == 0 && action != Action::No {
++        format!("{action:?}")
++    } else {
++        crate::keycodes::format_keycode(code)
++    }
++}
++
++fn macro_op_text(op: &MacroOp) -> &'static str {
++    match op {
++        MacroOp::Delay(_) => "delay",
++        MacroOp::Char(_) => "text",
++        MacroOp::PauseForRelease => "pause-for-release",
++        _ => "key",
++    }
++}
++
++/// A behavior name stem: ZMK names are letters, digits and underscores,
++/// starting with a letter, and the editor caps them at 65 characters.
++fn behavior_stem(base: &str) -> String {
++    let mut stem: String = base
++        .trim_start_matches('&')
++        .chars()
++        .map(|character| {
++            if character.is_ascii_alphanumeric() {
++                character
++            } else {
++                '_'
++            }
++        })
++        .collect();
++    if !stem.starts_with(|character: char| character.is_ascii_alphabetic()) {
++        stem.insert_str(0, "b_");
++    }
++    // Leave room for the `&` and a `_NN` suffix.
++    stem.truncate(60);
++    stem
++}
++
++fn is_builtin(name: &str) -> bool {
++    const BUILTINS: &[&str] = &[
++        "&bl",
++        "&bootloader",
++        "&bt",
++        "&bt_0",
++        "&bt_1",
++        "&bt_2",
++        "&bt_3",
++        "&caps_word",
++        "&ext_power",
++        "&gresc",
++        "&key_repeat",
++        "&kp",
++        "&kt",
++        "&layer",
++        "&lower",
++        "&lt",
++        "&magic",
++        "&mkp",
++        "&mmv",
++        "&mo",
++        "&msc",
++        "&mt",
++        "&none",
++        "&out",
++        "&reset",
++        "&rgb_ug",
++        "&sk",
++        "&sl",
++        "&soft_off",
++        "&sys_reset",
++        "&to",
++        "&tog",
++        "&trans",
++    ];
++    BUILTINS.contains(&name) || name.starts_with("&macro_")
++}
++
++/// The mod-morph `mods` a fork's condition reads as, or why it has none.
++fn fork_condition(fork: &Fork) -> Result<Vec<&'static str>, Refusal> {
++    if fork.negative_output != fork.trigger {
++        return Err("it replaces the key's own output even without its modifiers".into());
++    }
++    if fork.match_none != StateBits::default() {
++        return Err("it is suppressed by some modifiers, which a mod-morph cannot say".into());
++    }
++    if fork.layers != u32::MAX {
++        return Err("it applies on some layers only, which a mod-morph cannot say".into());
++    }
++    let only_modifiers = StateBits {
++        modifiers: fork.match_any.modifiers,
++        ..StateBits::default()
++    };
++    if fork.match_any != only_modifiers {
++        return Err("it also matches lock or mouse-button state, which a mod-morph cannot".into());
++    }
++    let mods = modifier_names(fork.match_any.modifiers);
++    if mods.is_empty() {
++        return Err("it matches no modifier".into());
++    }
++    Ok(mods)
++}
++
++/// ZMK's `MOD_*` names for a modifier combination.
++fn modifier_names(modifiers: ModifierCombination) -> Vec<&'static str> {
++    [
++        (modifiers.left_ctrl(), "MOD_LCTL"),
++        (modifiers.left_shift(), "MOD_LSFT"),
++        (modifiers.left_alt(), "MOD_LALT"),
++        (modifiers.left_gui(), "MOD_LGUI"),
++        (modifiers.right_ctrl(), "MOD_RCTL"),
++        (modifiers.right_shift(), "MOD_RSFT"),
++        (modifiers.right_alt(), "MOD_RALT"),
++        (modifiers.right_gui(), "MOD_RGUI"),
++    ]
++    .into_iter()
++    .filter_map(|(set, name)| set.then_some(name))
++    .collect()
++}
++
++fn modifier_key_name(modifier: ModifierKey) -> &'static str {
++    match modifier {
++        ModifierKey::LCtrl => "LCTRL",
++        ModifierKey::LShift => "LSHFT",
++        ModifierKey::LAlt => "LALT",
++        ModifierKey::LGui => "LGUI",
++        ModifierKey::RCtrl => "RCTRL",
++        ModifierKey::RShift => "RSHFT",
++        ModifierKey::RAlt => "RALT",
++        ModifierKey::RGui => "RGUI",
++    }
++}
++
++/// A key as the keymap spells it, for messages.
++fn action_label(action: KeyAction) -> String {
++    let code = crate::rynk_keycode::to_via_keycode(action);
++    if code == 0 && !matches!(action, KeyAction::No) {
++        format!("{action:?}")
++    } else {
++        crate::keycodes::format_keycode(code)
++    }
++}
++
++/// A combo name: ZMK node names are a letter, then letters, digits and
++/// underscores, without the `&` behaviors carry.
++fn combo_name(label: &str, index: usize) -> String {
++    let stem = behavior_stem(label);
++    if stem.len() < 2 {
++        format!("combo_{index}")
++    } else {
++        stem
++    }
++}
++
++/// Removes the template's definitions that its own keymap used and the new
++/// keymap no longer does: the export replaced them, and left behind they
++/// would be read again on the next import (a home-row-mod hold-tap still
++/// naming its finger layer would make the import drop a layer that is now
++/// something else). Definitions the template never used are kept.
++pub(crate) fn prune_superseded(before: &Map<String, Value>, after: &mut Map<String, Value>) {
++    let used_before = reachable(before);
++    let used_after = reachable(after);
++    for table in Table::ALL {
++        let Some(entries) = after.get_mut(table.key()).and_then(Value::as_array_mut) else {
++            continue;
++        };
++        entries.retain(|entry| {
++            let Some(name) = entry.get("name").and_then(Value::as_str) else {
++                return true;
++            };
++            !(used_before.contains(name) && !used_after.contains(name))
++        });
++    }
++}
++
++/// Every behavior name a document's keymap, combos and input listeners reach,
++/// directly or through other definitions.
++fn reachable(layout: &Map<String, Value>) -> BTreeSet<String> {
++    let mut definitions: Vec<(String, Value)> = Vec::new();
++    for table in Table::ALL {
++        for entry in layout
++            .get(table.key())
++            .and_then(Value::as_array)
++            .into_iter()
++            .flatten()
++        {
++            if let Some(name) = entry.get("name").and_then(Value::as_str) {
++                let mut body = entry.clone();
++                if let Some(object) = body.as_object_mut() {
++                    object.remove("name");
++                    object.remove("description");
++                }
++                definitions.push((name.to_owned(), body));
++            }
++        }
++    }
++    let mut seen = BTreeSet::new();
++    for root in ["layers", "combos", "inputListeners"] {
++        if let Some(value) = layout.get(root) {
++            behavior_names(value, &mut seen);
++        }
++    }
++    loop {
++        let before = seen.len();
++        for (name, body) in &definitions {
++            if seen.contains(name) {
++                behavior_names(body, &mut seen);
++            }
++        }
++        if seen.len() == before {
++            return seen;
++        }
++    }
++}
++
++fn behavior_names(value: &Value, out: &mut BTreeSet<String>) {
++    match value {
++        Value::String(text) if text.starts_with('&') => {
++            // A `Custom` binding is raw devicetree text; its behavior is the
++            // first word.
++            out.insert(text.split_whitespace().next().unwrap_or(text).to_owned());
++        }
++        Value::Array(items) => items.iter().for_each(|item| behavior_names(item, out)),
++        Value::Object(object) => object.values().for_each(|item| behavior_names(item, out)),
++        _ => {}
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn trigger_positions_are_the_other_hand_and_own_thumbs() {
++        let left = Hand::Left.trigger_positions();
++        // TailorKey's left-hand home-row mods list exactly these 46 keys.
++        assert_eq!(left.len(), 46);
++        for thumb in LEFT_THUMBS.iter().chain(&RIGHT_THUMBS) {
++            assert!(left.contains(thumb), "{thumb}");
++        }
++        assert!(!left.contains(&35), "left pinky home key");
++        assert!(left.contains(&44), "right pinky home key");
++        let right = Hand::Right.trigger_positions();
++        assert!(right.contains(&35) && !right.contains(&44));
++    }
++
++    #[test]
++    fn pattern_text_spells_taps_and_holds() {
++        assert_eq!(pattern_text(TAP), ".");
++        assert_eq!(pattern_text(HOLD), "-");
++        assert_eq!(pattern_text(TAP.followed_by_tap()), "..");
++    }
++
++    #[test]
++    fn stems_are_valid_zmk_names() {
++        assert_eq!(behavior_stem("shiftdance_v1_TK"), "shiftdance_v1_TK");
++        assert_eq!(behavior_stem("F4 double"), "F4_double");
++        assert_eq!(behavior_stem("4ward"), "b_4ward");
++    }
++}
+diff --git a/crates/moergo-config/tests/fixtures/glove80-tailorkey-qwerty.toml b/crates/moergo-config/tests/fixtures/glove80-tailorkey-qwerty.toml
+new file mode 100644
+index 0000000..8f6a141
+--- /dev/null
++++ b/crates/moergo-config/tests/fixtures/glove80-tailorkey-qwerty.toml
+@@ -0,0 +1,2161 @@
++default_layer = 0
++
++[[layer]]
++id = "layer0"
++name = "Base"
++keys = """
++
++KC_F1 KC_F2 KC_F3 TD(0) KC_F5 -- TD(2) TD(2) -- KC_F6 KC_F7 KC_F8 KC_F9 KC_F10
++KC_EQL KC_1 KC_2 KC_3 KC_4 KC_5 KC_LCTL KC_RCTL KC_6 KC_7 KC_8 KC_9 KC_0 KC_MINS
++KC_TAB KC_Q KC_W KC_E KC_R KC_T MO(7) KC_RALT KC_Y KC_U KC_I KC_O KC_P KC_BSLS
++KC_ESC MT(KC_A,LGui,HRM_pinky_v1_TK) MT(KC_S,LAlt,HRM_ring_v1_TK) MT(KC_D,LCtrl,HRM_middle_v1_TK) MT(KC_F,LShift,HRM_index_v1_TK) KC_G LT(4,KC_E,thumb_v1_TK) LT(5,KC_SPC,space_v1_TK) KC_H MT(KC_J,RShift,HRM_index_v1_TK) MT(KC_K,RCtrl,HRM_middle_v1_TK) MT(KC_L,LAlt,HRM_ring_v1_TK) MT(KC_SCLN,RGui,HRM_pinky_v1_TK) KC_QUOT
++KC_GRV KC_Z KC_X KC_C KC_V KC_B KC_BSPC LT(6,KC_ENT,thumb_v1_TK) KC_N KC_M KC_COMM KC_DOT KC_SLSH KC_PGUP
++MO(8) KC_HOME KC_END KC_LEFT KC_RGHT -- KC_DEL KC_LALT -- KC_UP KC_DOWN KC_LBRC KC_RBRC KC_PGDN
++"""
++
++[[layer]]
++id = "layer1"
++name = "Typing"
++keys = """
++
++KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS -- KC_TRNS KC_TRNS -- KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS
++KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS
++KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS
++KC_TRNS KC_A KC_S KC_D KC_F KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_J KC_K KC_L KC_SCLN KC_TRNS
++KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS
++KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS -- KC_TRNS KC_TRNS -- KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS
++"""
++
++[[layer]]
++id = "layer2"
++name = "Autoshift"
++keys = """
++
++KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS -- KC_TRNS KC_TRNS -- KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS
++TH(KC_EQL,LSFT(KC_EQL),autoshift_v1_TK) TH(KC_1,LSFT(KC_1),autoshift_v1_TK) TH(KC_2,LSFT(KC_2),autoshift_v1_TK) TH(KC_3,LSFT(KC_3),autoshift_v1_TK) TH(KC_4,LSFT(KC_4),autoshift_v1_TK) TH(KC_5,LSFT(KC_5),autoshift_v1_TK) KC_TRNS KC_TRNS TH(KC_6,LSFT(KC_6),autoshift_v1_TK) TH(KC_7,LSFT(KC_7),autoshift_v1_TK) TH(KC_8,LSFT(KC_8),autoshift_v1_TK) TH(KC_9,LSFT(KC_9),autoshift_v1_TK) TH(KC_0,LSFT(KC_0),autoshift_v1_TK) TH(KC_MINS,LSFT(KC_MINS),autoshift_v1_TK)
++KC_TRNS TH(KC_Q,LSFT(KC_Q),autoshift_v1_TK) TH(KC_W,LSFT(KC_W),autoshift_v1_TK) TH(KC_E,LSFT(KC_E),autoshift_v1_TK) TH(KC_R,LSFT(KC_R),autoshift_v1_TK) TH(KC_T,LSFT(KC_T),autoshift_v1_TK) KC_TRNS KC_TRNS TH(KC_Y,LSFT(KC_Y),autoshift_v1_TK) TH(KC_U,LSFT(KC_U),autoshift_v1_TK) TH(KC_I,LSFT(KC_I),autoshift_v1_TK) TH(KC_O,LSFT(KC_O),autoshift_v1_TK) TH(KC_P,LSFT(KC_P),autoshift_v1_TK) TH(KC_BSLS,LSFT(KC_BSLS),autoshift_v1_TK)
++KC_TRNS TH(KC_A,LSFT(KC_A),autoshift_v1_TK) TH(KC_S,LSFT(KC_S),autoshift_v1_TK) TH(KC_D,LSFT(KC_D),autoshift_v1_TK) TH(KC_F,LSFT(KC_F),autoshift_v1_TK) TH(KC_G,LSFT(KC_G),autoshift_v1_TK) KC_TRNS KC_TRNS TH(KC_H,LSFT(KC_H),autoshift_v1_TK) TH(KC_J,LSFT(KC_J),autoshift_v1_TK) TH(KC_K,LSFT(KC_K),autoshift_v1_TK) TH(KC_L,LSFT(KC_L),autoshift_v1_TK) TH(KC_SCLN,LSFT(KC_SCLN),autoshift_v1_TK) TH(KC_QUOT,LSFT(KC_QUOT),autoshift_v1_TK)
++TH(KC_GRV,LSFT(KC_GRV),autoshift_v1_TK) TH(KC_Z,LSFT(KC_Z),autoshift_v1_TK) TH(KC_X,LSFT(KC_X),autoshift_v1_TK) TH(KC_C,LSFT(KC_C),autoshift_v1_TK) TH(KC_V,LSFT(KC_V),autoshift_v1_TK) TH(KC_B,LSFT(KC_B),autoshift_v1_TK) KC_TRNS KC_TRNS TH(KC_N,LSFT(KC_N),autoshift_v1_TK) TH(KC_M,LSFT(KC_M),autoshift_v1_TK) TH(KC_COMM,LSFT(KC_COMM),autoshift_v1_TK) TH(KC_DOT,LSFT(KC_DOT),autoshift_v1_TK) TH(KC_SLSH,LSFT(KC_SLSH),autoshift_v1_TK) KC_TRNS
++KC_TRNS KC_TRNS KC_TRNS KC_TRNS KC_TRNS -- KC_TRNS KC_TRNS -- KC_TRNS KC_TRNS TH(KC_LBRC,LSFT(KC_LBRC),autoshift_v1_TK) TH(KC_RBRC,LSFT(KC_RBRC),autoshift_v1_TK) KC_TRNS
++"""
++
++[[layer]]
++id = "layer3"
++name = "Gaming"
++keys = """
++
++KC_ESC KC_P KC_O KC_N KC_BSPC -- KC_RCTL KC_ENT -- KC_F1 KC_F2 KC_F3 KC_F4 KC_F5
++KC_M KC_6 KC_7 KC_8 KC_9 KC_0 KC_RSFT KC_UP KC_F6 KC_F7 KC_F8 KC_F9 KC_F10 KC_F11
++KC_I KC_1 KC_2 KC_3 KC_4 KC_5 KC_V KC_ESC KC_Y KC_U KC_I KC_O KC_P KC_F12
++KC_T KC_TAB KC_Q KC_W KC_E KC_R KC_SPC KC_RGHT KC_H KC_J KC_K KC_L KC_SCLN KC_QUOT
++KC_G KC_RCTL KC_A KC_S KC_D KC_F KC_LGUI KC_DOWN KC_N KC_M KC_COMM KC_DOT KC_SLSH KC_BSLS
++KC_B KC_LGUI KC_Z KC_X KC_C -- KC_ENT KC_LEFT -- KC_MINS KC_LBRC KC_RBRC KC_EQL KC_GRV
++"""
++
++[[layer]]
++id = "layer4"
++name = "Cursor"
++keys = """
++
++-- -- -- -- -- -- -- MACRO(4) -- -- -- -- -- --
++-- KC_ESC KC_INS LSFT(KC_TAB) KC_DEL LSFT(LGUI(KC_S)) -- MACRO(3) -- -- -- -- -- --
++-- KC_ENT LCTL(KC_Y) LCTL(KC_Z) KC_BSPC LCTL(KC_X) -- MACRO(2) LCTL(KC_X) LSFT(KC_TAB) LCTL(KC_Z) LCTL(KC_Y) KC_TAB --
++OSM(MOD_LSFT) KC_RALT KC_RSFT KC_LGUI KC_RCTL LCTL(KC_C) -- MACRO(1) LCTL(KC_C) KC_LEFT KC_UP KC_DOWN KC_RGHT OSM(MOD_RSFT)
++LCTL(KC_L) LCTL(KC_A) MACRO(0) MACRO(0) LCTL(KC_F) LCTL(KC_V) -- MACRO(0) LCTL(KC_V) KC_HOME KC_PGUP KC_PGDN KC_END LCTL(KC_L)
++LCTL(KC_K) LCTL(KC_Z) LCTL(KC_Y) LCTL(LSFT(KC_G)) LCTL(KC_G) -- -- LCTL(KC_A) -- LCTL(KC_F) LCTL(LSFT(KC_G)) LCTL(KC_G) LCTL(KC_H) LCTL(KC_K)
++"""
++
++[[layer]]
++id = "layer5"
++name = "Symbol"
++keys = """
++
++-- -- -- -- -- -- KC_BSLS -- -- -- -- -- -- --
++-- KC_GRV LSFT(KC_9) LSFT(KC_0) KC_SCLN KC_COMM KC_DOT -- -- -- -- -- -- --
++LSFT(KC_1) KC_LBRC LSFT(KC_LBRC) LSFT(KC_RBRC) KC_RBRC LSFT(KC_SLSH) LSFT(KC_8) -- KC_DOT KC_DEL LSFT(KC_TAB) KC_INS KC_ESC --
++LSFT(KC_3) LSFT(KC_6) KC_EQL LSFT(KC_MINS) LSFT(KC_4) LSFT(KC_8) LSFT(KC_5) -- KC_COMM KC_BSPC KC_TAB KC_SPC KC_ENT --
++LSFT(KC_GRV) LSFT(KC_COMM) LSFT(KC_BSLS) KC_MINS LSFT(KC_DOT) KC_SLSH LSFT(KC_SCLN) -- KC_SCLN LSFT(KC_QUOT) KC_QUOT KC_GRV KC_BSLS --
++MACRO(5) LSFT(KC_7) KC_QUOT LSFT(KC_QUOT) LSFT(KC_EQL) -- LSFT(KC_2) -- -- OSM(MOD_RSFT) OSM(MOD_RCTL) OSM(MOD_RALT) OSM(MOD_RGUI) --
++"""
++
++[[layer]]
++id = "layer6"
++name = "Mouse"
++keys = """
++
++-- -- -- -- -- -- KC_BTN3 LCTL(KC_V) -- -- -- -- -- --
++-- -- -- -- -- -- KC_APP LCTL(KC_C) -- -- -- -- -- --
++-- -- KC_WH_L KC_MS_U KC_WH_R -- KC_BTN5 LCTL(KC_X) KC_WH_L KC_BTN1 KC_BTN3 KC_BTN2 KC_WH_R --
++-- KC_WH_U KC_MS_L KC_MS_D KC_MS_R KC_WH_U KC_BTN1 -- KC_WH_U KC_ACL0 KC_ACL1 KC_ACL2 KC_APP KC_BTN4
++-- KC_WH_D KC_ACL2 KC_ACL1 KC_ACL0 KC_WH_D KC_BTN2 -- KC_WH_D KC_MS_L KC_MS_U KC_MS_D KC_MS_R KC_BTN5
++-- -- LCTL(KC_X) LCTL(KC_C) LCTL(KC_V) -- KC_BTN4 -- -- KC_RSFT KC_RCTL KC_RALT KC_RGUI --
++"""
++
++[[layer]]
++id = "layer7"
++name = "Lower"
++keys = """
++
++KC_BRID KC_BRIU KC_MPRV KC_MNXT KC_MPLY -- KC_TRNS KC_TRNS -- KC_MUTE KC_VOLD KC_VOLU -- KC_PAUS
++KC_TRNS -- -- -- -- KC_HOME KC_TRNS KC_TRNS LSFT(KC_9) KC_NUM KC_EQL KC_PSLS KC_PAST KC_PSCR
++KC_TRNS -- -- KC_UP -- KC_END TO(0) KC_TRNS LSFT(KC_0) KC_P7 KC_P8 KC_P9 KC_PMNS KC_SCRL
++KC_TRNS -- KC_LEFT KC_DOWN KC_RGHT KC_PGUP KC_TRNS KC_TRNS LSFT(KC_5) KC_P4 KC_P5 KC_P6 KC_PPLS --
++KC_TRNS KC_APP -- KC_F11 KC_F12 KC_PGDN KC_TRNS KC_TRNS KC_COMM KC_P1 KC_P2 KC_P3 KC_PENT KC_TRNS
++MO(8) KC_CAPS KC_INS KC_F11 KC_F12 -- KC_TRNS KC_TRNS -- KC_P0 KC_P0 KC_PDOT KC_PENT KC_TRNS
++"""
++
++[[layer]]
++id = "layer8"
++name = "Magic"
++keys = """
++
++-- -- -- -- -- -- QK_OUTPUT_USB -- -- -- -- -- USER(10) USER(11)
++TO(0) -- TO(1) -- -- TO(2) USER(3) -- -- -- -- -- -- --
++-- UG_SPDU UG_SATU UG_HUEU BL_UP BL_TOGG -- -- -- -- -- -- -- --
++QK_BOOT UG_SPDD UG_SATD UG_HUED BL_DOWN UG_NEXT USER(0) -- -- -- -- -- -- USER(12)
++QK_RBT -- -- -- -- -- USER(1) -- -- -- -- -- -- QK_RBT
++-- -- -- -- -- -- USER(2) -- -- -- -- -- -- --
++"""
++
++[[morse]]
++name = "F4_double_v1_TK"
++tap = "KC_F4"
++double_tap = "LALT(KC_F4)"
++
++[[morse]]
++name = "morse 1"
++tap = "KC_NO"
++
++[[morse]]
++name = "shiftdance_v1_TK"
++tap = "OSM(MOD_LSFT)"
++hold = "KC_LSFT"
++hold_timeout_ms = 250
++mode = "hold-on-other-press"
++
++[[combo]]
++name = "combo 0"
++positions = [
++    [
++    0,
++    12,
++],
++    [
++    1,
++    12,
++],
++]
++output = "KC_F11"
++layer = 0
++
++[[combo]]
++name = "combo 1"
++positions = [
++    [
++    0,
++    12,
++],
++    [
++    1,
++    12,
++],
++]
++output = "KC_F11"
++layer = 2
++
++[[combo]]
++name = "combo 2"
++positions = [
++    [
++    0,
++    13,
++],
++    [
++    1,
++    13,
++],
++]
++output = "KC_F12"
++layer = 0
++
++[[combo]]
++name = "combo 3"
++positions = [
++    [
++    0,
++    13,
++],
++    [
++    1,
++    13,
++],
++]
++output = "KC_F12"
++layer = 2
++
++[[combo]]
++name = "combo 4"
++positions = [
++    [
++    3,
++    6,
++],
++    [
++    0,
++    6,
++],
++]
++output = "LMT(4, MOD_LALT, KC_TAB)"
++layer = 0
++
++[[combo]]
++name = "combo 5"
++positions = [
++    [
++    3,
++    6,
++],
++    [
++    0,
++    6,
++],
++]
++output = "LMT(4, MOD_LALT, KC_TAB)"
++layer = 2
++
++[[combo]]
++name = "combo 6"
++positions = [
++    [
++    1,
++    6,
++],
++    [
++    4,
++    6,
++],
++]
++output = "LMT(4, MOD_LCTL, KC_TAB)"
++layer = 0
++
++[[combo]]
++name = "combo 7"
++positions = [
++    [
++    1,
++    6,
++],
++    [
++    4,
++    6,
++],
++]
++output = "LMT(4, MOD_LCTL, KC_TAB)"
++layer = 2
++
++[[combo]]
++name = "combo 8"
++positions = [
++    [
++    4,
++    5,
++],
++    [
++    5,
++    4,
++],
++]
++output = "TG(3)"
++layer = 0
++
++[[combo]]
++name = "combo 9"
++positions = [
++    [
++    4,
++    5,
++],
++    [
++    5,
++    4,
++],
++]
++output = "TG(3)"
++layer = 3
++
++[[combo]]
++name = "combo 10"
++positions = [
++    [
++    1,
++    7,
++],
++    [
++    5,
++    7,
++],
++]
++output = "KC_CAPS"
++layer = 0
++
++[[combo]]
++name = "combo 11"
++positions = [
++    [
++    1,
++    7,
++],
++    [
++    5,
++    7,
++],
++]
++output = "KC_CAPS"
++layer = 2
++
++[[combo]]
++name = "combo 12"
++positions = [
++    [
++    5,
++    6,
++],
++    [
++    1,
++    6,
++],
++]
++output = "KC_CAPS"
++layer = 0
++
++[[combo]]
++name = "combo 13"
++positions = [
++    [
++    5,
++    6,
++],
++    [
++    1,
++    6,
++],
++]
++output = "KC_CAPS"
++layer = 2
++
++[[combo]]
++name = "combo 14"
++positions = [
++    [
++    4,
++    6,
++],
++    [
++    3,
++    6,
++],
++]
++output = "MAINT_LOCK_TOG"
++layer = 0
++
++[[combo]]
++name = "combo 15"
++positions = [
++    [
++    4,
++    6,
++],
++    [
++    3,
++    6,
++],
++]
++output = "MAINT_LOCK_TOG"
++layer = 2
++
++[[combo]]
++name = "combo 16"
++positions = [
++    [
++    4,
++    7,
++],
++    [
++    3,
++    7,
++],
++]
++output = "MAINT_LOCK_TOG"
++layer = 0
++
++[[combo]]
++name = "combo 17"
++positions = [
++    [
++    4,
++    7,
++],
++    [
++    3,
++    7,
++],
++]
++output = "MAINT_LOCK_TOG"
++layer = 2
++
++[[combo]]
++name = "combo 18"
++positions = [
++    [
++    0,
++    6,
++],
++    [
++    5,
++    6,
++],
++]
++output = "LMT(4, MOD_LGUI, KC_TAB)"
++layer = 0
++
++[[combo]]
++name = "combo 19"
++positions = [
++    [
++    0,
++    6,
++],
++    [
++    5,
++    6,
++],
++]
++output = "LMT(4, MOD_LGUI, KC_TAB)"
++layer = 2
++
++[[macro]]
++name = "selectline_v1_TK"
++
++[[macro.operations]]
++operation = "tap"
++keycode = "KC_HOME"
++
++[[macro.operations]]
++operation = "down"
++keycode = "KC_LSFT"
++
++[[macro.operations]]
++operation = "tap"
++keycode = "KC_END"
++
++[[macro.operations]]
++operation = "up"
++keycode = "KC_LSFT"
++
++[[macro]]
++name = "selectword_v1_TK"
++
++[[macro.operations]]
++operation = "down"
++keycode = "KC_LCTL"
++
++[[macro.operations]]
++operation = "tap"
++keycode = "KC_LEFT"
++
++[[macro.operations]]
++operation = "up"
++keycode = "KC_LCTL"
++
++[[macro.operations]]
++operation = "down"
++keycode = "KC_LCTL"
++
++[[macro.operations]]
++operation = "down"
++keycode = "KC_LSFT"
++
++[[macro.operations]]
++operation = "tap"
++keycode = "KC_RGHT"
++
++[[macro.operations]]
++operation = "up"
++keycode = "KC_LSFT"
++
++[[macro.operations]]
++operation = "up"
++keycode = "KC_LCTL"
++
++[[macro]]
++name = "selectnone_v1_TK"
++
++[[macro.operations]]
++operation = "tap"
++keycode = "KC_DOWN"
++
++[[macro.operations]]
++operation = "tap"
++keycode = "KC_UP"
++
++[[macro.operations]]
++operation = "tap"
++keycode = "KC_RGHT"
++
++[[macro.operations]]
++operation = "tap"
++keycode = "KC_LEFT"
++
++[[macro]]
++name = "extend_line_v1_TK"
++
++[[macro.operations]]
++operation = "down"
++keycode = "KC_LSFT"
++
++[[macro.operations]]
++operation = "tap"
++keycode = "KC_END"
++
++[[macro.operations]]
++operation = "up"
++keycode = "KC_LSFT"
++
++[[macro]]
++name = "extend_word_v1_TK"
++
++[[macro.operations]]
++operation = "down"
++keycode = "KC_LCTL"
++
++[[macro.operations]]
++operation = "down"
++keycode = "KC_LSFT"
++
++[[macro.operations]]
++operation = "tap"
++keycode = "KC_RGHT"
++
++[[macro.operations]]
++operation = "up"
++keycode = "KC_LSFT"
++
++[[macro.operations]]
++operation = "up"
++keycode = "KC_LCTL"
++
++[[macro]]
++name = "double_dot_v1_TK"
++
++[[macro.operations]]
++operation = "tap"
++keycode = "KC_DOT"
++
++[[macro.operations]]
++operation = "tap"
++keycode = "KC_DOT"
++
++[[fork]]
++name = "shiftdance_helper_v1_TK"
++trigger = "TD(2)"
++output = "KC_CAPS"
++mods = [
++    "LShift",
++    "RShift",
++]
++
++[behavior]
++combo_timeout_ms = 50
++oneshot_timeout_ms = 250
++tap_interval_ms = 20
++tap_capslock_interval_ms = 20
++oneshot_activate_on_keypress = false
++oneshot_quick_release = true
++
++[behavior.morse]
++enable_flow_tap = true
++prior_idle_ms = 120
++
++[behavior.morse.default_profile]
++hold_timeout_ms = 250
++gap_timeout_ms = 250
++mode = "normal"
++
++[behavior.morse.profiles.HRM_index_v1_TK]
++index = 1
++hold_timeout_ms = 180
++quick_tap_ms = 300
++prior_idle_ms = 30
++unilateral_tap = true
++opposite_hand_hold = false
++mode = "permissive-hold"
++
++[behavior.morse.profiles.HRM_middle_v1_TK]
++index = 2
++hold_timeout_ms = 210
++quick_tap_ms = 300
++prior_idle_ms = 80
++unilateral_tap = true
++opposite_hand_hold = false
++mode = "permissive-hold"
++
++[behavior.morse.profiles.HRM_pinky_v1_TK]
++index = 3
++hold_timeout_ms = 270
++quick_tap_ms = 300
++prior_idle_ms = 80
++unilateral_tap = true
++opposite_hand_hold = false
++mode = "permissive-hold"
++
++[behavior.morse.profiles.HRM_ring_v1_TK]
++index = 4
++hold_timeout_ms = 240
++quick_tap_ms = 300
++prior_idle_ms = 30
++unilateral_tap = true
++opposite_hand_hold = false
++mode = "permissive-hold"
++
++[behavior.morse.profiles.autoshift_v1_TK]
++index = 0
++enable_flow_tap = false
++hold_timeout_ms = 180
++quick_tap_ms = 200
++mode = "tap-unless-interrupted"
++
++[behavior.morse.profiles.space_v1_TK]
++index = 6
++enable_flow_tap = false
++hold_timeout_ms = 200
++quick_tap_ms = 150
++mode = "permissive-hold"
++
++[behavior.morse.profiles.thumb_v1_TK]
++index = 5
++enable_flow_tap = false
++hold_timeout_ms = 200
++quick_tap_ms = 300
++mode = "permissive-hold"
++
++[pointing]
++
++[lighting]
++brightness = 136
++output_mode = "always-on"
++wake_layers = [8]
++scene_policy = "active-stack"
++
++[lighting.background]
++enabled = false
++hue = 0
++saturation = 0
++value = 0
++speed = 128
++mode = "solid"
++
++[lighting.effects]
++effect = "Flow"
++palette = "Not Pink"
++value = 0
++speed = 255
++
++[[lighting.scene]]
++layer = 4
++led = 7
++color = "#fffc66"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 8
++color = "#fffd8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 9
++color = "#fffd8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 11
++color = "#ffc08c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 12
++color = "#ffc08c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 14
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 15
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 17
++color = "#ffc08c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 18
++color = "#ffc08c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 20
++color = "#8cc6ff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 21
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 23
++color = "#ffc08c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 24
++color = "#ffc08c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 26
++color = "#8cc6ff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 27
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 32
++color = "#8cc6ff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 33
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 38
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 39
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 40
++color = "#8cc6ff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 41
++color = "#8cc6ff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 42
++color = "#8cc6ff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 43
++color = "#8cc6ff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 44
++color = "#8cc6ff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 45
++color = "#8cc6ff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 47
++color = "#fffd8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 48
++color = "#fffd8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 49
++color = "#fffd8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 52
++color = "#ffc08c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 53
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 54
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 55
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 58
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 59
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 60
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 61
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 64
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 65
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 66
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 67
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 70
++color = "#ffc08c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 71
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 72
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 73
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 78
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 4
++led = 79
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 2
++color = "#fffd8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 3
++color = "#fffd8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 4
++color = "#fffd8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 5
++color = "#fffd8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 6
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 7
++color = "#fffd8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 8
++color = "#fffd8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 9
++color = "#fffd8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 11
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 12
++color = "#8cc6ff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 13
++color = "#fffd8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 14
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 15
++color = "#bad4ee"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 17
++color = "#8cc6ff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 18
++color = "#8cc6ff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 19
++color = "#bad4ee"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 20
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 21
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 23
++color = "#8cc6ff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 24
++color = "#8cc6ff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 25
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 26
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 27
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 30
++color = "#8cc6ff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 31
++color = "#fffd8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 32
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 33
++color = "#bad4ee"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 37
++color = "#fffd8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 38
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 39
++color = "#bad4ee"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 47
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 48
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 49
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 52
++color = "#b3ff8c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 53
++color = "#ffc08c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 54
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 58
++color = "#ffc08c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 59
++color = "#ffc08c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 60
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 64
++color = "#ffc08c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 65
++color = "#ffc08c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 66
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 70
++color = "#ffc08c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 71
++color = "#ffc08c"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 5
++led = 72
++color = "#f18cff"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 0
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 1
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 2
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 3
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 4
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 5
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 6
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 7
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 8
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 9
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 11
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 12
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 13
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 14
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 15
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 17
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 18
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 19
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 20
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 21
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 23
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 24
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 25
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 26
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 27
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 29
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 30
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 31
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 32
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 33
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 37
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 38
++color = "#000000"
++effect = "solid"
++
++[[lighting.scene]]
++layer = 8
++led = 39
++color = "#000000"
++effect = "solid"
++
++[[lighting.conditional_scene]]
++led = 35
++color = "#ff00ff"
++effect = "solid"
++
++[lighting.conditional_scene.layers]
++active = [0]
++inactive = []
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[[lighting.conditional_scene]]
++led = 29
++color = "#ff00ff"
++effect = "solid"
++
++[lighting.conditional_scene.layers]
++active = [1]
++inactive = []
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[[lighting.conditional_scene]]
++led = 23
++color = "#ff00ff"
++effect = "solid"
++
++[lighting.conditional_scene.layers]
++active = [2]
++inactive = []
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[[lighting.conditional_scene]]
++led = 17
++color = "#ff00ff"
++effect = "solid"
++
++[lighting.conditional_scene.layers]
++active = [3]
++inactive = []
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[[lighting.conditional_scene]]
++led = 11
++color = "#ff00ff"
++effect = "solid"
++
++[lighting.conditional_scene.layers]
++active = [4]
++inactive = []
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[[lighting.conditional_scene]]
++led = 6
++color = "#ff00ff"
++effect = "solid"
++
++[lighting.conditional_scene.layers]
++active = [5]
++inactive = []
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[[lighting.conditional_scene]]
++led = 22
++color = "#ff0000"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.indicators]
++caps_lock = true
++
++[[lighting.conditional_scene]]
++led = 16
++color = "#ff0000"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.indicators]
++num_lock = true
++
++[[lighting.conditional_scene]]
++led = 10
++color = "#ff0000"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.indicators]
++scroll_lock = true
++
++[[lighting.conditional_scene]]
++led = 36
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 0
++min_level = 40
++
++[[lighting.conditional_scene]]
++led = 36
++color = "#ffff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 0
++min_level = 20
++max_level = 39
++
++[[lighting.conditional_scene]]
++led = 36
++color = "#ff0000"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 0
++max_level = 19
++
++[[lighting.conditional_scene]]
++led = 30
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 0
++min_level = 40
++
++[[lighting.conditional_scene]]
++led = 30
++color = "#ffff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 0
++min_level = 20
++max_level = 39
++
++[[lighting.conditional_scene]]
++led = 24
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 0
++min_level = 40
++
++[[lighting.conditional_scene]]
++led = 18
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 0
++min_level = 60
++
++[[lighting.conditional_scene]]
++led = 7
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 0
++min_level = 100
++
++[[lighting.conditional_scene]]
++led = 36
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 0
++charge = "charging"
++
++[[lighting.conditional_scene]]
++led = 30
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 0
++charge = "charging"
++
++[[lighting.conditional_scene]]
++led = 24
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 0
++charge = "charging"
++
++[[lighting.conditional_scene]]
++led = 18
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 0
++charge = "charging"
++
++[[lighting.conditional_scene]]
++led = 7
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 0
++charge = "charging"
++
++[[lighting.conditional_scene]]
++led = 37
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 1
++min_level = 40
++
++[[lighting.conditional_scene]]
++led = 37
++color = "#ffff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 1
++min_level = 20
++max_level = 39
++
++[[lighting.conditional_scene]]
++led = 37
++color = "#ff0000"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 1
++max_level = 19
++
++[[lighting.conditional_scene]]
++led = 31
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 1
++min_level = 40
++
++[[lighting.conditional_scene]]
++led = 31
++color = "#ffff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 1
++min_level = 20
++max_level = 39
++
++[[lighting.conditional_scene]]
++led = 25
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 1
++min_level = 40
++
++[[lighting.conditional_scene]]
++led = 19
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 1
++min_level = 60
++
++[[lighting.conditional_scene]]
++led = 13
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 1
++min_level = 80
++
++[[lighting.conditional_scene]]
++led = 8
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 1
++min_level = 100
++
++[[lighting.conditional_scene]]
++led = 37
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 1
++charge = "charging"
++
++[[lighting.conditional_scene]]
++led = 31
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 1
++charge = "charging"
++
++[[lighting.conditional_scene]]
++led = 25
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 1
++charge = "charging"
++
++[[lighting.conditional_scene]]
++led = 19
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 1
++charge = "charging"
++
++[[lighting.conditional_scene]]
++led = 13
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 1
++charge = "charging"
++
++[[lighting.conditional_scene]]
++led = 8
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 1
++charge = "charging"
++
++[[lighting.conditional_scene]]
++led = 3
++color = "#6b1fce"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection.bonded]
++slot = 0
++bonded = false
++
++[[lighting.conditional_scene]]
++led = 3
++color = "#ff0000"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection.bonded]
++slot = 0
++bonded = true
++
++[[lighting.conditional_scene]]
++led = 3
++color = "#00ff68"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection]
++profile = 0
++ble_state = "connected"
++
++[[lighting.conditional_scene]]
++led = 3
++color = "#ffffff"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection]
++transport = "ble"
++profile = 0
++ble_state = "connected"
++
++[[lighting.conditional_scene]]
++led = 4
++color = "#6b1fce"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection.bonded]
++slot = 1
++bonded = false
++
++[[lighting.conditional_scene]]
++led = 4
++color = "#ff0000"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection.bonded]
++slot = 1
++bonded = true
++
++[[lighting.conditional_scene]]
++led = 4
++color = "#00ff68"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection]
++profile = 1
++ble_state = "connected"
++
++[[lighting.conditional_scene]]
++led = 4
++color = "#ffffff"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection]
++transport = "ble"
++profile = 1
++ble_state = "connected"
++
++[[lighting.conditional_scene]]
++led = 0
++color = "#6b1fce"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection.bonded]
++slot = 2
++bonded = false
++
++[[lighting.conditional_scene]]
++led = 0
++color = "#ff0000"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection.bonded]
++slot = 2
++bonded = true
++
++[[lighting.conditional_scene]]
++led = 0
++color = "#00ff68"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection]
++profile = 2
++ble_state = "connected"
++
++[[lighting.conditional_scene]]
++led = 0
++color = "#ffffff"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection]
++transport = "ble"
++profile = 2
++ble_state = "connected"
++
++[[lighting.conditional_scene]]
++led = 1
++color = "#6b1fce"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection.bonded]
++slot = 3
++bonded = false
++
++[[lighting.conditional_scene]]
++led = 1
++color = "#ff0000"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection.bonded]
++slot = 3
++bonded = true
++
++[[lighting.conditional_scene]]
++led = 1
++color = "#00ff68"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection]
++profile = 3
++ble_state = "connected"
++
++[[lighting.conditional_scene]]
++led = 1
++color = "#ffffff"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection]
++transport = "ble"
++profile = 3
++ble_state = "connected"
++
++[[lighting.conditional_scene]]
++led = 5
++color = "#6b1fce"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection]
++usb_connected = false
++
++[[lighting.conditional_scene]]
++led = 5
++color = "#00ff68"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection]
++usb_connected = true
++
++[[lighting.conditional_scene]]
++led = 5
++color = "#ffffff"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.connection]
++transport = "usb"
++
++[[lighting.conditional_scene]]
++led = 12
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 0
++min_level = 80
++
++[[lighting.conditional_scene]]
++led = 12
++color = "#00ff00"
++effect = "solid"
++
++[lighting.conditional_scene.layer]
++layer = 8
++active = true
++
++[lighting.conditional_scene.battery]
++node = 0
++charge = "charging"
+diff --git a/crates/moergo-config/tests/moergo_export.rs b/crates/moergo-config/tests/moergo_export.rs
+new file mode 100644
+index 0000000..9855e1a
+--- /dev/null
++++ b/crates/moergo-config/tests/moergo_export.rs
+@@ -0,0 +1,399 @@
++//! Export to the MoErgo Layout Editor's JSON, checked by reading it back.
++//!
++//! An export is right when the import reads it as the same keyboard. For a
++//! layout that came from the editor that means the same snapshot, exactly;
++//! for TailorKey for RMK, written as TOML, it means every key does the same
++//! thing (a profiled tap-hold comes back as a morse with that profile, which
++//! is the same key under another runtime spelling).
++
++use moergo_config::{
++    import_moergo_layout, snapshot_to_moergo_json, RuntimeConfig, Severity, Snapshot,
++};
++use rynk::rmk_types::action::{Action, KeyAction, KeyboardAction, LightAction};
++use rynk::rmk_types::combo::ComboDefinition;
++use rynk::rmk_types::keyboard_macros::MacroOp;
++use rynk::rmk_types::keycode::{HidKeyCode, KeyCode};
++use rynk::rmk_types::morse::{MorseMode, MorseProfile, HOLD, TAP};
++use serde_json::{json, Value};
++
++/// TailorKey v5.2 Bilateral as the editor exports it: home-row mods built from
++/// hold-taps, finger layers and macros. This is the GLIDE layout case.
++const TAILORKEY_JSON: &str = include_str!("fixtures/tailorkey-v52-bilateral.json");
++/// sunaku's Glorious Engrammer: mod-morphs, sticky keys, layer-taps.
++const ENGRAMMER_JSON: &str = include_str!("fixtures/engrammer-v52a-no-code.json");
++/// TailorKey for RMK, the TOML GLIDE4RMK ships as its golden layout.
++const TAILORKEY_TOML: &str = include_str!("fixtures/glove80-tailorkey-qwerty.toml");
++
++fn import(text: &str) -> (RuntimeConfig, Snapshot) {
++    let imported = import_moergo_layout(text).expect("import");
++    let dropped: Vec<_> = imported
++        .diagnostics
++        .iter()
++        .filter(|diagnostic| diagnostic.severity == Severity::Dropped)
++        .collect();
++    assert!(dropped.is_empty(), "import dropped bindings: {dropped:#?}");
++    let snapshot = imported.runtime.snapshot().expect("snapshot");
++    (imported.runtime, snapshot)
++}
++
++fn document(text: &str) -> Value {
++    serde_json::from_str(text).unwrap()
++}
++
++/// Import, export and import again, with and without the original file as the
++/// template, and require the same snapshot every time.
++fn assert_editor_layout_round_trips(original: &str) {
++    let (labels, first) = import(original);
++    for template in [None, Some(original)] {
++        let exported = snapshot_to_moergo_json(&first, Some(&labels), template)
++            .unwrap_or_else(|error| panic!("export (template: {}): {error:#}", template.is_some()));
++        let (relabels, second) = import(&exported);
++        assert_eq!(first, second, "template: {}", template.is_some());
++
++        // Writing the same keyboard over its own export changes nothing: every
++        // definition it needs is already there and is reused, not repeated.
++        let again = snapshot_to_moergo_json(&second, Some(&relabels), Some(&exported)).unwrap();
++        assert_eq!(exported, again, "template: {}", template.is_some());
++    }
++}
++
++#[test]
++fn glide_layout_with_home_row_mods_round_trips() {
++    assert_editor_layout_round_trips(TAILORKEY_JSON);
++}
++
++#[test]
++fn engrammer_with_mod_morphs_and_sticky_keys_round_trips() {
++    assert_editor_layout_round_trips(ENGRAMMER_JSON);
++}
++
++#[test]
++fn home_row_mods_export_as_bilateral_hold_taps() {
++    let (labels, snapshot) = import(TAILORKEY_JSON);
++    let exported = document(&snapshot_to_moergo_json(&snapshot, Some(&labels), None).unwrap());
++    let hold_taps = exported["holdTaps"].as_array().unwrap();
++    let left = hold_taps
++        .iter()
++        .find(|entry| entry["name"].as_str().unwrap().ends_with("_left"))
++        .expect("a left-hand home-row mod");
++    assert_eq!(left["bindings"], json!(["&kp", "&kp"]));
++    let positions = left["holdTriggerKeyPositions"].as_array().unwrap();
++    assert_eq!(
++        positions.len(),
++        46,
++        "the right hand and both thumb clusters"
++    );
++    assert!(
++        !positions.contains(&json!(35)),
++        "not the left pinky's own home key"
++    );
++    // The left pinky home key names it, with its modifier and its letter.
++    let pinky = &exported["layers"][0][35];
++    assert!(pinky["value"].as_str().unwrap().starts_with('&'));
++    assert_eq!(pinky["params"].as_array().unwrap().len(), 2);
++    // No two definitions of one table say the same thing.
++    for table in ["holdTaps", "macros", "tapDances", "stickyKeys", "modMorphs"] {
++        let mut bodies: Vec<String> = exported[table]
++            .as_array()
++            .into_iter()
++            .flatten()
++            .map(|entry| {
++                let mut entry = entry.clone();
++                entry.as_object_mut().unwrap().remove("name");
++                entry.to_string()
++            })
++            .collect();
++        let count = bodies.len();
++        bodies.sort();
++        bodies.dedup();
++        assert_eq!(bodies.len(), count, "{table} repeats a definition");
++    }
++}
++
++#[test]
++fn template_keeps_unused_definitions_and_drops_the_ones_the_export_replaced() {
++    let (labels, snapshot) = import(TAILORKEY_JSON);
++    let mut template = document(TAILORKEY_JSON);
++    template["holdTaps"].as_array_mut().unwrap().push(json!({
++        "name": "&kept_for_later",
++        "description": "not on any key",
++        "tappingTermMs": 200,
++        "bindings": ["&kp", "&kp"]
++    }));
++    let exported = document(
++        &snapshot_to_moergo_json(&snapshot, Some(&labels), Some(&template.to_string())).unwrap(),
++    );
++    let names: Vec<&str> = exported["holdTaps"]
++        .as_array()
++        .unwrap()
++        .iter()
++        .map(|entry| entry["name"].as_str().unwrap())
++        .collect();
++    assert!(names.contains(&"&kept_for_later"));
++    // The finger-layer home-row mods named layers the import dropped; left in
++    // the file they would make the next import drop real layers.
++    assert!(!names.contains(&"&HRM_left_pinky_v1B_TKZ"), "{names:?}");
++    assert_eq!(
++        exported["title"], template["title"],
++        "document identity is kept"
++    );
++}
++
++/// What a key does, independent of how the runtime spells it.
++#[derive(Debug, PartialEq)]
++enum Meaning {
++    Key(KeyAction),
++    Pattern(Vec<(u16, Action)>, Timing),
++    Macro(Vec<MacroOp>),
++}
++
++/// The timing a MoErgo hold-tap or tap-dance can carry, with fields the
++/// profile leaves open read from the source's default profile.
++#[derive(Debug, PartialEq)]
++struct Timing {
++    mode: Option<MorseMode>,
++    hold_ms: Option<u16>,
++    gap_ms: Option<u16>,
++    quick_tap_ms: Option<u16>,
++    prior_idle_ms: Option<u16>,
++    unilateral: bool,
++}
++
++fn timing(profile: MorseProfile, default: MorseProfile, taps_only: bool) -> Timing {
++    Timing {
++        mode: (!taps_only).then(|| profile.mode()).flatten(),
++        hold_ms: (!taps_only)
++            .then(|| profile.hold_timeout_ms().or(default.hold_timeout_ms()))
++            .flatten(),
++        gap_ms: taps_only
++            .then(|| profile.gap_timeout_ms().or(default.gap_timeout_ms()))
++            .flatten(),
++        quick_tap_ms: (!taps_only)
++            .then(|| profile.quick_tap_timeout_ms())
++            .flatten(),
++        prior_idle_ms: (!taps_only).then(|| profile.prior_idle_time_ms()).flatten(),
++        unilateral: profile.unilateral_tap() == Some(true),
++    }
++}
++
++fn meaning(snapshot: &Snapshot, default: MorseProfile, action: KeyAction) -> Meaning {
++    let behaviors = &snapshot.behaviors;
++    match action {
++        KeyAction::Morse(index) => {
++            let morse = &behaviors.morses.as_ref().unwrap()[usize::from(index)];
++            let actions: Vec<(u16, Action)> = morse
++                .actions
++                .iter()
++                .map(|(pattern, action)| (pattern.to_u16(), *action))
++                .collect();
++            if actions.len() == 1 {
++                return Meaning::Key(KeyAction::Single(actions[0].1));
++            }
++            let taps_only = morse.get(HOLD).is_none();
++            let mut sorted = actions;
++            sorted.sort_by_key(|(pattern, _)| *pattern);
++            Meaning::Pattern(sorted, timing(morse.profile, default, taps_only))
++        }
++        KeyAction::TapHold(tap, hold, index) => {
++            let profile = behaviors
++                .morse_profiles
++                .as_deref()
++                .unwrap_or_default()
++                .iter()
++                .find(|entry| entry.index == index)
++                .map(|entry| entry.profile);
++            match profile {
++                Some(profile) => Meaning::Pattern(
++                    vec![(TAP.to_u16(), tap), (HOLD.to_u16(), hold)],
++                    timing(profile, default, false),
++                ),
++                None => Meaning::Key(action),
++            }
++        }
++        KeyAction::Single(Action::TriggerMacro(index)) => {
++            Meaning::Macro(behaviors.macros.as_ref().unwrap()[usize::from(index)].clone())
++        }
++        other => Meaning::Key(other),
++    }
++}
++
++/// A combo's keys (row, column), its layer, and what it sends.
++type ComboMeaning = (Vec<(u8, u8)>, Option<u8>, Meaning);
++
++/// Keys and chords TailorKey for RMK has that ZMK has not.
++fn has_no_zmk_equivalent(action: KeyAction) -> bool {
++    matches!(
++        action,
++        KeyAction::Single(
++            Action::Light(
++                LightAction::BacklightUp
++                    | LightAction::BacklightDown
++                    | LightAction::BacklightToggle
++            ) | Action::Key(KeyCode::Hid(
++                HidKeyCode::MouseAccel0 | HidKeyCode::MouseAccel1 | HidKeyCode::MouseAccel2
++            )) | Action::KeyboardControl(KeyboardAction::MaintenanceModeToggle)
++        )
++    )
++}
++
++#[test]
++fn tailorkey_toml_names_every_key_moergo_cannot_hold() {
++    let config = RuntimeConfig::from_toml(TAILORKEY_TOML).unwrap();
++    let error = snapshot_to_moergo_json(&config.snapshot().unwrap(), Some(&config), None)
++        .unwrap_err()
++        .to_string();
++    assert!(
++        error.starts_with("13 bindings cannot be written as MoErgo JSON"),
++        "{error}"
++    );
++    for expected in [
++        "layer 6 (Mouse), editor key 41 (r3,c9): KC_ACL0-2",
++        "layer 8 (Magic), editor key 27 (r2,c5): BL_TOGG",
++        "combo 'combo 14': MAINT_LOCK_TOG",
++    ] {
++        assert!(error.contains(expected), "missing {expected:?} in {error}");
++    }
++    // The keys the issue was about are not among them.
++    assert!(!error.contains("TD("), "{error}");
++    assert!(!error.contains("USER("), "{error}");
++    assert!(!error.contains("MACRO("), "{error}");
++}
++
++#[test]
++fn tailorkey_toml_round_trips_through_moergo_json() {
++    let config = RuntimeConfig::from_toml(TAILORKEY_TOML).unwrap();
++    let mut source = config.snapshot().unwrap();
++    // Take out what ZMK cannot say (the test above names it); the rest of the
++    // layout has to come back doing the same thing.
++    for layer in &mut source.layers {
++        for action in layer.iter_mut() {
++            if has_no_zmk_equivalent(*action) {
++                *action = KeyAction::No;
++            }
++        }
++    }
++    let mut labels = config.clone();
++    if let Some(combos) = source.behaviors.combos.as_mut() {
++        let keep: Vec<bool> = combos
++            .iter()
++            .map(|combo| match combo {
++                ComboDefinition::Positions(combo) => !has_no_zmk_equivalent(combo.output),
++                ComboDefinition::Actions(_) => true,
++            })
++            .collect();
++        let mut flags = keep.iter();
++        combos.retain(|_| *flags.next().unwrap());
++        let mut flags = keep.iter();
++        labels.combos.retain(|_| *flags.next().unwrap());
++    }
++
++    let exported = snapshot_to_moergo_json(&source, Some(&labels), None).expect("export");
++    let (relabels, back) = import(&exported);
++
++    let default = source
++        .behaviors
++        .config
++        .as_ref()
++        .map(|config| config.morse_default_profile)
++        .unwrap();
++    assert_eq!(source.layers.len(), back.layers.len());
++    for (layer, (before, after)) in source.layers.iter().zip(&back.layers).enumerate() {
++        for (offset, (a, b)) in before.iter().zip(after).enumerate() {
++            assert_eq!(
++                meaning(&source, default, *a),
++                meaning(&back, default, *b),
++                "layer {layer} offset {offset}: {a:?} became {b:?}"
++            );
++        }
++    }
++
++    let combos = |snapshot: &Snapshot| -> Vec<ComboMeaning> {
++        snapshot
++            .behaviors
++            .combos
++            .as_deref()
++            .unwrap_or_default()
++            .iter()
++            .map(|combo| match combo {
++                ComboDefinition::Positions(combo) => (
++                    combo.positions.iter().map(|p| (p.row, p.col)).collect(),
++                    combo.layer,
++                    meaning(snapshot, default, combo.output),
++                ),
++                ComboDefinition::Actions(_) => panic!("TailorKey combos are positional"),
++            })
++            .collect()
++    };
++    assert_eq!(combos(&source), combos(&back));
++
++    // TailorKey's one fork turns its shift tap-dance into Caps Lock.
++    let forks = |snapshot: &Snapshot| -> Vec<(Meaning, Meaning)> {
++        snapshot
++            .behaviors
++            .forks
++            .as_deref()
++            .unwrap_or_default()
++            .iter()
++            .map(|fork| {
++                (
++                    meaning(snapshot, default, fork.trigger),
++                    meaning(snapshot, default, fork.positive_output),
++                )
++            })
++            .collect()
++    };
++    assert_eq!(forks(&source), forks(&back));
++    assert_eq!(forks(&back).len(), 1);
++
++    // And the export is a fixed point from there on.
++    let again = snapshot_to_moergo_json(&back, Some(&relabels), Some(&exported)).unwrap();
++    assert_eq!(exported, again);
++}
++
++fn with_cell(action: KeyAction, row: usize, col: usize) -> Result<String, String> {
++    let (labels, mut snapshot) = import(TAILORKEY_JSON);
++    snapshot.layers[0][row * 14 + col] = action;
++    snapshot_to_moergo_json(&snapshot, Some(&labels), None).map_err(|error| error.to_string())
++}
++
++#[test]
++fn user_keys_map_to_moergo_or_say_why_not() {
++    let user = |id| KeyAction::Single(Action::User(id));
++    // Bluetooth profile and clear keys have `&bt` forms anywhere.
++    for (id, binding) in [
++        (0, json!({ "value": "&bt_0" })),
++        (3, json!({ "value": "&bt_3" })),
++        (
++            10,
++            json!({ "value": "&bt", "params": [{ "value": "BT_CLR", "params": [] }] }),
++        ),
++        (
++            11,
++            json!({ "value": "&bt", "params": [{ "value": "BT_CLR_ALL", "params": [] }] }),
++        ),
++    ] {
++        let exported = document(&with_cell(user(id), 3, 2).unwrap());
++        // r3,c2 is editor key 36.
++        assert_eq!(exported["layers"][0][36], binding, "USER({id})");
++    }
++    // The right half's bootloader key is `&bootloader`; on the left it would
++    // restart the wrong half.
++    let exported = document(&with_cell(user(12), 3, 11).unwrap());
++    assert_eq!(exported["layers"][0][43], json!({ "value": "&bootloader" }));
++    let error = with_cell(user(12), 3, 2).unwrap_err();
++    assert!(
++        error.contains("editor key 36 (r3,c2): USER(12) restarts the right half"),
++        "{error}"
++    );
++    // The split-transport toggle (the simulated Glove80's Magic layer has it).
++    let error = with_cell(user(13), 3, 2).unwrap_err();
++    assert!(
++        error.contains("USER(13) switches the link between the halves"),
++        "{error}"
++    );
++    let error = with_cell(user(20), 3, 2).unwrap_err();
++    assert!(
++        error.contains("USER(20) is a key this firmware assigns"),
++        "{error}"
++    );
++}
+-- 
+2.43.0
+
