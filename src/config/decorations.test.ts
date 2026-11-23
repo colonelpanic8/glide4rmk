@@ -13,10 +13,10 @@ describe("decorationNotes", () => {
   it("says how many keys lose their GLIDE colour or label", () => {
     const text = JSON.stringify({ layers: [[kp("A", { background: "#f8e6d7" }), kp("B")], [kp("C", { label: "+ @" })]] });
     expect(decorationNotes(text)).toEqual([
-      { approximated: true, location: undefined, message: "2 keys lose the colour or label GLIDE gave them: GLIDE4RMK does not keep them." },
+      { approximated: true, location: undefined, message: "2 keys lose the colour or label GLIDE gave them: GLIDE4RMK does not keep them yet." },
     ]);
     expect(decorationNotes(JSON.stringify({ layers: [[kp("A", { label: "x" })]] }))[0].message).toBe(
-      "1 key loses the colour or label GLIDE gave it: GLIDE4RMK does not keep them.",
+      "1 key loses the colour or label GLIDE gave it: GLIDE4RMK does not keep them yet.",
     );
   });
 
@@ -32,7 +32,7 @@ describe("importing a GLIDE layout with decorations", () => {
       const layout = JSON.parse(renderDocument(snapshotFromState(state()), catalog, "moergo-json")) as { layers: object[][] };
       layout.layers[0][0] = { ...layout.layers[0][0], decoration: { background: "#f8e6d7" } };
       const file = readImport({ text: JSON.stringify(layout), bundle, state: state(), catalog });
-      expect(file.notes.map(({ message }) => message)).toContain("1 key loses the colour or label GLIDE gave it: GLIDE4RMK does not keep them.");
+      expect(file.notes.map(({ message }) => message)).toContain("1 key loses the colour or label GLIDE gave it: GLIDE4RMK does not keep them yet.");
     });
   });
 });

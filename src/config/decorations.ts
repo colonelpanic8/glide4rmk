@@ -1,6 +1,7 @@
 // GLIDE writes key colours and labels into a MoErgo JSON layout as each
-// binding's `decoration` (`{ background, label, … }`). GLIDE4RMK keeps neither,
-// and the converter drops them without a word, so the import says so. Pure.
+// binding's `decoration` (`{ background, label, … }`). GLIDE4RMK does not keep
+// them yet (todo 28), and the converter drops them without a word, so the
+// import says so. Pure.
 
 import type { ImportNote } from "./document";
 
@@ -22,7 +23,7 @@ export function decorationNotes(text: string): ImportNote[] {
     {
       approximated: true,
       location: undefined,
-      message: `${decorated} key${decorated === 1 ? "" : "s"} lose${decorated === 1 ? "s" : ""} the colour or label GLIDE gave ${decorated === 1 ? "it" : "them"}: GLIDE4RMK does not keep them.`,
+      message: `${decorated} key${decorated === 1 ? "" : "s"} lose${decorated === 1 ? "s" : ""} the colour or label GLIDE gave ${decorated === 1 ? "it" : "them"}: GLIDE4RMK does not keep them yet.`,
     },
   ];
 }
