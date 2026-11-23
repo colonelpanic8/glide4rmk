@@ -1,7 +1,8 @@
 name: Checks
 
-# Every pull request is typechecked, linted, tested and built, on the merge
-# result GitHub would make, so a change is known to pass before it is merged.
+# Every pull request is typechecked, linted, tested and built, and smoke-tested
+# in a browser, on the merge result GitHub would make, so a change is known to
+# pass before it is merged.
 # Pull requests only: a push to a PR's branch used to start a second, identical
 # run. Run it by hand (workflow_dispatch) for a branch without a PR.
 
@@ -48,3 +49,46 @@ jobs:
 
       - name: Build static site
         run: npx vite build
+
+  # The browser smoke test (tests/e2e): the build with the simulated boards in
+  # Chromium. The browser is cached by Playwright's version; scripts/e2e.sh
+  # installs it on a miss and its system libraries every time.
+  e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: WASM clients
+        uses: ./.github/actions/wasm
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Playwright's version
+        id: playwright
+        run: echo "version=$(node -p 'require("@playwright/test/package.json").version')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Smoke test in Chromium
+        run: npm run e2e
+
+      - name: Keep the trace of a failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: test-results
+          retention-days: 7
