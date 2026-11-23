@@ -37,6 +37,7 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 23. **Touch has no drag-select.** Selecting by dragging relies on `pointerenter` while a button is held, which a touch pointer, captured by the key it started on, does not give other keys. With Select on, touch can still select one tap at a time. Not tried on a device.
 
 27. **Discarding a layer change in Review & send** reverts the layers and the keys, encoders and lights of the layers that moved, but not other references the change rewrote (combos, tap patterns, settings that name a layer), which stay in their own groups. Fold those in too, or discard them with it.
+28. **Key decorations.** GLIDE gives keys a colour and a label (a binding's `decoration` in MoErgo JSON); GLIDE4RMK does not keep them yet, so an imported GLIDE layout loses them, with a note (`config/decorations.ts`). Keep them beside the keys, as behavior labels and add-ons are (ADR 0020, 0028), and show them on the canvas; decide whether a colour also becomes the key's light.
 
 ## Tests and trying it
 

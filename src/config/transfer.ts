@@ -24,6 +24,7 @@ import type { ConfigFormat, ExtensionCatalog, ImportNote, RuntimeSnapshot } from
 import { withTomlLabels } from "./behavior-labels";
 import { withModules } from "./add-ons";
 import { layoutOnto, type ImportedLayout } from "./import-layout";
+import { decorationNotes } from "./decorations";
 
 export type { ImportedLayout } from "./import-layout";
 
@@ -72,7 +73,7 @@ export function readImport({ text, bundle, state, catalog }: ImportArgs): Layout
     sourceBoard: converted.source,
     targetBoard: converted.target,
     converted: converted.converted,
-    notes: [...parseNotes, ...converted.notes],
+    notes: [...parseNotes, ...decorationNotes(text), ...converted.notes],
     reads: {
       pointing: snapshot.pointing !== undefined,
       paramEffects: [...new Set((snapshot.lighting?.effects ? snapshot.lighting.effect_params : []).map(({ effect }) => effect))],
