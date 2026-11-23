@@ -8,7 +8,7 @@
 import { bindChoices, type FlowChoice } from "./choices";
 
 export const FLOW_LIBRARY = String.raw`. as $view |
-# The board: its named key groups (letters, home_row, thumbs, numbers, function),
+# The board: its named key groups (letters, home_row, thumbs, numbers, function, bottom),
 # each a list of {row, col, hand, finger}.
 def group($name): $view.board.groups[$name] // [];
 def has_group($name): (group($name) | length) > 0;

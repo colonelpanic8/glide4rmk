@@ -1,0 +1,106 @@
+uid = "mirror_halves"
+
+runs_on = "glide4rmk"
+
+title = "Mirror halves"
+
+subtitle = "Swap what the left and right hand type"
+
+description = '''
+Swaps the left and right halves of one layer: what your left hand typed, your right hand now types, and the other way around.
+
+- Pinky to pinky: each key changes places with its mirror image, so the left pinky's keys go to the right pinky.
+- Left side to right side: the halves change places as they are, so the left half's outer column lands on the right half's inner column.
+- Thumb keys can stay where they are.
+- Only the layer you pick changes; combos, lighting and other layers are left alone.'''
+
+category = "QWERTY alternatives"
+
+script = '''
+# ==============================================================================
+# Mirror halves
+#
+# Swaps the keys of one layer between the hands. The pairs come from the board's
+# key groups, which between them name every key once: each group's keys, row by
+# row, the left hand's from the outer edge in and the right hand's mirror images
+# in the same order. The thumbs pair the same way within each thumb fan (three
+# keys a hand, by row: the Glove80 has two fans, the Go60 one).
+#
+#   pinky to pinky:        left key i  <->  its mirror image (right key i)
+#   left side to right:    left key i  <->  right key n-1-i (the order kept)
+#
+# Changed: the keys of the chosen layer that the swap moves.
+# Not changed: other layers, combos, behaviors, lighting.
+# ==============================================================================
+
+($layer | tonumber) as $target |
+layer($target) as $chosen |
+
+# Lines of keys: each {left, right}, left from the outer edge in, right[i] the
+# mirror image of left[i].
+def finger_lines($name):
+  group($name) | group_by(.row)[] |
+  {left: map(select(.hand == "left")), right: (map(select(.hand == "right")) | reverse)};
+def thumb_lines:
+  group("thumbs") | group_by(.row / 3 | floor)[] |
+  {left: map(select(.hand == "left")), right: map(select(.hand == "right"))};
+
+# The pairs of places that change keys.
+def pairs:
+  ([finger_lines("function", "numbers", "letters", "bottom")] + (if $keep_thumbs then [] else [thumb_lines] end))[] |
+  select((.left | length) == (.right | length) and (.left | length) > 0) |
+  . as $line | ($line.left | length) as $n |
+  range($n) | {a: $line.left[.], b: $line.right[if $style == "symmetric" then . else $n - 1 - . end]};
+
+if $chosen == null then
+  error("Layer \($target + 1) is not in this layout, which has \($view.layers | length) layers. Pick one of them, so nothing was changed.")
+else
+  [pairs] as $pairs |
+  def at($spot): $chosen.keys[$spot.row][$spot.col];
+  [$pairs[] | select(at(.a) != at(.b)) |
+    {layer: $chosen.index, row: .a.row, col: .a.col, action: at(.b)},
+    {layer: $chosen.index, row: .b.row, col: .b.col, action: at(.a)}] as $changes |
+  (if $style == "symmetric" then "pinky to pinky" else "left side to right side" end) as $how |
+  if ($changes | length) == 0 then
+    {operations: [], report: {changed: false,
+      message: "Nothing was changed: the halves of \($chosen.name) already hold the same keys, so swapping them makes no difference.",
+      log: ["\($pairs | length) pairs, none different"]}}
+  else
+    {operations: [set_keys($changes)],
+     report: {
+       message: "\($chosen.name) is mirrored: what one hand typed, the other types now.",
+       lines: [{ok: true, text: "\($changes | length) keys changed places on \($chosen.name) (\($how))"},
+               {ok: true, text: (if $keep_thumbs then "Thumb keys stayed where they were" else "Thumb keys changed places too" end)}],
+       log: ["\($pairs | length) pairs, \($changes | length) keys moved", "style \($style), thumbs \(if $keep_thumbs then "kept" else "swapped" end)"]
+     }}
+  end
+end
+'''
+
+[manifest]
+author = "moosyresearch"
+icon = "🪞"
+needs_keys = ["letters", "numbers", "thumbs"]
+keywords = ["flip", "swap hands", "left", "right", "mirror", "one-handed"]
+
+[[param]]
+id = "layer"
+label = "Layer to mirror"
+type = "select"
+options = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+labels = ["Layer 1 (first layer)", "Layer 2", "Layer 3", "Layer 4", "Layer 5", "Layer 6", "Layer 7", "Layer 8", "Layer 9", "Layer 10", "Layer 11", "Layer 12", "Layer 13", "Layer 14", "Layer 15", "Layer 16", "Layer 17", "Layer 18", "Layer 19", "Layer 20", "Layer 21", "Layer 22", "Layer 23", "Layer 24", "Layer 25", "Layer 26", "Layer 27", "Layer 28", "Layer 29", "Layer 30", "Layer 31", "Layer 32"]
+default = "0"
+
+[[param]]
+id = "style"
+label = "Swap"
+type = "select"
+options = ["symmetric", "block"]
+labels = ["Pinky to pinky (mirror image)", "Left side to right side (order kept)"]
+default = "symmetric"
+
+[[param]]
+id = "keep_thumbs"
+label = "Keep thumb keys where they are"
+type = "boolean"
+default = false

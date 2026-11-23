@@ -30,14 +30,27 @@ export interface KeyGroups {
   numbers: readonly KeySpot[];
   /** The function-key row, reading order; empty when the board has none. */
   function: readonly KeySpot[];
+  /** The keys below the letter block, outside the thumb clusters, reading order;
+   *  empty when the board has none. With the other groups, every key once. */
+  bottom: readonly KeySpot[];
 }
 
 export type KeyGroupName = keyof KeyGroups;
-export const KEY_GROUP_NAMES: readonly KeyGroupName[] = ["letters", "home_row", "thumbs", "numbers", "function"];
+export const KEY_GROUP_NAMES: readonly KeyGroupName[] = ["letters", "home_row", "thumbs", "numbers", "function", "bottom"];
 
 /** A finger by column, outer to inner, for a hand of six columns (an outer
  *  pinky column, pinky, ring, middle, two index columns). */
 const SIX_COLUMNS: readonly Finger[] = ["pinky", "pinky", "ring", "middle", "index", "index"];
+
+/** Keys of one row, left hand then right, in reading order: `left` and `right`
+ *  are matrix columns, `right` from the inner column out, so a key's finger is
+ *  its column's counted from the outer edge of a six-column hand. */
+function rowOf(row: number, left: readonly number[], right: readonly number[], cols: number): KeySpot[] {
+  return [
+    ...left.map((col) => ({ row, col, hand: "left" as const, finger: SIX_COLUMNS[col] })),
+    ...right.map((col) => ({ row, col, hand: "right" as const, finger: SIX_COLUMNS[cols - 1 - col] })),
+  ];
+}
 
 /** A split board's finger block: six columns per hand, `left` and `right` the
  *  matrix columns of each hand from outer to inner. */
@@ -57,7 +70,7 @@ function splitBoard(layout: {
   numberRow: number;
   letterRows: readonly [number, number, number];
   thumbs: readonly { row: number; col: number; hand: Hand }[];
-}): KeyGroups {
+}): Omit<KeyGroups, "bottom"> {
   const [, home] = layout.letterRows;
   const homeKeys = spots(home, layout.left, layout.right);
   return {
@@ -88,21 +101,24 @@ export const GLOVE80_KEY_GROUPS: KeyGroups = {
     ],
   }),
   // Five function keys a hand: columns 0-4 on the left, 9-13 on the right.
-  function: [
-    ...[0, 1, 2, 3, 4].map((col) => ({ row: 0, col, hand: "left" as const, finger: SIX_COLUMNS[col] })),
-    ...[9, 10, 11, 12, 13].map((col) => ({ row: 0, col, hand: "right" as const, finger: SIX_COLUMNS[13 - col] })),
-  ],
+  function: rowOf(0, [0, 1, 2, 3, 4], [9, 10, 11, 12, 13], 14),
+  // Row 5, below the letters: five keys a hand, like the function row.
+  bottom: rowOf(5, [0, 1, 2, 3, 4], [9, 10, 11, 12, 13], 14),
 };
 
-/** Go60: no function row; the thumb fans are columns 6 and 7 of rows 0 to 2. */
-export const GO60_KEY_GROUPS: KeyGroups = splitBoard({
-  left: LEFT,
-  right: RIGHT,
-  functionRow: null,
-  numberRow: 0,
-  letterRows: [1, 2, 3],
-  thumbs: [
-    ...[0, 1, 2].map((row) => ({ row, col: 6, hand: "left" as const })),
-    ...[0, 1, 2].map((row) => ({ row, col: 7, hand: "right" as const })),
-  ],
-});
+/** Go60: no function row; the thumb fans are columns 6 and 7 of rows 0 to 2,
+ *  and row 4 has three keys a hand below the ring, middle and index fingers. */
+export const GO60_KEY_GROUPS: KeyGroups = {
+  ...splitBoard({
+    left: LEFT,
+    right: RIGHT,
+    functionRow: null,
+    numberRow: 0,
+    letterRows: [1, 2, 3],
+    thumbs: [
+      ...[0, 1, 2].map((row) => ({ row, col: 6, hand: "left" as const })),
+      ...[0, 1, 2].map((row) => ({ row, col: 7, hand: "right" as const })),
+    ],
+  }),
+  bottom: rowOf(4, [2, 3, 4], [9, 10, 11], 14),
+};

@@ -29,6 +29,12 @@ describe.each([
     expect(groups.home_row.map(({ finger }) => finger)).toEqual(["pinky", "ring", "middle", "index", "index", "middle", "ring", "pinky"]);
   });
 
+  it("name every key once between them (the home row is part of the letters)", () => {
+    const places = KEY_GROUP_NAMES.filter((name) => name !== "home_row").flatMap((name) => groups[name].map(at));
+    expect(new Set(places).size).toBe(places.length);
+    expect(new Set(places)).toEqual(keys);
+  });
+
   it("have thumbs on both hands", () => {
     expect(new Set(groups.thumbs.map(({ hand }) => hand))).toEqual(new Set(["left", "right"]));
     expect(groups.thumbs.every(({ finger }) => finger === "thumb")).toBe(true);
