@@ -5,8 +5,6 @@ const reports: DeviceReports = {
   battery: "Unavailable",
   peripheralBattery: "Unavailable",
   connection: null,
-  maintenanceMode: null,
-  splitTransport: null,
   currentLayer: 0,
   activeLayers: [0],
   layerStateComplete: true,

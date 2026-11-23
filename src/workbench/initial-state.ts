@@ -73,8 +73,6 @@ export function initialWorkbenchState(bundle: ConnectedBundle): WorkbenchState {
       battery: bundle.battery,
       peripheralBattery: bundle.peripheralBattery,
       connection: bundle.connection,
-      maintenanceMode: bundle.maintenanceMode,
-      splitTransport: bundle.splitTransport,
       currentLayer: bundle.currentLayer,
       activeLayers: bundle.activeLayers,
       layerStateComplete: bundle.layerStateComplete,

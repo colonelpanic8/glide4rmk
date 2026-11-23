@@ -20,10 +20,8 @@ import type {
   LightingSceneStatus,
   LightingState,
   ModifierCombination,
-  MaintenanceMode,
   PointingCapabilities,
   PointingConfig,
-  SplitTransportState,
 } from "../vendor/rynk-wasm/rynk_wasm";
 import { buildKeyboardModel } from "../model/keyboard";
 import { resolveBoardProfile } from "../model/boards";
@@ -255,10 +253,6 @@ export async function openBundle(session: RynkSession): Promise<ConnectedBundle>
           .catch(() => "Unavailable" as const)
       : Promise.resolve("Unavailable" as const),
   ]);
-  const [maintenanceMode, splitTransport] = await Promise.all([
-    optionalRead<MaintenanceMode | null>("maintenance mode", session.device.maintenanceMode(), null),
-    optionalRead<SplitTransportState | null>("split transport", session.device.splitTransport(), null),
-  ]);
   const activeLayers = layerState.activeLayers.filter((layer) => layer < caps.num_layers);
   const defaultLayer = layerState.defaultLayer;
   const currentLayer = Math.max(defaultLayer, ...activeLayers);
@@ -322,8 +316,6 @@ export async function openBundle(session: RynkSession): Promise<ConnectedBundle>
     battery,
     peripheralBattery,
     connection,
-    maintenanceMode,
-    splitTransport,
     lightingState,
     lightingOutputMode,
     overlay,
