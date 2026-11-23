@@ -5,7 +5,7 @@ A browser workbench for RMK/Rynk keyboards (Glove80, Go60 and plain RMK boards):
 ## Rules
 - Leave every file you touch at least as clean as you found it.
 - Every change keeps the guards green. Do not add to a baseline or an allow-list to make a test pass; fix the code.
-- A decision that shapes the code goes in an ADR (`docs/adr/`, next number, one page, linked from its README).
+- A decision that shapes the code goes in an ADR (`docs/adr/`, next number, one page, with a `**Status:**` line); `npm run docs` lists it in the README's table, which is never edited by hand.
 
 ## Layers (src/architecture/boundaries.ts; the map: docs/ARCHITECTURE.md)
 - `session/` talks to keyboards (transports, the simulated boards); `config/` reads and writes layout files; `model/` holds plain data and pure functions; `domain/` the reference graph; `capabilities/` what a keyboard can do; `sync/` the write path (read, plan the difference, write, read back; ADR 0012, 0021); `operations/` named changes, image in, image out (ADR 0019); `workbench/` the open workbench without a screen: state, reducer, `io`, the draft (ADR 0017); `ui/` the screens.
@@ -40,11 +40,11 @@ A browser workbench for RMK/Rynk keyboards (Glove80, Go60 and plain RMK boards):
 - Pure logic gets a plain test next to it.
 
 ## Checking work
-- The WASM clients are built by Nix: `npm run wasm` (or `just wasm`) links them into `src/vendor`, which is never committed.
+- A session starts with `scripts/setup-session.sh`: the WASM clients CI built (branch `ci/vendor-wasm-out`) into `src/vendor`, never committed, and `npm ci` when needed; it warns when they were built from another flake. With Nix, `npm run wasm` builds them; it and the pre-scripts of `npm test`/`build`/`dev` skip Nix when `src/vendor/WASM_KEY` matches the flake.
 - Then `npx tsc -b`, `npx oxlint` and the tests. `npm run t -- <paths>` prints only failures and totals; run the tests for what you changed, the whole suite before a large merge. `just check` runs lint, tests and the production build.
 - Search only in `src/` and `docs/`; `.rgignore` hides golden files and fixtures (open one by path when needed). Big files (`session/link-session.ts`, `session/mock/board.ts`): find the line first, then read only that range.
 - When a change touches a module that writes to the keyboard, move its writes onto the one path in the same change (ADR 0013); never add a write that bypasses Guard and the draft.
 
 ## Docs
-- `docs/ARCHITECTURE.md` — the layers and how a change flows. `docs/todo.md` — what is left, cheapest first: strike an item when it lands.
-- `docs/ux-brief.md` — the UX brief (areas, flows, principles). `docs/adr/` — decisions, newest last. `docs/glossary.md` — words. `docs/sync.md` — how writing to the keyboard works.
+- `docs/ARCHITECTURE.md` — the layers and how a change flows (no line counts: they drift). `docs/todo.md` — what is left, cheapest first: strike an item in the PR that does it, with the PR's number; no log of what shipped.
+- `docs/ux-brief.md` — the UX brief (areas, flows, principles). `docs/adr/` — decisions, newest last; on a conflict in its README's table, take either side and run `npm run docs`. `docs/glossary.md` — words. `docs/sync.md` — how writing to the keyboard works.

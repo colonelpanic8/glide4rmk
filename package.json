@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "wasm": "npm run wasm:rynk && npm run wasm:config",
+    "wasm": "node scripts/wasm.mjs",
     "predev": "npm run wasm",
     "dev": "vite",
     "prebuild": "npm run wasm",
@@ -14,8 +14,7 @@
     "pretest": "npm run wasm",
     "test": "vitest run",
     "t": "node scripts/test-quiet.mjs",
-    "wasm:rynk": "nix build .#rynk-wasm --out-link src/vendor/rynk-wasm",
-    "wasm:config": "nix build .#moergo-config-wasm --out-link src/vendor/moergo-config-wasm"
+    "docs": "node scripts/adr-index.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

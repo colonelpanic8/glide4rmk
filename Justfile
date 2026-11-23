@@ -6,11 +6,11 @@ random_port := `od -An -N2 -tu2 /dev/urandom | awk '{ print 49152 + ($1 % 16384)
 default:
     @just --list
 
-# Install JavaScript dependencies.
+# Get a checkout ready without Nix: CI's WASM clients and `npm ci` when needed.
 setup:
-    npm install
+    scripts/setup-session.sh
 
-# Materialize the flake-pinned Rynk WASM package.
+# Build the WASM clients with Nix (skipped when src/vendor matches the flake).
 wasm:
     npm run wasm
 

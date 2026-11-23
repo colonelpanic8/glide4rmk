@@ -244,10 +244,14 @@ types) is built from the locked
 committed to this repository. To materialize it explicitly:
 
 ```bash
-npm run wasm                  # links the Nix artifact at src/vendor/rynk-wasm
+npm run wasm                  # links the Nix artifacts at src/vendor/
 ```
 
-`npm run dev`, `npm run build`, and `npm test` do this automatically. A complete
+`npm run dev`, `npm run build`, and `npm test` do this automatically, and skip
+Nix when `src/vendor/WASM_KEY` says the clients there were built from this
+flake. Without Nix, `scripts/setup-session.sh` (or `just setup`) copies the
+clients CI built from the `ci/vendor-wasm-out` branch, which the deploy on
+`master` keeps current, and warns when they were built from another flake. A complete
 release-ready static site, including the generated WASM, is available as a Nix
 artifact:
 

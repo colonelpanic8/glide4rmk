@@ -17,7 +17,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The WASM clients, built only when the flake changed, and pushed to
+  # ci/vendor-wasm-out with their WASM_KEY whenever that branch is stale, so a
+  # session without Nix gets current ones (scripts/setup-session.sh). Its own job:
+  # the only one that may write to the repository, and it runs no npm code.
+  wasm:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: WASM clients
+        uses: ./.github/actions/wasm
+        with:
+          publish-branch: ci/vendor-wasm-out
+          token: ${{ github.token }}
+
   deploy:
+    needs: wasm
     runs-on: ubuntu-latest
 
     steps:
@@ -38,7 +60,8 @@ jobs:
 
       # Checks tested each pull request on its own; two merged close together
       # were never tested together. What goes live is tested here first.
-      # Not `npm test` / `npm run build`: their pre-scripts would build the WASM clients again.
+      # The WASM clients are in place (from the cache the wasm job saved); `npm test`
+      # and `npm run build` would only check their WASM_KEY again.
       - name: Typecheck
         run: npx tsc -b
 

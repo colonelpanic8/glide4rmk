@@ -54,18 +54,16 @@ The picture is the intent. What the tests enforce (`src/architecture/boundaries.
 
 The layers from `sync/` down to `session/` are not ordered among themselves, and the code has imports both ways: `model/` imports types from `session/` (and values from `session/lighting-rules`), `sync/` and `config/`, and `capabilities/` types; `sync/` imports `model/` and `session/`; `config/` imports `model/`, `session/` and `sync/`; `session/` imports `model/` and, from the offline board, `config/` types.
 
-| Layer | Lines | Holds | Never imports (tested) |
-|---|---|---|---|
-| `ui/` | 22,300 | Screens (`Workbench.tsx`, areas in `areas.ts`), the context (`state.tsx`), hooks, words (`terms.ts`, `labels.ts`), themes, key faces, the canvas, Guard's questions (`guard/`), module stores for a pick of keys, the lit view and Layout properties (ended by `workbench-end.ts`) | a transport or simulated board, the wire package |
-| `workbench/` | 2,800 | `initial-state`, `reducer` (+ `reduce-lighting`, `reduce-settings`), `pending`, `lighting-drafts`, `io` (+ `io-keys`, `io-layers`, `io-lighting`, `io-settings`, `io-import`, `io-try-out`), `apply` (`commitImage`), `labels`, `draft/`, `usage`, `layer-impact` | `ui/`, a transport |
-| `operations/` | 1,000 | Each operation (`keys`, `layers`, `lighting`, `transform`, `behaviors` with their slots and Copy text), the `catalog` with `runOperation`, input checks, Guard's view of an image (ADR 0019, 0020); `describe` and `flows/`: the .flows file, choices, jq contract, the fold of a script's calls (ADR 0025) | a session, a reader or writer, `config/`, `workbench/`, `ui/` |
-| `sync/` | 780 | `image`, `items`, `patch`, `plan`, `read`, `write`, `conflicts` (ADR 0012, 0021, `docs/sync.md`) | `operations/`, `workbench/`, `ui/`, a transport |
-| `layers/`, `config/`, `domain/`, `firmware/` | 2,000 | Layer rewrites; layout files (`transfer`, `import-layout`, `document`); the graph and Guard (ADR 0011); firmware releases | `operations/`, `workbench/`, `ui/` |
-| `model/` | 5,300 | Key slots, the key selection, combos, macros, morse, pointing, history, transforms, `lighting/` (key lights, effects and timing, try-out, key picks, presets), `boards/`, the workbench state's types | `operations/`, `workbench/`, `ui/` |
-| `capabilities/` | 190 | Capability ids and their resolution (ADR 0002) | anything else |
-| `session/` | 6,500 | `types.ts` (the interface), `link-session.ts` (the protocol core), `flash-writes.ts`, transports, `mock/` and `offline/` boards | `operations/`, `workbench/`, `ui/` |
-
-Lines: non-test `.ts`/`.tsx` lines, rounded.
+| Layer | Holds | Never imports (tested) |
+|---|---|---|
+| `ui/` | Screens (`Workbench.tsx`, areas in `areas.ts`), the context (`state.tsx`), hooks, words (`terms.ts`, `labels.ts`), themes, key faces, the canvas, Guard's questions (`guard/`), module stores for a pick of keys, the lit view and Layout properties (ended by `workbench-end.ts`) | a transport or simulated board, the wire package |
+| `workbench/` | `initial-state`, `reducer` (+ `reduce-lighting`, `reduce-settings`), `pending`, `lighting-drafts`, `io` (+ `io-keys`, `io-layers`, `io-lighting`, `io-settings`, `io-import`, `io-try-out`), `apply` (`commitImage`), `labels`, `draft/`, `usage`, `layer-impact` | `ui/`, a transport |
+| `operations/` | Each operation (`keys`, `layers`, `lighting`, `transform`, `behaviors` with their slots and Copy text), the `catalog` with `runOperation`, input checks, Guard's view of an image (ADR 0019, 0020); `describe` and `flows/`: the .flows file, choices, jq contract, the fold of a script's calls (ADR 0025) | a session, a reader or writer, `config/`, `workbench/`, `ui/` |
+| `sync/` | `image`, `items`, `patch`, `plan`, `read`, `write`, `conflicts` (ADR 0012, 0021, `docs/sync.md`) | `operations/`, `workbench/`, `ui/`, a transport |
+| `layers/`, `config/`, `domain/`, `firmware/` | Layer rewrites; layout files (`transfer`, `import-layout`, `document`); the graph and Guard (ADR 0011); firmware releases | `operations/`, `workbench/`, `ui/` |
+| `model/` | Key slots, the key selection, combos, macros, morse, pointing, history, transforms, `lighting/` (key lights, effects and timing, try-out, key picks, presets), `boards/`, the workbench state's types | `operations/`, `workbench/`, `ui/` |
+| `capabilities/` | Capability ids and their resolution (ADR 0002) | anything else |
+| `session/` | `types.ts` (the interface), `link-session.ts` (the protocol core), `flash-writes.ts`, transports, `mock/` and `offline/` boards | `operations/`, `workbench/`, `ui/` |
 
 Where a new piece of code goes is one question: what does it need? Only data: `model/`. The workbench, the reference graph or the write path: `workbench/`. React, words or the person's attention: `ui/`. ADR 0017 has the details; `AGENTS.md` lists the places for screens.
 

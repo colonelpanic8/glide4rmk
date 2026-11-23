@@ -1,6 +1,6 @@
 # 0013. One document, one history, one gate: adopted module by module
 
-**Status:** Accepted (the end state); reached step by step.
+**Status:** Accepted (the end state); reached step by step. Its end state designed by 0018.
 
 ## Context
 

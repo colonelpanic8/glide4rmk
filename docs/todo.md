@@ -1,6 +1,6 @@
 # Todo
 
-What is left to do, cheapest first within each group. Take one item per session; strike it here when it ships, with its commit. Decisions go in an ADR, not here.
+What is left to do, cheapest first within each group. Take one item per session; strike it in the same PR, with that PR's number (`#17`), which exists before the merge. What shipped is in the PRs and `git log`, not here. Decisions go in an ADR, not here.
 
 ## Architecture first (`docs/architecture-review.md`: "The plan, validated", then "Do now" and "Plan")
 
@@ -43,23 +43,3 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 24. **Try this branch in a browser and on a keyboard.** Several keys selected, picking keys, the effects gallery, exact timing, Try out, whole-row writes, imports as commits and Live's own send have only been tested in the simulated boards; none has been tried in a browser or on a keyboard.
 25. **Screen tests that interact.** Every screen test renders static markup; none clicks. Send, drag-swap, the selection gestures and the pick flow are untested at screen level.
 26. **`DraftKeeper`'s effect** (Live's own send, the kept draft's flush) is untested; only its gate (`liveSendDue`) is.
-
-## Done recently
-
-- A keyboard's add-ons are kept in the layout (ADR 0028): the Glove80's touchpad modules are switched in Layout properties → Add-ons, saved in MoErgo JSON's `hardware_modules` or a TOML comment line, one Undo step; the Go60's are built in; Flows see them as the board's extras.
-
-- The key editor names the behavior a key is bound to (kind, name, timing, forks), edits its timing from a gear on the slot (a shared timing is copied for the one key, named after the original and the key: `set_key_timing`), and shows a fork-made double tap (TailorKey's shiftdance) as On Double Tap (ADR 0026). Modifiers read as the computer chosen in Settings writes them in every label, not only on key faces (`src/architecture/modifier-text.test.ts`).
-- Flows know the board (ADR 0027): the Glove80 and Go60 carry their key groups (letter block, home row with fingers, thumbs, number and function rows); `describe()` gives them with the profiles and the layer capacity; a jq library goes in front of every script; `add_layer` and `set_timing_profile`; a Flow names what it needs (`needs_keys`, `min_keys`) and one this keyboard cannot run is shown greyed with why. Home-row mods, their removal, their timing presets and Autoshift ship in `flows/shared/`; the typing-layout Flow lost its board table.
-
-- The macro editor as GLIDE's Macro Builder: steps as compact rows (drag or Alt + arrows to move, Undo, Clear), + Add for a step, text or a pause, each step sending a key, a layer or another macro (never one that runs it again) from Pick Key's small picker, which now lists layers and your behaviors when a caller asks (`PickOffer`); opening a macro on a live or simulated board no longer crashes (both wasm modules load in `openBundle`).
-
-- From GLIDE: hovering a behavior row lights the keys on the layer shown that use it; the key menu's colours (your colours and the presets, or off) give the key, or every selected key, its light on boards that store lights, one Undo step through the draft.
-
-- From a side-by-side check with GLIDE: the key editor keeps its shape with no key selected (its picker greyed out); on a phone the layer and the keyboard's status stay in the top bar while the tools scroll beside them, the canvas hint speaks of taps and long presses, and the board takes less height; a combo that matches actions finds its keys through keys that are the same as the layer below (combo cards and Focus Mode).
-
-- The key editor's tabs as GLIDE's: Pick Key, Switch Layer, Other Behaviors (your macros and tap patterns, one-shot modifiers), Key Lighting (with the lighting keys that show their state); Every action is gone from the key and combo editors. Keys read as the name given to their macro or tap pattern. A layer delete, add or move is one entry in Review & send (`model/layer-structure.ts`). Insights is a tab of Layout properties; RGB Effects has the Lights switch.
-- One key picker everywhere: Pick Key, compact, fills tap-hold slots, tap patterns' actions, macro steps and pointing keys; every key RMK has (`model/hid-codes.ts`) is in it, All keys counted; modifiers named for the computer; search finds your macros and tap patterns.
-- Keys written by whole rows (ADR 0021); the base is the last read, what a draft was based on, Live's own send (ADR 0022); a file import is a commit (ADR 0023); lighting tools on the keymap, including several keys selected (ADR 0024).
-- ADR 0016, RGB lighting the GLIDE way, stages 1–4 (`0cfd81e` … `ab6296d`).
-- Send no longer fails on lighting the keyboard stored in its own order (`061d91c`).
-- Review fixes: the first edit after a Send is undoable again; sync comparisons ignore key order everywhere (the review commit after `d0e19b0`).

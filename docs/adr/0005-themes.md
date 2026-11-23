@@ -1,6 +1,6 @@
 # 0005. Dark and light themes under one set of token names
 
-**Status:** Accepted (decided with the project owner: both themes, dark by default).
+**Status:** Accepted (decided with the project owner: both themes, dark by default). How a theme is made replaced by 0014.
 
 ## Context
 The app had one dark theme, defined as named color tokens in `src/index.css`. The UX redesign needs a light theme as well, without touching every component.

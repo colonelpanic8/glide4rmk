@@ -42,7 +42,7 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # Not `npm test`: its pretest would build the WASM clients again.
+      # The WASM clients are in place; `npm test` would only check their WASM_KEY again.
       - name: Test
         run: npx vitest run
 

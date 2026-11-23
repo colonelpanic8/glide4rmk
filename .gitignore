@@ -12,9 +12,11 @@ dist
 dist-ssr
 *.local
 
-# Generated from the flake-pinned RMK and MoErgo sources by `npm run wasm`.
+# Generated from the flake-pinned RMK and MoErgo sources by `npm run wasm`, or
+# copied from CI's build by scripts/setup-session.sh, with the flake's WASM_KEY.
 src/vendor/rynk-wasm
 src/vendor/moergo-config-wasm
+src/vendor/WASM_KEY
 
 # Nix
 result
