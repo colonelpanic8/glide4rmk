@@ -3,6 +3,7 @@
 // `io.apply`; nothing is registered, and nothing outside the app reaches it.
 
 import { setKeys, swapKeys } from "./keys";
+import { setKeyTiming } from "./key-timing";
 import { deleteLayer, duplicateLayer, moveLayer } from "./layers";
 import { clearLayerLights, setBatteryBar, setConnectionKey, setKeyEffects, setKeyLight } from "./lighting";
 import { applyTransform } from "./transform";
@@ -23,6 +24,7 @@ import type { KeyboardImage } from "../sync/image";
 export const OPERATIONS = {
   set_keys: setKeys,
   swap_keys: swapKeys,
+  set_key_timing: setKeyTiming,
   set_combos: setCombos,
   move_layer: moveLayer,
   delete_layer: deleteLayer,
