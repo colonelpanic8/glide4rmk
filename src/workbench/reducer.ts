@@ -6,6 +6,7 @@
 import type { EncoderAction, KeyAction } from "../vendor/rynk-wasm/rynk_wasm";
 import type { WorkbenchAction, WorkbenchState, WritableField } from "../model/workbench-state";
 import { selectionWith } from "../model/key-selection";
+import { withDevice } from "../model/device-state";
 import { draftEditCount } from "./draft/selectors";
 import { sameValue } from "../model/deep-equal";
 import { applyPatch, itemKey, patchBetween, valueAt, withValues, type KeyboardImage, type SyncItem } from "../sync";
@@ -250,20 +251,19 @@ export function makeWorkbenchReducer(cols: number) {
       case "layerOperationDone":
         return { ...state, layerBusy: false, layerError: null };
       case "topicLayers":
-        return {
-          ...withRead(state, { defaultLayer: act.defaultLayer }),
+        return withDevice(withRead(state, { defaultLayer: act.defaultLayer }), {
           activeLayers: act.activeLayers,
           layerStateComplete: act.complete,
           currentLayer: Math.max(act.defaultLayer, ...act.activeLayers),
-        };
+        });
       case "topicBattery":
-        return { ...state, battery: act.battery };
+        return withDevice(state, { battery: act.battery });
       case "topicConnection":
-        return { ...state, connection: act.connection };
+        return withDevice(state, { connection: act.connection });
       case "topicLedIndicator":
-        return { ...state, ledIndicator: act.indicator };
+        return withDevice(state, { ledIndicator: act.indicator });
       case "topicModifier":
-        return { ...state, modifierState: act.modifiers };
+        return withDevice(state, { modifierState: act.modifiers });
       default:
         return state;
     }

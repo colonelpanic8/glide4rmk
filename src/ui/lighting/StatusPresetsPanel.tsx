@@ -12,7 +12,7 @@ import type { KeyView } from "../../model/keyboard";
 import { Button, SectionLabel } from "../kit";
 import { useCapability } from "../use-capabilities";
 import { layerName } from "../layer-names";
-import { useWorkbench } from "../state";
+import { useDevice, useWorkbench } from "../state";
 import { StatusKeyPicks } from "./StatusKeyPicks";
 import { useTerms } from "../terms";
 import { StockMagicLayerPanel } from "./StockMagicLayerPanel";
@@ -30,13 +30,14 @@ function keyAt(keys: KeyView[], row: number, col: number): KeyView | undefined {
 
 export function StatusPresetsPanel() {
   const { bundle, state, dispatch, io } = useWorkbench();
+  const device = useDevice();
   const term = useTerms();
   const ruleTable = useCapability("lighting.rules");
   const numLayers = bundle.caps.num_layers;
   const wakeLayers = state.lightingOutputMode?.wake_layers ?? state.lightingControls.wake_layers;
   const [wakeLayer] = layersInMask(wakeLayers, numLayers);
   const preferredLayer = bundle.boardProfile?.defaultStatusLayer;
-  const defaultLayer = wakeLayer ?? (preferredLayer !== undefined && preferredLayer < numLayers ? preferredLayer : state.currentLayer);
+  const defaultLayer = wakeLayer ?? (preferredLayer !== undefined && preferredLayer < numLayers ? preferredLayer : device.currentLayer);
   // Follow the current wake policy until a layer is chosen.
   const [chosenLayer, setChosenLayer] = useState<number | null>(null);
   const layer = chosenLayer !== null && chosenLayer < numLayers ? chosenLayer : defaultLayer;

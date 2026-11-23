@@ -2,7 +2,7 @@
 // danger zone. Each card is its own file; this one is the page.
 
 import { KeyboardCanvas } from "../KeyboardCanvas";
-import { useWorkbench } from "../state";
+import { useDevice, useWorkbench } from "../state";
 import { Chip, Panel, Row, SectionLabel } from "../kit";
 import { BatteryGlyph } from "../icons";
 import { KIND_LABEL } from "../session-labels";
@@ -26,10 +26,11 @@ function hex4(n: number): string {
 }
 
 export function DeviceMode() {
-  const { bundle, state } = useWorkbench();
+  const { bundle } = useWorkbench();
+  const device = useDevice();
   const { info, caps, protocol, build, lightingCaps } = bundle;
-  const battery = state.battery !== "Unavailable" ? state.battery.Available : null;
-  const conn = state.connection;
+  const battery = device.battery !== "Unavailable" ? device.battery.Available : null;
+  const conn = device.connection;
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">

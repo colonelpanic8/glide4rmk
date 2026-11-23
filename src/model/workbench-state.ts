@@ -58,6 +58,7 @@ import type { BoardProfile } from "./boards";
 import type { KeyboardModel } from "./keyboard";
 import type { KeyboardImage, PatchEntry, SyncItem } from "../sync";
 import type { History, LayoutNotes } from "./history";
+import type { DeviceReports } from "./device-state";
 
 /** The screen on show: one section of one area (src/ui/areas.ts). */
 export type Mode =
@@ -218,11 +219,7 @@ export interface WorkbenchState {
   basedOn: readonly { item: SyncItem; value: unknown }[];
   mode: Mode;
   uiLayer: number;
-  /** Highest-precedence active layer, derived from `activeLayers`. */
-  currentLayer: number;
   defaultLayer: number;
-  activeLayers: number[];
-  layerStateComplete: boolean;
   layers: KeyAction[][];
   layerMetadata: LayerMetadata[] | null;
   pointingConfig: PointingConfig | null;
@@ -231,11 +228,6 @@ export interface WorkbenchState {
   pointingError: string | null;
   /** `${layer}:${encoderId}` → loaded encoder action. */
   encoders: Record<string, EncoderAction>;
-  battery: BatteryStatus;
-  peripheralBattery: BatteryStatus;
-  connection: ConnectionStatus | null;
-  maintenanceMode: MaintenanceMode | null;
-  splitTransport: SplitTransportState | null;
   lightingState: LightingState | null;
   lightingOutputMode: LightingOutputModeState | null;
   /** The overlay as last known on the keyboard, keyed by LED id. */
@@ -309,9 +301,9 @@ export interface WorkbenchState {
   morseHoldTriggerPositions: MorseHoldTriggerPosition[];
   autoMouseLayerCapacity: number;
   autoMouseLayers: AutoMouseLayerConfig[];
-  ledIndicator: LedIndicator | null;
-  /** Authoritative resolved HID modifiers; null enables the legacy matrix fallback. */
-  modifierState: ModifierCombination | null;
+  /** What the keyboard reports about itself while open (model/device-state.ts):
+   *  read through `deviceOf`, never drafted or sent. */
+  device: DeviceReports;
 }
 
 /** Parameter lists as last read from the device, keyed by effect index. */

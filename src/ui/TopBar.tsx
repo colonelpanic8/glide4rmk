@@ -2,8 +2,8 @@
 // name, Open and Save, the screens that open over the keymap, then history,
 // batch, live status, display settings and Close.
 
-import type { BatteryStatus } from "../vendor/rynk-wasm/rynk_wasm";
-import { useWorkbench } from "./state";
+import type { BatteryStatus } from "../model/device-state";
+import { useDevice, useWorkbench } from "./state";
 import { useSharedDocumentTransfer } from "./transfer-actions";
 import { LayoutProperties } from "./properties/LayoutProperties";
 import { openProperties } from "./properties/store";
@@ -105,10 +105,11 @@ export function TopBar({
   const host = detectOs();
   const term = useTerms();
   const { bundle, state, io, history } = useWorkbench();
+  const device = useDevice();
   const offline = bundle.session.kind === "offline";
   const { workspaceName } = useSharedDocumentTransfer();
   const split = bundle.caps.is_split;
-  const activeLabel = [...new Set([state.defaultLayer, ...state.activeLayers])]
+  const activeLabel = [...new Set([state.defaultLayer, ...device.activeLayers])]
     .sort((a, b) => a - b)
     .join(" | ");
 
@@ -195,7 +196,7 @@ export function TopBar({
         </div>
 
         <div className="flex shrink-0 items-center gap-3 max-sm:gap-2 sm:order-1">
-          {!offline && <BatteryReadout battery={state.battery} split={split} />}
+          {!offline && <BatteryReadout battery={device.battery} split={split} />}
           <div className="h-6 w-px bg-line-soft" />
           <SettingsPanel />
           <FlowsButton />

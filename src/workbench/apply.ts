@@ -5,6 +5,7 @@
 // unless the keyboard can no longer be read; then the change stays in the draft.
 
 import type { ConnectedBundle, WorkbenchState } from "../model/workbench-state";
+import { deviceOf } from "../model/device-state";
 import { runOperation, type InputOf, type OperationFacts, type OperationName } from "../operations";
 import { applyPatch, patchBetween, type KeyboardImage } from "../sync";
 import { sendStaged } from "./draft/send";
@@ -25,7 +26,7 @@ export function factsOf(state: WorkbenchState, context: Pick<IoContext, "cols" |
     cols: context.cols,
     sceneCapacity: context.features.sceneCapacity,
     ruleCapacity: context.features.conditionalSceneCapacity,
-    activeLayers: state.activeLayers.filter((layer) => layer !== state.defaultLayer),
+    activeLayers: deviceOf(state).activeLayers.filter((layer) => layer !== state.defaultLayer),
     compiledScenes: state.compiledScenes,
     compiledRules: state.conditionalScenes,
     ledNodes: context.ledNodes,

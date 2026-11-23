@@ -25,6 +25,7 @@ import { writePlan } from "../sync";
 import { makeIo } from "./io";
 import { makeWorkbenchReducer } from "./reducer";
 import { type WorkbenchAction, type WorkbenchState } from "../model/workbench-state";
+import { deviceOf } from "../model/device-state";
 
 const reducer = makeWorkbenchReducer(2);
 
@@ -47,10 +48,7 @@ function baseState(over: Partial<WorkbenchState> = {}): WorkbenchState {
     basedOn: [],
     mode: "keymap",
     uiLayer: 0,
-    currentLayer: 0,
     defaultLayer: 0,
-    activeLayers: [0],
-    layerStateComplete: true,
     layers: [[], []],
     layerMetadata: null,
     pointingConfig: null,
@@ -58,11 +56,6 @@ function baseState(over: Partial<WorkbenchState> = {}): WorkbenchState {
     pointingBusy: false,
     pointingError: null,
     encoders: {},
-    battery: "Unavailable",
-    peripheralBattery: "Unavailable",
-    connection: null,
-    maintenanceMode: null,
-    splitTransport: null,
     lightingState: LIGHTING,
     lightingOutputMode: null,
     applied: {},
@@ -104,8 +97,18 @@ function baseState(over: Partial<WorkbenchState> = {}): WorkbenchState {
     morseHoldTriggerPositions: [],
     autoMouseLayerCapacity: 0,
     autoMouseLayers: [],
-    ledIndicator: null,
-    modifierState: null,
+    device: {
+      battery: "Unavailable",
+      peripheralBattery: "Unavailable",
+      connection: null,
+      maintenanceMode: null,
+      splitTransport: null,
+      currentLayer: 0,
+      activeLayers: [0],
+      layerStateComplete: true,
+      ledIndicator: null,
+      modifierState: null,
+    },
     ...fields,
   };
   return { ...opened, base: base ?? storedImage(opened) };
@@ -257,9 +260,9 @@ describe("layer-state snapshots", () => {
       complete: true,
     });
     expect(next.defaultLayer).toBe(1);
-    expect(next.activeLayers).toEqual([1, 2, 4]);
-    expect(next.currentLayer).toBe(4);
-    expect(next.layerStateComplete).toBe(true);
+    expect(deviceOf(next).activeLayers).toEqual([1, 2, 4]);
+    expect(deviceOf(next).currentLayer).toBe(4);
+    expect(deviceOf(next).layerStateComplete).toBe(true);
   });
 });
 
@@ -714,7 +717,7 @@ describe("modifier-state snapshots", () => {
       right_gui: false,
     };
     const next = reducer(baseState(), { type: "topicModifier", modifiers });
-    expect(next.modifierState).toEqual(modifiers);
+    expect(deviceOf(next).modifierState).toEqual(modifiers);
   });
 });
 

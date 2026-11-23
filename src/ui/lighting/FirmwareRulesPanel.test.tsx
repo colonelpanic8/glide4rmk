@@ -13,12 +13,10 @@ describe("firmware rule legends", () => {
       },
       state: {
         layers: [[{ Single: { Key: { Hid: "A" } } }], [{ Single: { Key: { Hid: "B" } } }]],
-        activeLayers: [1],
+        device: { activeLayers: [1], battery: "Unavailable", peripheralBattery: "Unavailable" },
         defaultLayer: 0,
         compiledScenes: [{ layer: 0, led_id: 4, effect: { Solid: { color: { r: 255, g: 0, b: 0 } } } }],
         conditionalScenes: [],
-        battery: "Unavailable",
-        peripheralBattery: "Unavailable",
         lightingOutputMode: null,
         lightingControls: { wake_layers: 0 },
         layerMetadata: null,
