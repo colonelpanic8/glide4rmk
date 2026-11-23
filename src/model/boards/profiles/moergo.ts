@@ -1,6 +1,7 @@
 import type { BoardDocumentTools, BoardProfile } from "../profile";
 import { glove80Enrichment } from "../glove80";
 import { go60Enrichment } from "../go60";
+import { GLOVE80_KEY_GROUPS, GO60_KEY_GROUPS } from "../key-groups";
 
 const documentTools = (id: string, name: string): BoardDocumentTools => ({
   codec: "moergo",
@@ -43,6 +44,7 @@ export const MOERGO_PROFILES: readonly BoardProfile[] = [
     presets: ["glove80-status", "glove80-stock-magic"],
     userActions: bleUserActions,
     defaultStatusLayer: 2,
+    keyGroups: GLOVE80_KEY_GROUPS,
     firmware: {
       source: releaseSource,
       targets: [
@@ -71,6 +73,7 @@ export const MOERGO_PROFILES: readonly BoardProfile[] = [
     identity: { vendorId: 0x16c0, productId: 0x27db, productName: "Go60" },
     matrix: { rows: 5, cols: 14 },
     enrichment: go60Enrichment,
+    keyGroups: GO60_KEY_GROUPS,
     documents: documentTools("glove80", "Glove80"),
     presets: [],
     userActions: bleUserActions,

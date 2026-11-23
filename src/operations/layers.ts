@@ -88,3 +88,37 @@ export const duplicateLayer: Operation<{ layer: number; name?: string }> = {
     );
   },
 };
+
+/** Why a new layer cannot have this name, or null. */
+function layerNameProblem(image: KeyboardImage, name: string): string | null {
+  if (!name) return "a layer needs a name";
+  if (new TextEncoder().encode(name).length > 32) return "a layer's name has at most 32 UTF-8 bytes";
+  return image.metadata.some((slot) => slot.occupied && slot.name === name) ? `there is a layer called ${name} already` : null;
+}
+
+export const addLayer: Operation<{ name: string; after: number }> = {
+  name: "add_layer",
+  description: "Adds an empty layer (every key the same as the layer below) right after another; the layers above move up one slot, and every reference to them follows.",
+  inputs: [
+    { name: "name", kind: "string", description: "The new layer's name." },
+    { name: "after", kind: "integer", min: 0, description: "The layer it comes right after." },
+  ],
+  run(image, { name, after }, facts) {
+    const trimmed = name.trim();
+    const problem = layerNameProblem(image, trimmed);
+    if (problem) return failed(problem);
+    if (image.metadata.length === 0) return failed("this firmware does not support persistent layer metadata");
+    const occupied = image.metadata.findIndex((slot) => !slot.occupied);
+    if (occupied < 0) return failed(`every one of the keyboard's ${image.metadata.length} layers is in use`);
+    if (after >= occupied) return failed(`layer ${after} is not in use`);
+    // The free slot after the last layer becomes the new one, then moves into place.
+    const metadata = image.metadata.map((slot, index) => (index === occupied ? { occupied: true, name: trimmed } : slot));
+    const layers = image.layers.map((cells, index) => (index === occupied ? cells.map(() => "Transparent" as const) : cells));
+    const encoders = image.encoders.map((cells, index) =>
+      index === occupied ? cells.map(() => ({ clockwise: "Transparent" as const, counter_clockwise: "Transparent" as const })) : cells,
+    );
+    const added = { ...image, metadata, layers, encoders };
+    if (after + 1 === occupied) return { ok: true, image: added };
+    return structural({ type: "move", layer: occupied, to: after + 1 })(added, facts);
+  },
+};

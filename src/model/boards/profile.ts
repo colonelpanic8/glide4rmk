@@ -1,4 +1,5 @@
 import type { BoardEnrichment } from "../keyboard";
+import type { KeyGroups } from "./key-groups";
 
 export interface BoardDocumentTools {
   codec: "moergo";
@@ -62,6 +63,8 @@ export interface BoardProfile {
     icon?: string;
   }[];
   defaultStatusLayer?: number;
+  /** Where its letter block, home row, thumbs and number row sit (ADR 0027). */
+  keyGroups?: KeyGroups;
   /** Optional, declarative route from this device identity to trusted firmware. */
   firmware?: FirmwareUpdateProfile;
 }

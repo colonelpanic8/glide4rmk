@@ -4,7 +4,8 @@
 
 import { setKeys, swapKeys } from "./keys";
 import { setKeyTiming } from "./key-timing";
-import { deleteLayer, duplicateLayer, moveLayer } from "./layers";
+import { addLayer, deleteLayer, duplicateLayer, moveLayer } from "./layers";
+import { setTimingProfile } from "./timing-profiles";
 import { clearLayerLights, setBatteryBar, setConnectionKey, setKeyEffects, setKeyLight } from "./lighting";
 import { applyTransform } from "./transform";
 import { setCombos } from "./combos";
@@ -26,6 +27,7 @@ export const OPERATIONS = {
   swap_keys: swapKeys,
   set_key_timing: setKeyTiming,
   set_combos: setCombos,
+  add_layer: addLayer,
   move_layer: moveLayer,
   delete_layer: deleteLayer,
   duplicate_layer: duplicateLayer,
@@ -37,6 +39,7 @@ export const OPERATIONS = {
   apply_transform: applyTransform,
   create_behavior: createBehavior,
   set_behavior: setBehavior,
+  set_timing_profile: setTimingProfile,
   rename_behavior: renameBehavior,
   duplicate_behavior: duplicateBehavior,
   delete_behavior: deleteBehavior,
