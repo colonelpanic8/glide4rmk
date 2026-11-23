@@ -25,7 +25,7 @@ export function ModulesKeeper() {
       ? workspace?.sourceText ? modulesFromFile(workspace.sourceText, workspace.format) : []
       : readModules(readSetting(key));
     arriving.current = writeModules(modules);
-    dispatch({ type: "modulesLoaded", modules });
+    dispatch({ type: "notesLoaded", notes: { modules } });
   }, [key, offline, workspace, dispatch]);
 
   useEffect(() => {

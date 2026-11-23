@@ -115,7 +115,7 @@ export async function runFlow(
   if (!folded.ok) return stop(`${flow.title} was stopped, so nothing was changed: ${folded.message}. The automation may need fixing by its author.`, "error");
   logLine(log, `${calls.length} operations: ${[...new Set(calls.map(({ name }) => name))].join(", ")}`);
 
-  const committed = await commitImage(context, folded.image, { layerOrder: folded.layerOrder, labels: folded.labels });
+  const committed = await commitImage(context, folded.image, { layerOrder: folded.layerOrder, notes: folded.labels && { labels: folded.labels } });
   if (!committed.ok) return stop(committed.message);
   endLog(log, "done", "Applied as one change");
   return { ok: true, message: report.message || `${flow.title} is done.`, report, log };

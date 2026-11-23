@@ -33,7 +33,7 @@ import type { SendOptions } from "./draft/send";
 import type { InputOf, OperationName } from "../operations";
 import { applyOperation, passEverything, type Judge } from "./apply";
 import type { LayoutImport } from "../config/transfer";
-import type { BehaviorLabels } from "../model/behavior-labels";
+import type { LayoutNotes } from "../model/history";
 import { importLayout, type LayoutImported } from "./io-import";
 import { runFlow, type FlowEnvironment, type FlowRun } from "./flows";
 import type { Flow } from "../operations/flows";
@@ -60,7 +60,7 @@ export interface WorkbenchIo {
   setModules(modules: readonly string[]): void;
   /** A layout file over what you want, committed as an operation's result is;
    *  `notes`: what the file keeps beside the keys (behavior labels, add-on modules). */
-  importLayout(file: LayoutImport, notes?: { labels?: BehaviorLabels; modules?: readonly string[] }): Promise<LayoutImported>;
+  importLayout(file: LayoutImport, notes?: Partial<LayoutNotes>): Promise<LayoutImported>;
   /** A Flow (ADR 0025): its script on what you want, its operations committed as one. */
   runFlow(flow: Flow, values: Readonly<Record<string, unknown>>, env: FlowEnvironment): Promise<FlowRun>;
   /** Resolves once realtime lighting has nothing waiting or being written. */
@@ -225,7 +225,7 @@ export function makeIo(
   const context: IoContext = { session, getState, dispatch, cols, features, judge, ledNodes, draft, realtime };
   return {
     apply: (name, input) => applyOperation(context, name, input),
-    setModules: (modules) => dispatch({ type: "modulesSet", modules }),
+    setModules: (modules) => dispatch({ type: "notesSet", notes: { modules } }),
     importLayout: (file, notes) => importLayout(context, file, notes),
     runFlow: (flow, values, env) => runFlow(context, flow, values, env),
     realtimeSettled: () => realtime.settled(),
