@@ -1,4 +1,4 @@
-From 9feef866b1050bde8dfbaa79d6166a21f110c6ed Mon Sep 17 00:00:00 2001
+From 37be9a5a94651038619af0310ee91c8a19445ee0 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Mon, 23 Nov 2026 19:03:10 +0100
 Subject: [PATCH] Export tap patterns, macros, combos and mod-morphs to MoErgo
@@ -41,10 +41,10 @@ Claude-Session: https://claude.ai/code/session_01QpAvhekAu35RCnRCUtmvDL
  crates/moergo-config/src/moergo/behaviors.rs  |   21 +-
  crates/moergo-config/src/moergo/lower.rs      |   76 +-
  crates/moergo-config/src/moergo/mod.rs        |   94 +-
- crates/moergo-config/src/moergo/raise.rs      | 1233 ++++++++++
+ crates/moergo-config/src/moergo/raise.rs      | 1241 ++++++++++
  .../fixtures/glove80-tailorkey-qwerty.toml    | 2161 +++++++++++++++++
- crates/moergo-config/tests/moergo_export.rs   |  399 +++
- 6 files changed, 3961 insertions(+), 23 deletions(-)
+ crates/moergo-config/tests/moergo_export.rs   |  421 ++++
+ 6 files changed, 3991 insertions(+), 23 deletions(-)
  create mode 100644 crates/moergo-config/src/moergo/raise.rs
  create mode 100644 crates/moergo-config/tests/fixtures/glove80-tailorkey-qwerty.toml
  create mode 100644 crates/moergo-config/tests/moergo_export.rs
@@ -378,10 +378,10 @@ index e97df50..0619150 100644
  }
 diff --git a/crates/moergo-config/src/moergo/raise.rs b/crates/moergo-config/src/moergo/raise.rs
 new file mode 100644
-index 0000000..133f8cf
+index 0000000..2c5fad8
 --- /dev/null
 +++ b/crates/moergo-config/src/moergo/raise.rs
-@@ -0,0 +1,1233 @@
+@@ -0,0 +1,1241 @@
 +//! Raising of Rynk runtime behaviors back into MoErgo editor definitions.
 +//!
 +//! This is the inverse of [`super::lower`]. A keymap cell that holds a morse
@@ -562,6 +562,9 @@ index 0000000..133f8cf
 +            .as_deref()
 +            .unwrap_or_default()
 +            .iter()
++            // A keyboard reports its whole fork table; a slot that triggers on
++            // nothing is empty (`is_empty_fork`), not a fork on every blank key.
++            .filter(|fork| fork.trigger != KeyAction::No)
 +            .map(|fork| (*fork, false))
 +            .collect();
 +        let mut timeouts: Vec<u64> = layout
@@ -688,6 +691,11 @@ index 0000000..133f8cf
 +            .map(|config| u64::from(config.combo_timeout_ms))
 +            .or(self.template_combo_timeout);
 +        for (index, definition) in combos.iter().enumerate() {
++            // A keyboard reports every combo slot; the unprogrammed ones say
++            // nothing.
++            if definition.is_empty() {
++                continue;
++            }
 +            let label = self
 +                .labels
 +                .and_then(|labels| labels.combos.get(index))
@@ -3784,10 +3792,10 @@ index 0000000..8f6a141
 +charge = "charging"
 diff --git a/crates/moergo-config/tests/moergo_export.rs b/crates/moergo-config/tests/moergo_export.rs
 new file mode 100644
-index 0000000..9855e1a
+index 0000000..836b63c
 --- /dev/null
 +++ b/crates/moergo-config/tests/moergo_export.rs
-@@ -0,0 +1,399 @@
+@@ -0,0 +1,421 @@
 +//! Export to the MoErgo Layout Editor's JSON, checked by reading it back.
 +//!
 +//! An export is right when the import reads it as the same keyboard. For a
@@ -3801,6 +3809,7 @@ index 0000000..9855e1a
 +};
 +use rynk::rmk_types::action::{Action, KeyAction, KeyboardAction, LightAction};
 +use rynk::rmk_types::combo::ComboDefinition;
++use rynk::rmk_types::fork::Fork;
 +use rynk::rmk_types::keyboard_macros::MacroOp;
 +use rynk::rmk_types::keycode::{HidKeyCode, KeyCode};
 +use rynk::rmk_types::morse::{MorseMode, MorseProfile, HOLD, TAP};
@@ -4138,6 +4147,27 @@ index 0000000..9855e1a
 +    // And the export is a fixed point from there on.
 +    let again = snapshot_to_moergo_json(&back, Some(&relabels), Some(&exported)).unwrap();
 +    assert_eq!(exported, again);
++}
++
++#[test]
++fn a_keyboards_empty_fork_and_combo_slots_are_not_exported() {
++    // A keyboard reports its tables at full size, unprogrammed slots included.
++    let (labels, mut snapshot) = import(TAILORKEY_JSON);
++    let expected = snapshot_to_moergo_json(&snapshot, Some(&labels), None).unwrap();
++    snapshot
++        .behaviors
++        .forks
++        .get_or_insert_with(Vec::new)
++        .extend([Fork::empty(), Fork::empty()]);
++    snapshot
++        .behaviors
++        .combos
++        .get_or_insert_with(Vec::new)
++        .extend([ComboDefinition::empty(), ComboDefinition::empty()]);
++    assert_eq!(
++        snapshot_to_moergo_json(&snapshot, Some(&labels), None).unwrap(),
++        expected
++    );
 +}
 +
 +fn with_cell(action: KeyAction, row: usize, col: usize) -> Result<String, String> {
