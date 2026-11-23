@@ -37,7 +37,8 @@ A browser workbench for RMK/Rynk keyboards (Glove80, Go60 and plain RMK boards):
 - Less text: a control that explains itself needs no hint. Messages lead with the consequence.
 
 ## Tests
-- Screens are tested by rendering them in a test workbench: `renderInWorkbench(<Screen />, { bundle, state })` or `testWorkbench(…)` from `src/test/workbench.tsx`. Overrides are typed; do not cast a whole context. For a realistic board use a real bundle (`openBundle`, `workbench/open.ts`, on the offline Glove80).
+- What a screen shows: render it in a test workbench, `renderInWorkbench(<Screen />, { bundle, state })` or `testWorkbench(…)` from `src/test/workbench.tsx`. Overrides are typed; do not cast a whole context. For a realistic board use a real bundle (`openBundle`, `workbench/open.ts`, on the offline Glove80).
+- What a screen does when clicked, dragged or typed into, or what its effects do: `mountWorkbench(<Screen />, { board | fixture, mode })` from `src/test/mount.tsx` (ADR 0030), in a file named `*.click.test.tsx` that starts with `// @vitest-environment happy-dom`. It mounts on the harness below with the real reducer, `io` and Guard, and gives `click`, `key`, `drag`, `button`, `canvasKey`, `until`; check what reached the board through `bench.session`. Do not convert a static test just to convert it.
 - Core tests that need a workbench open one with `withTestWorkbench(board | { fixture }, { mode }, check)` (`src/test/harness.ts`, ADR 0029); never wire `makeIo` and the reducer by hand. A plain Glove80 is `{ fixture: "plain" }`; TailorKey (`"tailorkey"`) is for round-trips and Flows. A small `KeyboardImage` for unit and operation tests: `layout()` in `src/test/image.ts`.
 - Pure logic gets a plain test next to it.
 
