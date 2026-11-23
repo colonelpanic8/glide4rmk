@@ -53,6 +53,8 @@ export interface TestWorkbench {
   dispatch: (action: WorkbenchAction) => void;
   /** Every action dispatched, oldest first. */
   dispatched: WorkbenchAction[];
+  /** Hears every dispatch, after the state changed (a mounted screen re-renders on it). */
+  subscribe: (listener: () => void) => () => void;
   /** What the keyboard can do, as the screens ask it. */
   capabilities: CapabilitySet;
   /** A Flow environment for this board, asking its real capabilities. */
@@ -85,9 +87,15 @@ export async function openTestWorkbench(board: TestBoard, options: TestWorkbench
     let state: WorkbenchState = { ...initialWorkbenchState(bundle), batchMode: options.mode === "draft" };
     const reducer = makeWorkbenchReducer(bundle.caps.num_cols);
     const dispatched: WorkbenchAction[] = [];
+    const listeners = new Set<() => void>();
+    const subscribe = (listener: () => void) => {
+      listeners.add(listener);
+      return () => void listeners.delete(listener);
+    };
     const dispatch = (action: WorkbenchAction) => {
       state = reducer(state, action);
       dispatched.push(action);
+      for (const listener of listeners) listener();
     };
     const extra = typeof options.io === "function" ? options.io(bundle) : options.io;
     const io = makeIo(session, () => state, dispatch, {
@@ -96,7 +104,7 @@ export async function openTestWorkbench(board: TestBoard, options: TestWorkbench
     const capabilities = resolveCapabilities(firmwareFactsOf(bundle));
     const ids = capabilities.list().map(({ id }) => id as string);
     const flows: FlowEnvironment = { jq: nodeJq, board: flowBoard(bundle, ids), has: (id) => ids.includes(id) };
-    return { session, bundle, io, state: () => state, dispatch, dispatched, capabilities, flows, close: () => session.close() };
+    return { session, bundle, io, state: () => state, dispatch, dispatched, subscribe, capabilities, flows, close: () => session.close() };
   } catch (error) {
     await session.close();
     throw error;

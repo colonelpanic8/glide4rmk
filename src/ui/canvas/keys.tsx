@@ -145,6 +145,7 @@ function KeyShapeImpl({
   return (
     <g
       className={`key-group${clickable ? "" : " key-static"}`}
+      data-key={`${view.row},${view.col}`}
       data-key-row={view.row}
       data-key-col={view.col}
       transform={`rotate(${deg} ${cx0} ${cy0})`}
