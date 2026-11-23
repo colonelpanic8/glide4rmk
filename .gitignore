@@ -18,6 +18,10 @@ src/vendor/rynk-wasm
 src/vendor/moergo-config-wasm
 src/vendor/WASM_KEY
 
+# Playwright's results (npm run e2e)
+test-results
+playwright-report
+
 # Nix
 result
 result-*
