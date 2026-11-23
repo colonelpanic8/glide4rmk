@@ -23,8 +23,8 @@ export default defineConfig({
   test: {
     exclude: [...configDefaults.exclude, "**/.worktrees/**"],
     // Both wasm modules loaded once per test file, as openBundle loads them
-    // before any workbench opens in the app.
-    setupFiles: ["src/test/wasm.ts"],
+    // before any workbench opens in the app; simulated boards without latency.
+    setupFiles: ["src/test/setup.ts"],
   },
   server: {
     fs: {
