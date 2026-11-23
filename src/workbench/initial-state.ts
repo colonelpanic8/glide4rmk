@@ -54,6 +54,7 @@ export function initialWorkbenchState(bundle: ConnectedBundle): WorkbenchState {
     pending: {},
     history: emptyHistory(),
     labels: noLabels(),
+    modules: [],
     batchMode: bundle.session.kind !== "offline", // a keyboard starts in Draft (ADR 0010)
     batchBusy: false,
     batchError: null,

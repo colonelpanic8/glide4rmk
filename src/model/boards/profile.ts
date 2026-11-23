@@ -1,5 +1,6 @@
 import type { BoardEnrichment } from "../keyboard";
 import type { KeyGroups } from "./key-groups";
+import type { AddOnPlace } from "./add-ons";
 
 export interface BoardDocumentTools {
   codec: "moergo";
@@ -65,6 +66,8 @@ export interface BoardProfile {
   defaultStatusLayer?: number;
   /** Where its letter block, home row, thumbs and number row sit (ADR 0027). */
   keyGroups?: KeyGroups;
+  /** The places it has for add-ons, built in or a module a layout turns on (ADR 0028). */
+  addOns?: readonly AddOnPlace[];
   /** Optional, declarative route from this device identity to trusted firmware. */
   firmware?: FirmwareUpdateProfile;
 }

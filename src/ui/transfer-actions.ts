@@ -11,6 +11,7 @@ import { documentAdapterFor } from "../config/adapters";
 import { draftEditCount, pointingDraftDirty } from "../workbench";
 import { useWorkbench } from "./state";
 import { labelsFromToml } from "../config/behavior-labels";
+import { modulesFromFile } from "../config/add-ons";
 import { errorReport } from "./TransferReport";
 import type { TransferReport } from "./TransferReport";
 import { profileById } from "../model/boards/profiles";
@@ -115,8 +116,10 @@ export function useDocumentTransfer(): DocumentTransfer {
       const parsed = codec.readImport({ text, bundle, state, catalog: loadedCatalog });
       // The file's names for its behaviors come with them (ADR 0020).
       const labels = !parsed.converted && format === "toml" ? labelsFromToml(text) : undefined;
+      // So do its add-on modules (ADR 0028); a file for the other board keeps its own.
+      const modules = parsed.converted ? undefined : modulesFromFile(text, format);
       const drafting = state.batchMode;
-      const { layout, written } = await io.importLayout(parsed, labels);
+      const { layout, written } = await io.importLayout(parsed, { labels, modules });
       if (!written.ok) {
         setReport({ outcome: "error", headline: `Could not import ${file.name}`, detail: written.message });
         return;

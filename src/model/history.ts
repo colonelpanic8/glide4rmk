@@ -4,16 +4,23 @@
 import type { PatchEntry } from "../sync";
 import type { BehaviorLabels } from "./behavior-labels";
 
-/** The behavior labels before and after a commit that changed them (ADR 0020). */
-export interface LabelsChange {
-  before: BehaviorLabels;
-  after: BehaviorLabels;
+/** What a layout keeps that the keyboard does not: its behavior labels
+ *  (ADR 0020) and the add-on modules it turns on (ADR 0028). */
+export interface LayoutNotes {
+  labels: BehaviorLabels;
+  modules: readonly string[];
 }
 
-/** One commit: its items with their value before and after, and the labels when it changed them. */
+/** The layout notes before and after a commit that changed them. */
+export interface NotesChange {
+  before: LayoutNotes;
+  after: LayoutNotes;
+}
+
+/** One commit: its items with their value before and after, and the notes when it changed them. */
 export interface HistoryStep {
   changes: readonly PatchEntry[];
-  labels?: LabelsChange;
+  notes?: NotesChange;
 }
 
 export interface History {

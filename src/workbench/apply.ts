@@ -47,6 +47,8 @@ export interface CommitOptions {
   layerOrder?: number[];
   /** The behavior labels after the change, when it changed them (ADR 0020). */
   labels?: BehaviorLabels;
+  /** The add-on modules after the change, when it changed them (ADR 0028). */
+  modules?: readonly string[];
 }
 
 /** Makes `after` what you want, as one commit; in Live the keyboard follows. */
@@ -56,16 +58,19 @@ export async function commitImage(context: IoContext, after: KeyboardImage, opti
   if (getState().batchBusy) return sending;
   const before = wantOf(getState());
   const labelsBefore = getState().labels;
+  const modulesBefore = getState().modules;
   const change = patchBetween(before, after);
   if (change.length === 0) {
-    // A change only to names and descriptions: nothing for Guard or the keyboard.
-    if (options.labels && !sameValue(options.labels, labelsBefore)) dispatch({ type: "commit", image: after, labels: options.labels });
+    // A change only to the layout's notes (names, descriptions, modules): nothing for Guard or the keyboard.
+    const labelsChanged = options.labels && !sameValue(options.labels, labelsBefore);
+    const modulesChanged = options.modules && !sameValue(options.modules, modulesBefore);
+    if (labelsChanged || modulesChanged) dispatch({ type: "commit", image: after, labels: options.labels, modules: options.modules });
     return { ok: true };
   }
   const pass = await context.judge(before, after);
   if (!pass.ok) return pass;
   if (getState().batchBusy) return sending;
-  dispatch({ type: "commit", image: after, layerOrder: options.layerOrder, labels: options.labels });
+  dispatch({ type: "commit", image: after, layerOrder: options.layerOrder, labels: options.labels, modules: options.modules });
   if (getState().batchMode) return { ok: true };
 
   const send = () => sendStaged(context, { settingNow: change.map(({ item }) => item) });
@@ -76,7 +81,7 @@ export async function commitImage(context: IoContext, after: KeyboardImage, opti
   if (sent.unread) return { ok: false, message: `${sent.message}; the change is kept in the draft` };
   // Live is all or nothing: what the change set goes back, joined to the same
   // step, and the keyboard with it.
-  dispatch({ type: "commit", image: applyPatch(wantOf(getState()), change, "before"), join: true, labels: labelsBefore });
+  dispatch({ type: "commit", image: applyPatch(wantOf(getState()), change, "before"), join: true, labels: labelsBefore, modules: modulesBefore });
   const back = await send();
   return {
     ok: false,

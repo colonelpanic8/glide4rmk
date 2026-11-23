@@ -280,6 +280,8 @@ export interface WorkbenchState {
   history: History;
   /** The behaviors' names and descriptions (ADR 0020): beside what you want, never sent. */
   labels: BehaviorLabels;
+  /** The add-on modules the layout turns on (`lh-cirque`; ADR 0028). */
+  modules: readonly string[];
   /** Draft mode (ADR 0010): edits change what you want, and Send writes the
    *  difference; in Live each edit is written at once. */
   batchMode: boolean;
@@ -358,10 +360,14 @@ export type WorkbenchAction =
   /** An operation's result (ADR 0019): what you want, whole, as one step; `join`
    *  puts it in the last step (Live putting back a send that failed); a layer
    *  rewrite's `layerOrder` (destination → source slot) moves the layer on show with it. */
-  | { type: "commit"; image: KeyboardImage; join?: boolean; layerOrder?: number[]; labels?: BehaviorLabels }
+  | { type: "commit"; image: KeyboardImage; join?: boolean; layerOrder?: number[]; labels?: BehaviorLabels; modules?: readonly string[] }
   /** Labels kept for this keyboard or read from a file (ADR 0020), without those
    *  on empty slots: no step. */
   | { type: "labelsLoaded"; labels: BehaviorLabels }
+  /** The modules a layout file or this browser keeps: no step. */
+  | { type: "modulesLoaded"; modules: readonly string[] }
+  /** Turning an add-on on or off: one step. */
+  | { type: "modulesSet"; modules: readonly string[] }
   /** The keyboard was read (Send's read-back): the base is this image. `wrote`:
    *  the items the send wrote before it, now based on what was read. */
   | { type: "draftStored"; image: KeyboardImage; wrote?: SyncItem[] }

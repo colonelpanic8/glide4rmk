@@ -17,7 +17,14 @@ export interface LayoutImported {
 }
 
 /** Reads what the file needs and the keyboard was not read for, then commits the file. */
-export async function importLayout(context: IoContext, file: LayoutImport, labels?: BehaviorLabels): Promise<LayoutImported> {
+/** Imports a layout, with what its file keeps beside the keys: behavior labels
+ *  (ADR 0020) and add-on modules (ADR 0028), when it says. */
+export async function importLayout(
+  context: IoContext,
+  file: LayoutImport,
+  notes: { labels?: BehaviorLabels; modules?: readonly string[] } = {},
+): Promise<LayoutImported> {
+  const { labels, modules } = notes;
   const { session, getState, dispatch } = context;
   let pointingUnread: string | undefined;
   // A missing configuration can mean the connect-time read failed, not that
@@ -38,6 +45,6 @@ export async function importLayout(context: IoContext, file: LayoutImport, label
   }
   const state = getState();
   const layout = file.onto(state, wantOf(state), pointingUnread);
-  const written = await commitImage(context, layout.image, { labels: labels && labelsFor(labels, layout.image) });
+  const written = await commitImage(context, layout.image, { labels: labels && labelsFor(labels, layout.image), modules });
   return { layout, written };
 }

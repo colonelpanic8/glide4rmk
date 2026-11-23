@@ -654,6 +654,7 @@ describe("snapshotFromState", () => {
       forks: [],
       macroOps: [],
       layerMetadata: null,
+      modules: [],
     } as unknown as WorkbenchState;
 
     expect(renderDocument(snapshotFromState(state), CATALOG, "toml", named)).not.toContain(
@@ -692,6 +693,7 @@ describe("snapshotFromState", () => {
       forks: [],
       macroOps: [],
       layerMetadata: null,
+      modules: [],
     } as unknown as WorkbenchState;
 
     const again = parseDocument(exportDocument(state, CATALOG, "toml"), CATALOG);

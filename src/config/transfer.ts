@@ -22,6 +22,7 @@ import type { KeyboardImage } from "../sync/image";
 import { parseDocument, renderDocument, snapshotFromState } from "./document";
 import type { ConfigFormat, ExtensionCatalog, ImportNote, RuntimeSnapshot } from "./document";
 import { withTomlLabels } from "./behavior-labels";
+import { withModules } from "./add-ons";
 import { layoutOnto, type ImportedLayout } from "./import-layout";
 
 export type { ImportedLayout } from "./import-layout";
@@ -143,8 +144,10 @@ export function exportDocument(
     );
   }
   const text = renderDocument(snapshotFromState(state, bluetoothNameOf(previous, catalog, topology)), catalog, format, previous);
-  // The behaviors' names and descriptions, which the keyboard does not store (ADR 0020).
-  return format === "toml" ? withTomlLabels(text, state.labels) : text;
+  // What the keyboard does not store: the behaviors' names and descriptions
+  // (ADR 0020), and the add-on modules the layout turns on (ADR 0028).
+  const labelled = format === "toml" ? withTomlLabels(text, state.labels) : text;
+  return withModules(labelled, format, state.modules);
 }
 
 /** The BLE advertising name the document being replaced carries. The keyboard
