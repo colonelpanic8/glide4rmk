@@ -10,3 +10,5 @@ export type { JqResult, JqRunner } from "./jq";
 export { readableJqError, timedOut, TIME_LIMIT_MS } from "./jq";
 export type { FlowLog, FlowOutcome } from "./log";
 export { endLog, formatFlowLog, logLine, newFlowLog } from "./log";
+export type { CategoryTile } from "./browse";
+export { CATEGORY_ICONS, categoryTiles, flowsIn, searchFlows, splitDescription } from "./browse";
