@@ -171,6 +171,13 @@ describe("errors and the log", () => {
     expect(readableJqError("Cannot iterate over null (null)", "", 0)).toBe("Cannot iterate over null (null)");
   });
 
+  it("keep a Flow's sentence whole, colons and all: jq-web's own message keeps only what follows the last one", () => {
+    const detail = "jq: error (at <stdin>:0): Layer 3 is gone: pick another.\n";
+    expect(readableJqError("pick another.", detail, 2)).toBe("Layer 3 is gone: pick another.");
+    expect(readableJqError("plain.", "jq: error (at <stdin>:0): plain.\n", 0)).toBe("plain.");
+    expect(readableJqError("1}", 'jq: error (at <stdin>:0) (not a string): {"x":1}\n', 0)).toBe('{"x":1}');
+  });
+
   it("show a Flow's own sentence as it is, and not jq's complaints", () => {
     expect(isPlainFlowMessage("Your layout has no Base layer, so nothing was changed.")).toBe(true);
     expect(isPlainFlowMessage("Cannot iterate over null (null)")).toBe(false);

@@ -20,12 +20,15 @@ export const timedOut = (ms: number): JqResult => ({
 const COMPILE = /^\d+ compile errors?$/;
 const WITH_LINE = /^jq: error(?: \(at [^)]*\))?: (.*?)(?: \(Unix shell quoting issues\?\))?(?: at <top-level>)?, line (\d+):?\s*$/;
 const WITHOUT_LINE = /^jq: error(?: \(at [^)]*\))?: (.*)$/;
+/** A runtime error as jq printed it: `jq: error (at <stdin>:0): <text>`, the
+ *  text whole (jq-web's own message keeps only what follows its last colon). */
+const RUNTIME = /^jq: error \(at [^)]*\)(?: \(not a string\))?: ([\s\S]*?)\s*$/;
 
 /** jq-web's error as a person reads it: a compile error with its line counted
  *  from the Flow's own script (`lineOffset` lines were put before it); any
- *  other message as jq or the Flow wrote it. */
+ *  other message as jq or the Flow wrote it, colons and all. */
 export function readableJqError(message: string, detail: string, lineOffset: number): string {
-  if (!COMPILE.test(message.trim())) return message;
+  if (!COMPILE.test(message.trim())) return detail.match(RUNTIME)?.[1] || message;
   const lines = detail.split("\n");
   const found = lines.map((line) => line.match(WITH_LINE)).find(Boolean) ?? lines.map((line) => line.match(WITHOUT_LINE)).find(Boolean);
   if (!found) return "The script has a mistake jq could not explain (a compile error).";

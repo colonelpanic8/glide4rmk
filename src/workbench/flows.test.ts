@@ -101,6 +101,8 @@ describe("running a Flow (ADR 0025)", () => {
     await withBoard(true, async (_session, io, state) => {
       const stopped = await io.runFlow(flow('error("Your layout has no Gaming layer, so nothing was added.")'), {}, env());
       expect(stopped).toMatchObject({ ok: false, message: "Your layout has no Gaming layer, so nothing was added." });
+      const colon = await io.runFlow(flow('error("Layer 9 is not in this layout: pick another, so nothing was changed.")'), {}, env());
+      expect(colon).toMatchObject({ ok: false, message: "Layer 9 is not in this layout: pick another, so nothing was changed." });
       const broken = await io.runFlow(flow(".layers[0].keys[] | .x"), {}, env());
       expect(broken).toMatchObject({ ok: false, message: "Something went wrong while applying Test flow. Your layout is untouched.", log: { outcome: "error" } });
       expect(broken.log.lines.map(({ text }) => text)).toContain("jq: Cannot index array with string \"x\"");
