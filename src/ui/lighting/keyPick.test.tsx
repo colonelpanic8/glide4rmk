@@ -9,7 +9,7 @@ import { mockProvider } from "../../session/mock/board";
 import { glove80Board } from "../../session/mock/glove80";
 import { renderInWorkbench } from "../../test/workbench";
 import { initialWorkbenchState } from "../../workbench";
-import { openBundle } from "../bundle";
+import { openBundle } from "../../workbench/open";
 import { KeyEditor } from "../keymap/KeyEditor";
 import { KeymapCenter } from "../keymap/KeymapCenter";
 import { PickBanner } from "../keymap/PickBanner";

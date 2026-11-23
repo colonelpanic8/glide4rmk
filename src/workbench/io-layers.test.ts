@@ -1,11 +1,9 @@
+import { withTestWorkbench } from "../test/harness";
 import { describe, expect, it, vi } from "vitest";
-import { mockProvider, storedSegmentsOf } from "../session/mock/board";
+import { storedSegmentsOf } from "../session/mock/board";
 import { glove80Board } from "../session/mock/glove80";
 import type { RynkSession } from "../session/types";
-import { openBundle } from "../ui/bundle";
-import { initialWorkbenchState } from "./initial-state";
-import { ioFeaturesFor, makeIo, type WorkbenchIo } from "./io";
-import { makeWorkbenchReducer } from "./reducer";
+import { type WorkbenchIo } from "./io";
 import type { WorkbenchState } from "../model/workbench-state";
 import { draftOf } from "./draft/want";
 
@@ -15,25 +13,15 @@ async function withLayers(
   painted = false,
   draft = false,
 ) {
-  const session = await mockProvider({
+  const board = {
     ...glove80Board,
-    defaultLayers: glove80Board.defaultLayers.map((layer) => layer.map(() => "No")),
+    defaultLayers: glove80Board.defaultLayers.map((layer) => layer.map(() => "No" as const)),
     initialDefaultLayer: 0,
     seedCombos: [], seedMorse: [], seedForks: [],
     seedScenes: painted ? [{ layer: 1, led_id: 4, effect: { Solid: { color: { r: 1, g: 2, b: 3 } } } }] : [],
     compiledScenes: [], conditionalScenes: [], seedRuntimeConditionalScenes: [],
-  }).connect();
-  try {
-    const bundle = await openBundle(session);
-    let state: WorkbenchState = { ...initialWorkbenchState(bundle), batchMode: draft };
-    const reducer = makeWorkbenchReducer(bundle.caps.num_cols);
-    const io = makeIo(session, () => state, (action) => { state = reducer(state, action); }, {
-      cols: bundle.caps.num_cols, onDisconnect: () => {}, features: ioFeaturesFor(bundle),
-    });
-    await check(session, io, () => state);
-  } finally {
-    await session.close();
-  }
+  };
+  await withTestWorkbench(board, { mode: draft ? "draft" : "live" }, ({ session, io, state }) => check(session, io, state));
 }
 
 describe("layer transaction preflight", () => {

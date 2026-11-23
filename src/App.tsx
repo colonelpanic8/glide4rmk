@@ -6,7 +6,7 @@ import { initConfigWasm, parseDocument } from "./config/document";
 import { sessionProviders } from "./session";
 import { RECONNECT_DELAYS_MS, retryReconnect } from "./session/reconnect";
 import type { RynkSession, SessionProvider, SessionTarget } from "./session/types";
-import { openBundle } from "./ui/bundle";
+import { openBundle } from "./workbench/open";
 import type { ConnectAttempt } from "./ui/ConnectScreen";
 import { ConnectScreen } from "./ui/ConnectScreen";
 import { SpinnerIcon } from "./ui/icons";

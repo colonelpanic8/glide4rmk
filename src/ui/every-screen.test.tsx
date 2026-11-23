@@ -18,7 +18,7 @@ import { stub48Board } from "../session/mock/stub48";
 import type { RynkSession, SessionKind } from "../session/types";
 import { renderInWorkbench } from "../test/workbench";
 import { ALL_SECTIONS, areaOfSection, areasFor, sectionTerm, type SectionId } from "./areas";
-import { openBundle } from "./bundle";
+import { openBundle } from "../workbench/open";
 import { ConditionalRulesPanel } from "./lighting/ConditionalRulesPanel";
 import { FirmwareRulesPanel } from "./lighting/FirmwareRulesPanel";
 import { StatusPresetsPanel } from "./lighting/StatusPresetsPanel";

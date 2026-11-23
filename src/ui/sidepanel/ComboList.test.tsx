@@ -4,7 +4,7 @@ import "../../test/wasm";
 import { parseDocument } from "../../config/document";
 import { offlineGlove80Catalog, openOfflineGlove80 } from "../../session/offline/glove80";
 import { renderInWorkbench } from "../../test/workbench";
-import { openBundle } from "../bundle";
+import { openBundle } from "../../workbench/open";
 import { ComboList } from "./ComboList";
 
 describe("the side panel's combos", () => {

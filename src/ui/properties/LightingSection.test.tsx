@@ -10,7 +10,7 @@ import { glove80Board } from "../../session/mock/glove80";
 import { ortho60Board } from "../../session/mock/ortho60";
 import { stub48Board } from "../../session/mock/stub48";
 import { renderInWorkbench } from "../../test/workbench";
-import { openBundle } from "../bundle";
+import { openBundle } from "../../workbench/open";
 import { initialWorkbenchState } from "../../workbench";
 import { LayerLightingSettings } from "./LayerLightingSettings";
 import { LightingSection } from "./LightingSection";

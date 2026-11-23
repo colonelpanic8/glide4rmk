@@ -1,30 +1,16 @@
 import { describe as group, expect, it } from "vitest";
-import type { KeyAction } from "../vendor/rynk-wasm/rynk_wasm";
 import type { KeyboardImage } from "../sync/image";
 import { describe } from "./describe";
+import { key, layout, row } from "../test/image";
 import { GLOVE80_KEY_GROUPS } from "../model/boards/key-groups";
 
-const key = (code: string): KeyAction => ({ Single: { Key: { Hid: code } } }) as KeyAction;
-
-const image = (metadata: KeyboardImage["metadata"]): KeyboardImage => ({
-  metadata,
-  layers: [
-    [key("A"), key("B"), key("C"), key("D")],
-    ["Transparent", "No", "No", "Transparent"],
-    ["No", "No", "No", "No"],
-  ],
-  encoders: [[], [], []],
-  defaultLayer: 1,
-  combos: [],
-  morse: [],
-  forks: [],
-  behaviorOptions: null,
-  autoMouseLayers: [],
-  scenes: [],
-  runtimeConditionalScenes: [],
-  wakeLayers: 0,
-  pointing: null,
-});
+const image = (metadata: KeyboardImage["metadata"]): KeyboardImage =>
+  layout()
+    .layer("", row("A B C D"))
+    .layer("", row("__ -- -- __"))
+    .layer("", row("-- -- -- --"))
+    .with({ metadata, defaultLayer: 1 })
+    .build();
 
 group("describe", () => {
   it("gives each used layer by index and name, its keys row by row", () => {

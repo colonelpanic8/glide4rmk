@@ -3,7 +3,7 @@
 // field fails to compile) but partial: a test gives the slice of a bundle or
 // state it needs, and the rest is neutral (no keys, no lighting, no pointing).
 // For a whole, realistic board, pass a real bundle (openBundle on the offline
-// Glove80) instead.
+// Glove80) instead. Core tests without a screen use harness.ts.
 
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";

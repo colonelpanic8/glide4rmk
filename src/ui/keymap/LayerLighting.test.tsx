@@ -9,7 +9,7 @@ import { WorkbenchContext } from "../state";
 import { LayerLighting } from "./LayerLighting";
 import { lightView } from "./lightView";
 import { KeymapCenter } from "./KeymapCenter";
-import { openBundle } from "../bundle";
+import { openBundle } from "../../workbench/open";
 import { initialWorkbenchState } from "../../workbench";
 import { mockProvider } from "../../session/mock/board";
 import { glove80Board } from "../../session/mock/glove80";

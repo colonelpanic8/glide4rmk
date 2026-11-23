@@ -21,7 +21,7 @@ describe("the probing rule itself", () => {
     expect(isProbeChecked("src/ui/lighting/BackgroundPanel.tsx")).toBe(true);
     expect(isProbeChecked("src/ui/lighting/BackgroundPanel.test.tsx")).toBe(false);
     expect(isProbeChecked("src/ui/state.tsx")).toBe(false);
-    expect(isProbeChecked("src/ui/bundle.ts")).toBe(false);
+    expect(isProbeChecked("src/workbench/open.ts")).toBe(false);
     expect(isProbeChecked("src/session/link-session.ts")).toBe(false);
   });
 

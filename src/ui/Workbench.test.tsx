@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mockProvider } from "../session/mock/board";
 import { glove80Board } from "../session/mock/glove80";
 import type { RynkSession } from "../session/types";
-import { openBundle } from "./bundle";
+import { openBundle } from "../workbench/open";
 import { Workbench } from "./Workbench";
 
 let session: RynkSession | null = null;

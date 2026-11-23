@@ -1,12 +1,10 @@
+import { withTestWorkbench } from "../../test/harness";
 import { describe, expect, it, vi } from "vitest";
-import { mockProvider, storedSegmentsOf } from "../../session/mock/board";
+import { storedSegmentsOf } from "../../session/mock/board";
 import { glove80Board } from "../../session/mock/glove80";
 import type { RynkSession } from "../../session/types";
 import type { KeyAction } from "../../model/action-types";
-import { openBundle } from "../../ui/bundle";
-import { initialWorkbenchState } from "../initial-state";
-import { ioFeaturesFor, makeIo } from "../io";
-import { makeWorkbenchReducer } from "../reducer";
+import { makeIo } from "../io";
 import type { WorkbenchAction, WorkbenchState } from "../../model/workbench-state";
 import { mutableLighting } from "../../sync";
 import { draftOf } from "./want";
@@ -27,24 +25,10 @@ interface Harness {
 
 /** A simulated Glove80 in Draft (or Live), with the io the workbench uses. */
 async function inDraft(check: (h: Harness) => Promise<void>, draft = true, board = glove80Board) {
-  const session = await mockProvider(board).connect();
-  try {
-    const bundle = await openBundle(session);
-    let state: WorkbenchState = { ...initialWorkbenchState(bundle), batchMode: draft };
-    const reducer = makeWorkbenchReducer(bundle.caps.num_cols);
-    const types: string[] = [];
-    const dispatch = (action: WorkbenchAction) => {
-      state = reducer(state, action);
-      types.push(action.type);
-    };
-    const io = makeIo(session, () => state, dispatch, {
-      cols: bundle.caps.num_cols, onDisconnect: () => {}, features: ioFeaturesFor(bundle),
-    });
-    const seen = (type: WorkbenchAction["type"]) => vi.waitFor(() => expect(types).toContain(type));
-    await check({ session, io, state: () => state, dispatch, seen });
-  } finally {
-    await session.close();
-  }
+  await withTestWorkbench(board, { mode: draft ? "draft" : "live" }, ({ session, io, state, dispatch, dispatched }) => {
+    const seen = (type: WorkbenchAction["type"]) => vi.waitFor(() => expect(dispatched.map((action) => action.type)).toContain(type));
+    return check({ session, io, state, dispatch, seen });
+  });
 }
 
 describe("Send", () => {

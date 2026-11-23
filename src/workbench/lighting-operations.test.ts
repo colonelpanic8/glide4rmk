@@ -2,39 +2,26 @@
 // change for several keys, or clearing a layer, leaves in the draft and on the
 // keyboard, and that Undo takes it back whole.
 
+import { withTestWorkbench } from "../test/harness";
 import { describe, expect, it } from "vitest";
-import { mockProvider } from "../session/mock/board";
 import { glove80Board } from "../session/mock/glove80";
 import type { WorkbenchState } from "../model/workbench-state";
 import type { RynkSession } from "../session/types";
 import { statusLightOf } from "../model/lighting/status-light";
 import { DEFAULT_TIMING } from "../model/lighting/effect";
 import type { KeyLight } from "../model/lighting/key-light";
-import { openBundle } from "../ui/bundle";
 import { ledNodesOf } from "./apply";
 import { draftOf } from "./draft/want";
-import { initialWorkbenchState } from "./initial-state";
-import { ioFeaturesFor, makeIo, type WorkbenchIo } from "./io";
+import { type WorkbenchIo } from "./io";
 import { lightingDraftFor } from "./lighting-drafts";
-import { makeWorkbenchReducer } from "./reducer";
 
 const RED = { r: 255, g: 0, b: 0 };
 const red: KeyLight = { kind: "color", color: RED, effect: "Solid", timing: DEFAULT_TIMING };
 
 /** A simulated Glove80 with no lights stored, in Draft or Live. */
 async function onBoard(draft: boolean, check: (io: WorkbenchIo, state: () => WorkbenchState, session: RynkSession) => Promise<void>) {
-  const session = await mockProvider({ ...glove80Board, seedScenes: [] }).connect();
-  try {
-    const bundle = await openBundle(session);
-    let state: WorkbenchState = { ...initialWorkbenchState(bundle), batchMode: draft };
-    const reducer = makeWorkbenchReducer(bundle.caps.num_cols);
-    const io = makeIo(session, () => state, (action) => { state = reducer(state, action); }, {
-      cols: bundle.caps.num_cols, onDisconnect: () => {}, features: ioFeaturesFor(bundle), ledNodes: ledNodesOf(bundle),
-    });
-    await check(io, () => state, session);
-  } finally {
-    await session.close();
-  }
+  await withTestWorkbench({ ...glove80Board, seedScenes: [] }, { mode: draft ? "draft" : "live", io: (bundle) => ({ ledNodes: ledNodesOf(bundle) }) },
+    ({ io, state, session }) => check(io, state, session));
 }
 
 const inDraft = (check: Parameters<typeof onBoard>[1]) => onBoard(true, check);

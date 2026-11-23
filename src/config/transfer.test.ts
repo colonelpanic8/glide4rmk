@@ -6,7 +6,7 @@ import { RUNTIME_EFFECTS_CONDITIONS } from "../session/lighting-features";
 import type { ExtensionCatalog } from "./document";
 import { renderDocument, snapshotFromState } from "./document";
 import { offlineGlove80Catalog, openOfflineGlove80 } from "../session/offline/glove80";
-import { openBundle } from "../ui/bundle";
+import { openBundle } from "../workbench/open";
 import { initialWorkbenchState } from "../workbench/initial-state";
 import { wantOf } from "../workbench/draft/want";
 import type { LayerMetadata } from "../session/types";

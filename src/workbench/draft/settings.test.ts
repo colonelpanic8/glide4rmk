@@ -1,13 +1,10 @@
+import { withTestWorkbench } from "../../test/harness";
 import { describe, expect, it } from "vitest";
-import { mockProvider } from "../../session/mock/board";
 import { glove80Board } from "../../session/mock/glove80";
 import type { RynkSession } from "../../session/types";
-import { openBundle } from "../../ui/bundle";
 import type { WorkbenchAction, WorkbenchState } from "../../model/workbench-state";
 import type { MorseProfileEntry } from "../../model/action-types";
-import { initialWorkbenchState } from "../initial-state";
-import { ioFeaturesFor, makeIo, type WorkbenchIo } from "../io";
-import { makeWorkbenchReducer } from "../reducer";
+import { type WorkbenchIo } from "../io";
 import { draftOf } from "./want";
 import { draftGroups } from "./changes";
 
@@ -15,19 +12,7 @@ import { draftGroups } from "./changes";
 async function inDraft(
   check: (h: { session: RynkSession; io: WorkbenchIo; state: () => WorkbenchState; dispatch: (action: WorkbenchAction) => void }) => Promise<void>,
 ) {
-  const session = await mockProvider(glove80Board).connect();
-  try {
-    const bundle = await openBundle(session);
-    let state: WorkbenchState = { ...initialWorkbenchState(bundle), batchMode: true };
-    const reducer = makeWorkbenchReducer(bundle.caps.num_cols);
-    const dispatch = (action: WorkbenchAction) => { state = reducer(state, action); };
-    const io = makeIo(session, () => state, dispatch, {
-      cols: bundle.caps.num_cols, onDisconnect: () => {}, features: ioFeaturesFor(bundle),
-    });
-    await check({ session, io, state: () => state, dispatch });
-  } finally {
-    await session.close();
-  }
+  await withTestWorkbench(glove80Board, { mode: "draft" }, ({ session, io, state, dispatch }) => check({ session, io, state, dispatch }));
 }
 
 const kinds = (state: WorkbenchState) => draftOf(state).changes.map(({ item }) => item.kind);

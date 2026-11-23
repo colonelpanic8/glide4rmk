@@ -4,9 +4,8 @@ import type { KeyboardImage } from "../sync/image";
 import { noLabels } from "../model/behavior-labels";
 import { emptyCombo } from "../model/slots";
 import { catalog, guardInputOf, OPERATIONS, runOperation, type OperationFacts } from ".";
+import { key, layout, mo, row } from "../test/image";
 
-const key = (code: string): KeyAction => ({ Single: { Key: { Hid: code } } }) as KeyAction;
-const mo = (layer: number): KeyAction => ({ Single: { LayerOn: layer } }) as KeyAction;
 const behavior = {
   tri_layer: undefined,
   combo_prior_idle_ms: undefined,
@@ -19,26 +18,13 @@ const behavior = {
 
 /** Two columns, three used layers of four. */
 function image(): KeyboardImage {
-  return {
-    metadata: [
-      { occupied: true, name: "Base" },
-      { occupied: true, name: "Nav" },
-      { occupied: true, name: "Sym" },
-      { occupied: false, name: "" },
-    ],
-    layers: [[mo(1), key("A")], [key("B"), "No"], [key("C"), "No"], ["No", "No"]],
-    encoders: [[], [], [], []],
-    defaultLayer: 0,
-    combos: [],
-    morse: [],
-    forks: [],
-    behaviorOptions: behavior,
-    autoMouseLayers: [],
-    scenes: [{ layer: 1, led_id: 0, effect: { Solid: { color: { r: 1, g: 2, b: 3 } } } }],
-    runtimeConditionalScenes: [],
-    wakeLayers: 0,
-    pointing: null,
-  };
+  return layout()
+    .layer("Base", row("MO(1) A"))
+    .layer("Nav", row("B --"))
+    .layer("Sym", row("C --"))
+    .vacant()
+    .with({ behaviorOptions: behavior, scenes: [{ layer: 1, led_id: 0, effect: { Solid: { color: { r: 1, g: 2, b: 3 } } } }] })
+    .build();
 }
 
 const facts: OperationFacts = {

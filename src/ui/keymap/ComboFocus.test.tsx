@@ -7,7 +7,7 @@ import { mockProvider } from "../../session/mock/board";
 import { glove80Board } from "../../session/mock/glove80";
 import type { RynkSession } from "../../session/types";
 import { emptyCombo } from "../../model/slots";
-import { openBundle } from "../bundle";
+import { openBundle } from "../../workbench/open";
 import { initialWorkbenchState, type ConnectedBundle } from "../../workbench";
 import { WorkbenchContext } from "../state";
 import { ComboList } from "../sidepanel/ComboList";

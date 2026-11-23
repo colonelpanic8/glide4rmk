@@ -29,7 +29,7 @@ import { buildKeyboardModel } from "../model/keyboard";
 import { resolveBoardProfile } from "../model/boards";
 import type { LayerMetadata, LightingTopology, RuntimeLightingRule, RynkSession } from "../session/types";
 import { isUnsupportedError } from "../session/unsupported";
-import type { ConnectedBundle } from "../workbench";
+import type { ConnectedBundle } from "../model/workbench-state";
 import { errorMessage } from "../session/errors";
 import { initConfigWasm } from "../config/document";
 

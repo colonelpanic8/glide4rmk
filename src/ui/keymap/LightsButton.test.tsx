@@ -9,7 +9,7 @@ import { glove80Board } from "../../session/mock/glove80";
 import { plain36Board } from "../../session/mock/plain36";
 import { stub48Board } from "../../session/mock/stub48";
 import { renderInWorkbench } from "../../test/workbench";
-import { openBundle } from "../bundle";
+import { openBundle } from "../../workbench/open";
 import { initialWorkbenchState } from "../../workbench";
 import { LightsButton } from "./LightsButton";
 
