@@ -10,16 +10,17 @@ import type { WorkbenchContextValue } from "../state";
 import { keyActionGlyph } from "../labels";
 import { layerName, layerNamesOf } from "../layer-names";
 import { showToast } from "../messages/store";
+import { useOs, type Os } from "../preferences";
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /** What a step changed, in a few words. */
-export function stepLabel(step: HistoryStep, state: WorkbenchState): string {
+export function stepLabel(step: HistoryStep, state: WorkbenchState, os: Os): string {
   const kinds = new Set(step.changes.map(({ item }) => item.kind));
   const [first] = step.changes;
   if (kinds.size === 1 && first.item.kind === "key") {
     if (step.changes.length > 1) return plural(step.changes.length, "key");
-    const text = keyActionGlyph(first.after as never, state.morse, layerNamesOf(state.layerMetadata)).text;
+    const text = keyActionGlyph(first.after as never, state.morse, { os, names: layerNamesOf(state.layerMetadata) }).text;
     return `${text || "an empty key"} on ${layerName(state.layerMetadata, first.item.layer)}`;
   }
   if (kinds.size === 1 && first.item.kind === "lighting") {
@@ -44,13 +45,16 @@ export function useHistory(state: WorkbenchState, io: WorkbenchIo, dispatch: (ac
   // A toast's way back can run after later renders: it reads the state then.
   const latest = useRef(state);
   latest.current = state;
+  const os = useOs();
+  const latestOs = useRef(os);
+  latestOs.current = os;
 
   const travel = useCallback(
     async (direction: "undo" | "redo"): Promise<void> => {
       const before = latest.current;
       const step = (direction === "undo" ? before.history.past : before.history.future).at(-1);
       if (!step) return;
-      const label = stepLabel(step, before);
+      const label = stepLabel(step, before, latestOs.current);
       const result = await io.travel(direction);
       if (!result.ok) {
         if (!result.guarded) showToast(`${direction === "undo" ? "Undo" : "Redo"} did not reach the keyboard: ${result.message}`, { tone: "danger" });
@@ -72,13 +76,13 @@ export function useHistory(state: WorkbenchState, io: WorkbenchIo, dispatch: (ac
       canRedo: canTravel(state, "redo"),
       phase: writing ? ("writing" as const) : ("idle" as const),
       error: null,
-      undoLabel: past.length > 0 ? stepLabel(past.at(-1)!, state) : null,
-      redoLabel: future.length > 0 ? stepLabel(future.at(-1)!, state) : null,
+      undoLabel: past.length > 0 ? stepLabel(past.at(-1)!, state, os) : null,
+      redoLabel: future.length > 0 ? stepLabel(future.at(-1)!, state, os) : null,
       undo: () => travel("undo"),
       redo: () => travel("redo"),
     }),
     // Labels name layers and morse entries as they are now.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [past, future, writing, state.layerMetadata, state.morse, travel, dispatch],
+    [past, future, writing, state.layerMetadata, state.morse, os, travel, dispatch],
   );
 }

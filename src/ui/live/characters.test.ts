@@ -23,33 +23,35 @@ const mods = (shift: boolean): ModifierCombination => ({
   right_gui: false,
 });
 
+const MAC = { os: "mac" } as const;
+
 describe("live character glyphs", () => {
   it("renders letters as lowercase normally and uppercase while shifted", () => {
-    expect(liveKeyActionGlyph(key("A"), false).text).toBe("a");
-    expect(liveKeyActionGlyph(key("A"), true).text).toBe("A");
+    expect(liveKeyActionGlyph(key("A"), false, MAC).text).toBe("a");
+    expect(liveKeyActionGlyph(key("A"), true, MAC).text).toBe("A");
   });
 
   it("renders shifted digit and punctuation characters", () => {
-    expect(liveKeyActionGlyph(key("Kc1"), true).text).toBe("!");
-    expect(liveKeyActionGlyph(key("Slash"), true).text).toBe("?");
+    expect(liveKeyActionGlyph(key("Kc1"), true, MAC).text).toBe("!");
+    expect(liveKeyActionGlyph(key("Slash"), true, MAC).text).toBe("?");
   });
 
   it("applies a binding's own Shift modifier to printable keys", () => {
     const action: KeyAction = { Single: { KeyWithModifier: ["Kc1", mods(true)] } };
-    expect(liveKeyActionGlyph(action, false).text).toBe("!");
+    expect(liveKeyActionGlyph(action, false, MAC).text).toBe("!");
   });
 
   it("leaves non-character key symbols unchanged", () => {
-    expect(liveKeyActionGlyph(key("Enter"), true).text).toBe("↵");
+    expect(liveKeyActionGlyph(key("Enter"), true, MAC).text).toBe("↵");
   });
 
   it("follows the active OS locale", () => {
     setLocaleId("de");
     try {
       const y: KeyAction = { Single: { Key: { Hid: "Y" } } };
-      expect(liveKeyActionGlyph(y, false).text).toBe("z");
-      expect(liveKeyActionGlyph(key("Kc1"), true).text).toBe("!");
-      expect(liveKeyActionGlyph(key("Slash"), true).text).toBe("_");
+      expect(liveKeyActionGlyph(y, false, MAC).text).toBe("z");
+      expect(liveKeyActionGlyph(key("Kc1"), true, MAC).text).toBe("!");
+      expect(liveKeyActionGlyph(key("Slash"), true, MAC).text).toBe("_");
     } finally {
       setLocaleId(DEFAULT_LOCALE_ID);
     }

@@ -30,6 +30,7 @@ A browser workbench for RMK/Rynk keyboards (Glove80, Go60 and plain RMK boards):
 ## Style (tests enforce these)
 - Colours only from theme tokens (Tailwind `text-ink`, `bg-panel`, `border-line`, `var(--color-…)`), never a literal or Tailwind's palette (`ui/theme/colours.test.ts`). The six themes are data in `ui/theme/themes.ts` (ADR 0014); a new token is named in `src/index.css` `@theme` and given a value in `themeTokens`; every theme stays legible (`themes.test.ts`).
 - Browser-local preferences (computer, special keys, panel sides …): `ui/preferences.ts`; Settings: `ui/SettingsPanel.tsx`. Key pictures and per-computer modifiers: `ui/keyface/` (`keyFace`), never in a screen.
+- Modifiers read as the computer chosen in Settings writes them, everywhere: key faces, slots, lists, messages. Text goes through `useKeyText`/`useTextContext` (labels take a `TextContext`) and `ui/keyface/modifiers.ts`; never write ⌘ ⌥ ⌃ ⇧ in code (`src/architecture/modifier-text.test.ts`). The app's own shortcuts (`appShortcut`) follow the computer the page runs on.
 - Text only in the named sizes: `text-caption` 10, `small` 11, `body` 12, `ui` 13, `title` 15, `heading` 20, `display` 30 (`ui/theme/typography.test.ts`). Fonts: Inter, JetBrains Mono (`src/assets/fonts`).
 - Files at most 500 lines (`src/architecture/file-size.test.ts`); a few older ones are listed and may only shrink. Split by job, not by size.
 - Less text: a control that explains itself needs no hint. Messages lead with the consequence.

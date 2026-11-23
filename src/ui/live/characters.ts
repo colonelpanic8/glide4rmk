@@ -4,9 +4,10 @@ import type {
   KeyAction,
   ModifierCombination,
 } from "../../vendor/rynk-wasm/rynk_wasm";
-import { actionLabel, keyActionGlyph, modifierSymbols, type KeyGlyph } from "../labels";
+import { actionLabel, keyActionGlyph, type KeyGlyph, type TextContext } from "../labels";
+import { withModifierText } from "../keyface/modifiers";
+import type { Os } from "../preferences";
 import { activeLocale, characterFor } from "../locale";
-import type { LayerNames } from "../labels";
 
 function shifted(mods: ModifierCombination): boolean {
   return mods.left_shift || mods.right_shift;
@@ -21,7 +22,7 @@ function printableCharacter(code: HidKeyCode, shift: boolean, altgr = false): st
   return characterFor(activeLocale(), code, shift, altgr);
 }
 
-function printableActionLabel(action: Action, shift: boolean): string | null {
+function printableActionLabel(action: Action, shift: boolean, os: Os): string | null {
   if (typeof action === "string") return null;
   if ("Key" in action && "Hid" in action.Key) {
     return printableCharacter(action.Key.Hid, shift);
@@ -30,33 +31,28 @@ function printableActionLabel(action: Action, shift: boolean): string | null {
     const [code, mods] = action.KeyWithModifier;
     const character = printableCharacter(code, shift || shifted(mods), mods.right_alt);
     if (character === null) return null;
-    const nonCharacterModifiers = modifierSymbols({
-      ...mods,
-      left_shift: false,
-      right_shift: false,
-      right_alt: false,
-    });
-    return nonCharacterModifiers + character;
+    const nonCharacterModifiers = { ...mods, left_shift: false, right_shift: false, right_alt: false };
+    return withModifierText(nonCharacterModifiers, character, os);
   }
   return null;
 }
 
 /** Live-only key glyph that displays the character produced under Shift. */
-export function liveKeyActionGlyph(action: KeyAction, shift: boolean, names?: LayerNames): KeyGlyph {
+export function liveKeyActionGlyph(action: KeyAction, shift: boolean, text: TextContext): KeyGlyph {
   if (action === "No" || action === "Transparent" || "Morse" in action) {
-    return keyActionGlyph(action, [], names);
+    return keyActionGlyph(action, [], text);
   }
   if ("Single" in action) {
-    return { text: printableActionLabel(action.Single, shift) ?? actionLabel(action.Single, names) };
+    return { text: printableActionLabel(action.Single, shift, text.os) ?? actionLabel(action.Single, text) };
   }
   if ("Tap" in action) {
-    return { text: printableActionLabel(action.Tap, shift) ?? actionLabel(action.Tap, names) };
+    return { text: printableActionLabel(action.Tap, shift, text.os) ?? actionLabel(action.Tap, text) };
   }
-  if ("LayerModTap" in action) return keyActionGlyph(action, [], names);
+  if ("LayerModTap" in action) return keyActionGlyph(action, [], text);
   const [tap, hold] = action.TapHold;
   return {
-    text: printableActionLabel(tap, shift) ?? actionLabel(tap, names),
-    sub: printableActionLabel(hold, shift) ?? actionLabel(hold, names),
+    text: printableActionLabel(tap, shift, text.os) ?? actionLabel(tap, text),
+    sub: printableActionLabel(hold, shift, text.os) ?? actionLabel(hold, text),
   };
 }
 

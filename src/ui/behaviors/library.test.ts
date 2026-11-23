@@ -39,7 +39,7 @@ function input(over: Partial<LibraryInput> = {}): LibraryInput {
       ["profiles:3", "unused"],
     ]),
     wording: "friendly",
-    layerNames: [],
+    text: { os: "mac", names: [] },
     ...over,
   };
 }
@@ -95,7 +95,7 @@ describe("the Behavior Library rows", () => {
     const over = input({
       morse: [morse([[0b10, { TriggerMacro: 0 } as never], [0b11, { LayerOn: 2 } as never]]), morse([]), morse([])],
       behaviorUse: new Map([["morse:0", "unused"], ["macros:0", "only-by-unused"]]),
-      layerNames: [undefined, undefined, "Nav"],
+      text: { os: "mac", names: [undefined, undefined, "Nav"] },
     });
     const [tap] = libraryRows("morse", over);
     expect(tap.refersTo).toEqual([{ label: "Macro 0", behavior: { kind: "macros", slot: 0 } }, { label: "Nav", behavior: null }]);

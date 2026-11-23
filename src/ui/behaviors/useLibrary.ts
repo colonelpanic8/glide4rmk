@@ -4,7 +4,7 @@
 import { useMemo } from "react";
 import { useWorkbench } from "../state";
 import { useWording } from "../terms";
-import { useLayerNames } from "../layer-names";
+import { useTextContext } from "../useKeyText";
 import { behaviorUses } from "../../operations";
 import { wantOf } from "../../workbench/draft/want";
 import { useUsageReport } from "./useUsage";
@@ -14,7 +14,7 @@ export function useLibraryInput(): LibraryInput {
   const { bundle, state } = useWorkbench();
   const usage = useUsageReport();
   const wording = useWording();
-  const layerNames = useLayerNames();
+  const text = useTextContext();
   const cols = bundle.caps.num_cols;
   const { layers, morse, forks, macroOps, morseProfiles, combos } = state;
   const behaviorUse = useMemo(
@@ -23,5 +23,5 @@ export function useLibraryInput(): LibraryInput {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [layers, morse, forks, macroOps, morseProfiles, combos, cols],
   );
-  return { usage, macroOps, morse, forks, profiles: morseProfiles, labels: state.labels, behaviorUse, wording, layerNames };
+  return { usage, macroOps, morse, forks, profiles: morseProfiles, labels: state.labels, behaviorUse, wording, text };
 }

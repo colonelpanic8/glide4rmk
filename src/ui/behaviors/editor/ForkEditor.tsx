@@ -11,9 +11,11 @@ import { useWorkbench } from "../../state";
 import { useTerms, useWording, type TermId } from "../../terms";
 import { useKeyText } from "../../useKeyText";
 import { SectionLabel } from "../../kit";
-import { ActionEditor, ModGrid } from "../../keymap/ActionEditor";
+import { ActionEditor } from "../../keymap/ActionEditor";
+import { ModGrid } from "../../keymap/ModGrid";
 import { StateBitsEditor } from "../../advanced/bits";
-import { modifierSymbols } from "../../labels";
+import { modifierText } from "../../keyface/modifiers";
+import type { Os } from "../../preferences";
 import { LIBRARY_KINDS } from "../library";
 import type { BehaviorFocus } from "../focus";
 import { EditorShell, type EditorCard } from "./EditorShell";
@@ -26,10 +28,10 @@ const OUTPUTS: { id: Output; term: TermId }[] = [
   { id: "positive_output", term: "fork.positive" },
 ];
 
-function whenSummary(fork: Fork): string {
+function whenSummary(fork: Fork, os: Os): string {
   const leds = Object.entries(fork.match_any.leds).flatMap(([led, on]) => (on ? [led.replace("_lock", "")] : []));
   const mouse = Object.values(fork.match_any.mouse).some(Boolean) ? ["mouse"] : [];
-  return [modifierSymbols(fork.match_any.modifiers), ...leds, ...mouse].filter(Boolean).join(" · ") || "never";
+  return [modifierText(fork.match_any.modifiers, os), ...leds, ...mouse].filter(Boolean).join(" · ") || "never";
 }
 
 export function ForkEditor({ focus, onClose }: { focus: BehaviorFocus; onClose: () => void }) {
@@ -47,7 +49,7 @@ export function ForkEditor({ focus, onClose }: { focus: BehaviorFocus; onClose: 
   const one = LIBRARY_KINDS.forks.one[wording];
 
   const cards: EditorCard[] = [
-    { id: "fork", title: one, sub: whenSummary(draft) },
+    { id: "fork", title: one, sub: whenSummary(draft, keyText.os) },
     ...OUTPUTS.map(({ id, term: label }) => ({ id, title: term(label), sub: keyText.glyph(draft[id]).text || "nothing yet" })),
   ];
   const output = OUTPUTS.find((entry) => entry.id === selected)?.id;

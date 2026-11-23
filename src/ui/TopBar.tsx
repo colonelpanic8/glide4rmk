@@ -28,6 +28,8 @@ import { layerName } from "./layer-names";
 import type { Area, AreaId } from "./areas";
 import { ConnectionChip } from "./draft/ConnectionChip";
 import { SettingsPanel } from "./SettingsPanel";
+import { appShortcut } from "./keyface/modifiers";
+import { detectOs } from "./preferences";
 
 function BatteryReadout({ battery, split }: { battery: BatteryStatus; split: boolean }) {
   const available = battery !== "Unavailable" ? battery.Available : null;
@@ -100,6 +102,7 @@ export function TopBar({
   /** Opens the side panel on a phone; absent where there is no panel. */
   onDrawer?: () => void;
 }) {
+  const host = detectOs();
   const { bundle, state, io, history } = useWorkbench();
   const offline = bundle.session.kind === "offline";
   const { workspaceName } = useSharedDocumentTransfer();
@@ -162,7 +165,7 @@ export function TopBar({
             reason={history.phase !== "idle" ? "Wait for the keyboard to finish saving" : "Nothing to undo"}
             onClick={() => void history.undo()}
             aria-label="Undo"
-            title={`Undo ${history.undoLabel ?? "the last edit"} · Ctrl/⌘ Z`}
+            title={`Undo ${history.undoLabel ?? "the last edit"} · ${appShortcut("Z", host)}`}
           >
             <UndoIcon size={15} />
           </Button>
@@ -173,7 +176,7 @@ export function TopBar({
             reason={history.phase !== "idle" ? "Wait for the keyboard to finish saving" : "Nothing to redo"}
             onClick={() => void history.redo()}
             aria-label="Redo"
-            title={`Redo ${history.redoLabel ?? "the last edit"} · Ctrl/⌘ Shift Z or Ctrl Y`}
+            title={`Redo ${history.redoLabel ?? "the last edit"} · ${appShortcut("Z", host, { shift: true })}${host === "mac" ? "" : ` or ${appShortcut("Y", host)}`}`}
           >
             <RedoIcon size={15} />
           </Button>

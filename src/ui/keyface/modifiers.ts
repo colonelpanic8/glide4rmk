@@ -57,6 +57,35 @@ export function chordLook(mods: ModifierCombination, os: Os): ModifierLook[] {
   });
 }
 
+/** Modifiers as text that keeps a right-hand modifier apart, for lists and the
+ *  key editor: "⌃R⇧" on the Mac, "Ctrl+Right Shift" elsewhere. Empty for none. */
+export function modifierText(mods: ModifierCombination, os: Os): string {
+  const parts = MODIFIER_ORDER.flatMap((m) => {
+    const [left, right] = [mods[`left_${m}`], mods[`right_${m}`]];
+    if (!left && !right) return [];
+    if (m === "alt" && right && !left && os !== "mac") return [ALT_GR.word];
+    const look = MODIFIERS[m][os];
+    const rightOnly = right && !left;
+    return [os === "mac" ? `${rightOnly ? "R" : ""}${look.symbol}` : `${rightOnly ? "Right " : ""}${look.word}`];
+  });
+  return os === "mac" ? parts.join("") : parts.join("+");
+}
+
+/** Modifiers held with a key, as text: "⌘C" on the Mac, "Ctrl+C" elsewhere. */
+export function withModifierText(mods: ModifierCombination, key: string, os: Os): string {
+  const held = modifierText(mods, os);
+  if (!held) return key;
+  return os === "mac" ? `${held}${key}` : `${held}+${key}`;
+}
+
+/** One of this app's own shortcuts, for the computer the page runs on (not the
+ *  one the keyboard types into): "⇧⌘Z" on a Mac, "Ctrl+Shift+Z" elsewhere. */
+export function appShortcut(key: string, host: Os, { shift = false } = {}): string {
+  const command = host === "mac" ? MODIFIERS.gui.mac.symbol : MODIFIERS.ctrl[host].word;
+  if (host === "mac") return `${shift ? MODIFIERS.shift.mac.symbol : ""}${command}${key}`;
+  return [command, ...(shift ? [MODIFIERS.shift[host].word] : []), key].join("+");
+}
+
 /** A chord as text: "⌃⇧" on the Mac, words elsewhere ("Ctrl+Shift", "Super"). */
 export function chordText(mods: ModifierCombination, os: Os): string {
   const looks = chordLook(mods, os);

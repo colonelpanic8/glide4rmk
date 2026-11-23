@@ -4,7 +4,10 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { Action, KeyAction, ModifierCombination } from "../../model/action-types";
-import { anyModifier, modifierSymbols } from "../labels";
+import { anyModifier } from "../labels";
+import { modifierText } from "../keyface/modifiers";
+import { useOs } from "../preferences";
+import { ModGrid } from "./ModGrid";
 import { noModifiers } from "../../model/slots";
 import { decodeMacros, macroPreview } from "../../model/macros";
 import { DEFAULT_TAP_HOLD_PROFILE, morsePatternGlyph } from "../../model/morse";
@@ -69,46 +72,6 @@ function Keycap({
   );
 }
 
-const MOD_FIELDS: Array<{ key: keyof ModifierCombination; label: string; sym: string }> = [
-  { key: "left_ctrl", label: "L Ctrl", sym: "⌃" },
-  { key: "left_alt", label: "L Alt", sym: "⌥" },
-  { key: "left_shift", label: "L Shift", sym: "⇧" },
-  { key: "left_gui", label: "L Gui", sym: "⌘" },
-  { key: "right_ctrl", label: "R Ctrl", sym: "⌃" },
-  { key: "right_alt", label: "R Alt", sym: "⌥" },
-  { key: "right_shift", label: "R Shift", sym: "⇧" },
-  { key: "right_gui", label: "R Gui", sym: "⌘" },
-];
-
-export function ModGrid({
-  mods,
-  onChange,
-}: {
-  mods: ModifierCombination;
-  onChange: (next: ModifierCombination) => void;
-}) {
-  return (
-    <div className="grid grid-cols-4 gap-1.5">
-      {MOD_FIELDS.map((f) => (
-        <button
-          key={f.key}
-          type="button"
-          onClick={() => onChange({ ...mods, [f.key]: !mods[f.key] })}
-          className={cx(
-            "flex cursor-pointer flex-col items-center rounded-md border py-1.5 transition-colors duration-120",
-            mods[f.key]
-              ? "border-accent bg-accent-dim/40 text-accent"
-              : "border-line bg-raised text-mute hover:border-line-strong",
-          )}
-        >
-          <span className="text-ui leading-none">{f.sym}</span>
-          <span className="mt-0.5 text-caption uppercase tracking-wide">{f.label}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 type LayerKind = "LayerOn" | "LayerToggle" | "DefaultLayer" | "OneShotLayer" | "LayerToggleOnly";
 
 const LAYER_KINDS: Array<{ id: LayerKind; label: string; hint: string }> = [
@@ -170,6 +133,7 @@ export function SlotPicker({
 }) {
   const [tab, setTab] = useState<"keys" | "mods" | "layers">("keys");
   const [mods, setMods] = useState<ModifierCombination>(noModifiers);
+  const os = useOs();
   return (
     <div className="flex flex-col gap-2.5 rounded-lg border border-line-soft bg-well/60 p-2.5">
       <div className="flex gap-1">
@@ -205,7 +169,7 @@ export function SlotPicker({
             disabled={!anyModifier(mods)}
             onClick={() => onPick({ Modifier: mods })}
           >
-            Use {modifierSymbols(mods) || "modifier"}
+            Use {modifierText(mods, os) || "modifier"}
           </Button>
         </div>
       )}
@@ -433,6 +397,7 @@ export function ActionEditor({
   const [tab, setTab] = useState<Tab>(() => initialTab(current));
   const [keyMods, setKeyMods] = useState<ModifierCombination>(noModifiers);
   const [oneShot, setOneShot] = useState(false);
+  const os = useOs();
 
   const tabs = useMemo(() => {
     const out = [...BASE_TABS];
@@ -516,7 +481,7 @@ export function ActionEditor({
               })
             }
           >
-            Bind {modifierSymbols(keyMods) || "modifier"}
+            Bind {modifierText(keyMods, os) || "modifier"}
           </Button>
         </div>
       )}

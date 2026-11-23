@@ -29,6 +29,8 @@ import { KeyLightFields } from "./KeyLightFields";
 import { lightView, useLightView } from "./lightView";
 import { useKeyLights } from "./useKeyLights";
 import { onApple } from "./useKeySelection";
+import { modifierLook } from "../keyface/modifiers";
+import { detectOs } from "../preferences";
 import { useTryOut } from "./useTryOut";
 import { TryOutPanel, TryOutSwitch } from "./TryOut";
 
@@ -144,7 +146,7 @@ export function LayerLighting({ ledId, children }: { ledId: number | undefined; 
         <button
           type="button"
           aria-pressed={view.selecting}
-          title={`Select several keys. Also: ${onApple() ? "⌘" : "Ctrl"} with a click or a drag, Shift with a click.`}
+          title={`Select several keys. Also: ${modifierLook(onApple() ? "gui" : "ctrl", detectOs()).symbol} with a click or a drag, Shift with a click.`}
           onClick={() => lightView.setSelecting(!view.selecting)}
           className={toolClass(view.selecting)}
         >
