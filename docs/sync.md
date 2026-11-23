@@ -78,7 +78,7 @@ The macro region is one stored item, so a region that both shrinks and changes g
 | An encoder | `keymap.setEncoder` |
 | A combo, morse or fork slot (`io.setSlot`) | `combos.set`, `morse.set`, `forks.set` |
 | Behavior timing, hold-trigger positions | `behavior.set`, `behavior.setHoldTriggerPositions` |
-| Default layer, a layer's name | `keymap.setDefaultLayer`, `keymap.setLayerMetadata` (read back) |
+| Default layer | `keymap.setDefaultLayer` |
 | Lights on or off, brightness, background | `lighting.setState` |
 | Layer policy, wake layers | `lighting.scenes.setLayerPolicy`, `lighting.setWakeLayers` |
 | Effect, overlay slot, effect parameters | `lighting.setExtensionState`, `setExtensionLayers`, `setExtensionParam` |

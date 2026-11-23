@@ -26,7 +26,7 @@ The table is built from each record's `# NNNN. Title` and `**Status:**` line by 
 | [0017](0017-a-core-for-the-workbench.md) | A core for the workbench | Accepted |
 | [0018](0018-the-draft-is-a-wanted-image.md) | The draft is a wanted image beside its base; one history in Draft and Live | Accepted; what `base` holds and what a draft was based on amended by 0022 |
 | [0019](0019-operations.md) | Operations: named changes from one image to another | Accepted; imports completed by 0023 |
-| [0020](0020-behavior-library.md) | The Behavior Library: names beside the slots, one editor, every edit an operation | Accepted |
+| [0020](0020-behavior-library.md) | The Behavior Library: names beside the slots, one editor, every edit an operation | Accepted; its operation names amended by 0031 |
 | [0021](0021-keys-by-whole-rows.md) | Keys are written by whole rows | Accepted |
 | [0022](0022-base-basis-and-lives-own-send.md) | The base is the last read; what a draft was based on; Live's own send | Accepted |
 | [0023](0023-a-file-import-is-a-commit.md) | A file import is a commit | Accepted |
@@ -36,6 +36,7 @@ The table is built from each record's `# NNNN. Title` and `**Status:**` line by 
 | [0027](0027-flows-know-the-board.md) | Flows know the board: key groups, a jq library, needs_keys | Accepted |
 | [0028](0028-add-ons-in-the-layout.md) | A keyboard's add-ons are kept in the layout | Accepted |
 | [0029](0029-opening-a-keyboard-and-the-test-harness.md) | Opening a keyboard is the workbench's; one harness for core tests | Accepted |
+| [0031](0031-operation-names-as-glides.md) | Operation names as GLIDE's; a layer's name is an operation | Accepted |
 <!-- /adr-index -->
 
 The glossary is in [../glossary.md](../glossary.md).

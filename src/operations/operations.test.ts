@@ -3,7 +3,7 @@ import type { BehaviorOptions, KeyAction, MorseProfile } from "../vendor/rynk-wa
 import type { KeyboardImage } from "../sync/image";
 import { noLabels } from "../model/behavior-labels";
 import { emptyCombo } from "../model/slots";
-import { catalog, guardInputOf, OPERATIONS, runOperation, type OperationFacts } from ".";
+import { catalog, FORMER_NAMES, guardInputOf, OPERATIONS, runOperation, type OperationFacts } from ".";
 import { key, layout, mo, row } from "../test/image";
 
 const behavior = {
@@ -45,12 +45,24 @@ const run = (name: Parameters<typeof runOperation>[0], input: unknown, on = imag
 describe("the catalog", () => {
   it("lists every operation by name, with a description and its input fields, as plain data", () => {
     const listed = catalog();
-    expect(listed.map((entry) => entry.name)).toEqual(Object.keys(OPERATIONS));
+    expect(listed.map((entry) => entry.name)).toEqual(Object.keys(OPERATIONS).filter((name) => !Object.hasOwn(FORMER_NAMES, name)));
     for (const entry of listed) {
+      expect(OPERATIONS[entry.name].name, "an operation knows its own name").toBe(entry.name);
       expect(entry.description).toMatch(/\.$/);
       expect(entry.inputs.length).toBeGreaterThan(0);
       expect(JSON.parse(JSON.stringify(entry))).toEqual(entry);
     }
+  });
+
+  it("names operations as GLIDE does where GLIDE has them (ADR 0031)", () => {
+    const names = catalog().map((entry) => entry.name);
+    for (const glide of ["set_keys", "add_behavior", "update_behavior", "add_layer", "rename_layer"]) expect(names).toContain(glide);
+    expect(names).not.toContain("create_behavior");
+    expect(names).not.toContain("set_behavior");
+  });
+
+  it("still runs the former names, as the same operations", () => {
+    for (const [former, now] of Object.entries(FORMER_NAMES)) expect(OPERATIONS[former as keyof typeof FORMER_NAMES]).toBe(OPERATIONS[now]);
   });
 
   it("checks the input before running, with a plain message", () => {
@@ -184,5 +196,27 @@ describe("Guard's view of an image", () => {
       defaultLayer: 0,
       source: { layers: image().layers, cols: 2, combos: [], morse: [], forks: [], macroCount: 0, profileSlots: [1] },
     });
+  });
+});
+
+describe("rename_layer", () => {
+  it("names a layer; nothing else changes", () => {
+    const result = run("rename_layer", { layer: 1, name: " Navigation " });
+    expect(result).toMatchObject({ ok: true });
+    if (!result.ok) return;
+    expect(result.image.metadata[1]).toEqual({ occupied: true, name: "Navigation" });
+    expect({ ...result.image, metadata: image().metadata }).toEqual(image());
+  });
+
+  it("keeps the image when the name is the one it has", () => {
+    const before = image();
+    expect(run("rename_layer", { layer: 1, name: "Nav" }, before)).toEqual({ ok: true, image: before });
+  });
+
+  it("refuses an empty, long or taken name, and a layer not in use", () => {
+    expect(run("rename_layer", { layer: 1, name: "  " })).toEqual({ ok: false, message: "a layer needs a name" });
+    expect(run("rename_layer", { layer: 1, name: "x".repeat(33) })).toEqual({ ok: false, message: "a layer's name has at most 32 UTF-8 bytes" });
+    expect(run("rename_layer", { layer: 1, name: "Sym" })).toEqual({ ok: false, message: "there is a layer called Sym already" });
+    expect(run("rename_layer", { layer: 3, name: "New" })).toEqual({ ok: false, message: "layer 3 is not in use" });
   });
 });

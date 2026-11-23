@@ -94,3 +94,27 @@ describe("a layer operation in Draft", () => {
     }, false, true);
   });
 });
+
+describe("renaming a layer in Live", () => {
+  it("is the rename_layer operation: one change through Send's path, read back, and one Undo step", async () => {
+    await withLayers(async (session, io, state) => {
+      const before = (await session.keymap.getLayerMetadata(1)).name;
+      expect(await io.renameLayer(1, "Nav")).toEqual({ ok: true });
+      expect((await session.keymap.getLayerMetadata(1)).name).toBe("Nav");
+      expect(state().layerMetadata![1].name).toBe("Nav");
+      expect(draftOf(state()).changes).toEqual([]);
+      expect(state().history.past.at(-1)?.changes.map(({ item }) => item.kind)).toEqual(["layerMetadata"]);
+      expect(await io.travel("undo")).toEqual({ ok: true });
+      expect((await session.keymap.getLayerMetadata(1)).name).toBe(before);
+    });
+  });
+
+  it("refuses a taken name and writes nothing", async () => {
+    await withLayers(async (session, io, state) => {
+      const taken = state().layerMetadata![2].name;
+      const write = vi.spyOn(session.keymap, "setLayerMetadata");
+      expect(await io.renameLayer(1, taken)).toEqual({ ok: false, message: `there is a layer called ${taken} already` });
+      expect(write).not.toHaveBeenCalled();
+    });
+  });
+});

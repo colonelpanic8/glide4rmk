@@ -50,6 +50,7 @@ def is_punctuation: IN("Equal", "Minus", "Backslash", "Quote", "Grave", "Dot", "
 def set_keys($keys): {name: "set_keys", input: {keys: $keys}};
 def set_timing_profile($name; $timing): {name: "set_timing_profile", input: {name: $name, timing: $timing}};
 def add_layer($name; $after): {name: "add_layer", input: {name: $name, after: $after}};
+def rename_layer($layer; $name): {name: "rename_layer", input: {layer: $layer, name: $name}};
 `;
 
 /** How many lines the library puts before a script: a script's line numbers start after them. */

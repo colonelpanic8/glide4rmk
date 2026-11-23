@@ -175,7 +175,7 @@ function ProfileEditor({ entry, isNew, onSaved, onDelete }: {
   // The new-profile form has to survive a failed write: leaving it early drops
   // the entry the reducer just rolled back, along with its error.
   const save = async () => {
-    const result = await io.apply("set_behavior", { kind: "profiles", slot: draft.index, value: draft.profile, name: draft.name.trim() });
+    const result = await io.apply("update_behavior", { kind: "profiles", slot: draft.index, value: draft.profile, name: draft.name.trim() });
     if (result.ok) onSaved();
   };
 

@@ -1,14 +1,14 @@
-// The io's layers: the default layer, names, and the structural operations
-// (duplicate, move, delete). Those are operations (ADR 0019) on what you want
-// after a fresh read, which brings every encoder and the layer state the
-// rewrite needs; their result is one commit, sent at once in Live (all or
-// nothing) and on Send in Draft.
+// The io's layers: the default layer, a layer's name (the rename_layer
+// operation), and the structural operations (duplicate, move, delete). Those
+// are operations (ADR 0019) on what you want after a fresh read, which brings
+// every encoder and the layer state the rewrite needs; their result is one
+// commit, sent at once in Live (all or nothing) and on Send in Draft.
 
 import type { WorkbenchState } from "../model/workbench-state";
 import { partsOf, readImage, type KeyboardImage } from "../sync";
 import { runOperation, type OperationFacts, type OperationResult } from "../operations";
 import { errorMessage } from "../session/errors";
-import { commitImage, factsOf } from "./apply";
+import { applyOperation, commitImage, factsOf } from "./apply";
 import { draftEditCount, pointingDraftDirty } from "./draft/selectors";
 import { draftOf, wantOf } from "./draft/want";
 import type { IoContext, IoFeatures, IoWriteResult, WorkbenchIo } from "./io";
@@ -97,43 +97,12 @@ export function layerIo(context: IoContext): LayerIo {
         dispatch({ type: "defaultLayer", layer: prev });
       });
     },
+    // A name is part of what you want: the operation, judged and undone as
+    // one change, waits in Draft and goes through Send's path in Live.
     async renameLayer(layer, name) {
-      const state = getState();
-      if (state.layerBusy) {
-        return { ok: false, message: "another layer operation is running" };
-      }
-      const trimmed = name.trim();
-      if (!trimmed) return rejectLayerOperation("layer name must not be empty");
-      if (new TextEncoder().encode(trimmed).length > 32) {
-        return rejectLayerOperation("layer name must be at most 32 UTF-8 bytes");
-      }
-      if (
-        state.layerMetadata?.some(
-          (candidate, index) => index !== layer && candidate.occupied && candidate.name === trimmed,
-        )
-      ) {
-        return rejectLayerOperation(`layer name '${trimmed}' is already in use`);
-      }
-      const metadata = state.layerMetadata?.[layer];
-      if (!metadata?.occupied) {
-        return rejectLayerOperation(`layer ${layer} is not an occupied device layer`);
-      }
-      const drafted = draft([{ item: { kind: "layerMetadata", layer }, value: { occupied: true, name: trimmed } }]);
-      if (drafted) return drafted;
-      dispatch({ type: "layerOperationStart" });
-      try {
-        await session.keymap.setLayerMetadata(layer, { occupied: true, name: trimmed });
-        const readback = await session.keymap.getLayerMetadata(layer);
-        if (!readback.occupied || readback.name !== trimmed) {
-          throw new Error("layer name read-back did not match the write");
-        }
-        dispatch({ type: "layerMetadataSet", layer, metadata: readback });
-        return { ok: true };
-      } catch (error) {
-        const message = errorMessage(error);
-        dispatch({ type: "layerOperationError", message });
-        return { ok: false, message };
-      }
+      if (getState().layerBusy) return { ok: false, message: "another layer operation is running" };
+      const result = await applyOperation(context, "rename_layer", { layer, name });
+      return result.ok || result.guarded ? result : rejectLayerOperation(result.message);
     },
     duplicateLayer(layer) {
       return runLayerStructure((image, facts) => runOperation("duplicate_layer", image, { layer }, facts));

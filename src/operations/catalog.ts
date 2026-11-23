@@ -4,7 +4,7 @@
 
 import { setKeys, swapKeys } from "./keys";
 import { setKeyTiming } from "./key-timing";
-import { addLayer, deleteLayer, duplicateLayer, moveLayer } from "./layers";
+import { addLayer, deleteLayer, duplicateLayer, moveLayer, renameLayer } from "./layers";
 import { setTimingProfile } from "./timing-profiles";
 import { clearLayerLights, setBatteryBar, setConnectionKey, setKeyEffects, setKeyLight } from "./lighting";
 import { applyTransform } from "./transform";
@@ -22,12 +22,16 @@ import { checkInput } from "./inputs";
 import type { InputField, OperationFacts, OperationResult } from "./types";
 import type { KeyboardImage } from "../sync/image";
 
-export const OPERATIONS = {
+// The names are GLIDE's where GLIDE has the operation (set_keys, add_behavior,
+// update_behavior, add_layer, rename_layer), so a Flow or a WebMCP tool reads
+// the same in both apps (ADR 0031).
+const NAMED = {
   set_keys: setKeys,
   swap_keys: swapKeys,
   set_key_timing: setKeyTiming,
   set_combos: setCombos,
   add_layer: addLayer,
+  rename_layer: renameLayer,
   move_layer: moveLayer,
   delete_layer: deleteLayer,
   duplicate_layer: duplicateLayer,
@@ -37,8 +41,8 @@ export const OPERATIONS = {
   set_connection_key: setConnectionKey,
   set_battery_bar: setBatteryBar,
   apply_transform: applyTransform,
-  create_behavior: createBehavior,
-  set_behavior: setBehavior,
+  add_behavior: createBehavior,
+  update_behavior: setBehavior,
   set_timing_profile: setTimingProfile,
   rename_behavior: renameBehavior,
   duplicate_behavior: duplicateBehavior,
@@ -46,6 +50,12 @@ export const OPERATIONS = {
   delete_unused_behaviors: deleteUnusedBehaviors,
   paste_behaviors: pasteBehaviors,
 } as const;
+
+/** GLIDE4RMK's first names, still run until ADR 0031 retires them; never listed. */
+export const FORMER_NAMES = { create_behavior: "add_behavior", set_behavior: "update_behavior" } as const;
+
+/** Every operation a caller may name: GLIDE's names, and the former ones as aliases. */
+export const OPERATIONS = { ...NAMED, create_behavior: NAMED.add_behavior, set_behavior: NAMED.update_behavior } as const;
 
 export type OperationName = keyof typeof OPERATIONS;
 export type InputOf<Name extends OperationName> = Parameters<(typeof OPERATIONS)[Name]["run"]>[1];
@@ -57,9 +67,10 @@ export interface OperationInfo {
   inputs: readonly InputField[];
 }
 
+/** The operations, by their names (former names are not listed). */
 export function catalog(): OperationInfo[] {
-  return (Object.keys(OPERATIONS) as OperationName[]).map((name) => {
-    const { description, inputs } = OPERATIONS[name];
+  return (Object.keys(NAMED) as (keyof typeof NAMED)[]).map((name) => {
+    const { description, inputs } = NAMED[name];
     return { name, description, inputs };
   });
 }
