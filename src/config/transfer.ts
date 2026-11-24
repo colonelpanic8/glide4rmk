@@ -25,6 +25,7 @@ import { withTomlLabels } from "./behavior-labels";
 import { withModules } from "./add-ons";
 import { layoutOnto, type ImportedLayout } from "./import-layout";
 import { decorationNotes } from "./decorations";
+import { checkSaved, type SavedCheck } from "./saved-check";
 
 export type { ImportedLayout } from "./import-layout";
 
@@ -139,6 +140,31 @@ export function exportDocument(
   incompleteReads: string[] = [],
   topology?: LightingTopology,
 ): string {
+  return rendered(state, catalog, format, previous, incompleteReads, topology).text;
+}
+
+/** The document a save writes, and what it reads back as (ADR 0036): GLIDE4RMK
+ *  Guard's check that the file opens again as what was saved. */
+export function exportChecked(
+  state: WorkbenchState,
+  catalog: ExtensionCatalog,
+  format: ConfigFormat,
+  previous?: string,
+  incompleteReads: string[] = [],
+  topology?: LightingTopology,
+): { text: string; check: SavedCheck } {
+  const { text, snapshot } = rendered(state, catalog, format, previous, incompleteReads, topology);
+  return { text, check: checkSaved(text, snapshot, catalog, format, topology) };
+}
+
+function rendered(
+  state: WorkbenchState,
+  catalog: ExtensionCatalog,
+  format: ConfigFormat,
+  previous: string | undefined,
+  incompleteReads: string[],
+  topology: LightingTopology | undefined,
+): { text: string; snapshot: RuntimeSnapshot } {
   if (incompleteReads.length > 0) {
     throw new Error(
       `Cannot export an incomplete device snapshot. Reconnect and try again.\n\nFailed reads:\n- ${incompleteReads.join("\n- ")}`,
@@ -149,7 +175,7 @@ export function exportDocument(
   // What the keyboard does not store: the behaviors' names and descriptions
   // (ADR 0020), and the add-on modules the layout turns on (ADR 0028).
   const labelled = format === "toml" ? withTomlLabels(text, state.labels) : text;
-  return withModules(labelled, format, state.modules);
+  return { text: withModules(labelled, format, state.modules), snapshot };
 }
 
 /** A file lists the layers in use: vacant slots after the last one are left out,

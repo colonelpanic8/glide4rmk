@@ -13,6 +13,8 @@ import { useWorkbench } from "./state";
 import { labelsFromToml } from "../config/behavior-labels";
 import { modulesFromFile } from "../config/add-ons";
 import { errorReport } from "./TransferReport";
+import { askConfirm, showToast } from "./messages/store";
+import { savedFileWords } from "./guard/words";
 import type { TransferReport } from "./TransferReport";
 import { profileById } from "../model/boards/profiles";
 import type { BoardDocumentTools } from "../model/boards/profiles";
@@ -176,7 +178,7 @@ export function useDocumentTransfer(): DocumentTransfer {
     setPhase("exporting");
     setReport(null);
     try {
-      const text = requireDocumentTools(format).exportDocument(
+      const { text, check } = requireDocumentTools(format).exportChecked(
         state,
         await catalog(),
         format,
@@ -184,6 +186,15 @@ export function useDocumentTransfer(): DocumentTransfer {
         bundle.incompleteReads ?? [],
         bundle.topology,
       );
+      // Guard reads the file back first (ADR 0036): one that would not open is never saved.
+      if (!check.ok) {
+        const words = savedFileWords(check, FORMAT_LABEL[format]);
+        if ("stop" in words) {
+          showToast(words.stop, { guard: true, tone: "danger" });
+          return;
+        }
+        if (!(await askConfirm(words.ask))) return;
+      }
       const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
       const link = document.createElement("a");
       link.href = url;

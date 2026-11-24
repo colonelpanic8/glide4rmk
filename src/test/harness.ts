@@ -19,7 +19,7 @@ import { openBundle } from "../workbench/open";
 import { nodeJq } from "./jq";
 
 /** The layout files tests open, each on the offline board it is for. */
-const FIXTURES = {
+export const FIXTURES = {
   /** TailorKey for RMK: the golden for round-trips and Flows. */
   tailorkey: "src/test/fixtures/glove80-tailorkey-qwerty.toml",
   /** Three layers, no home-row mods, no combos, no Magic layer. */
