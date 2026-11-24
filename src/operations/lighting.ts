@@ -1,7 +1,7 @@
 // Lighting: a key's light on a layer (its scene cell or its status rules),
 // keys each given their own effect, clearing a layer of them, the status setups that take their keys from the
-// board (a connection key, a battery bar), and the capacity checks every
-// lighting operation shares. Pure.
+// board (a connection key, a battery bar), MoErgo's Magic layer on the boards
+// that have one, and the capacity checks every lighting operation shares. Pure.
 
 import type { LightingEffect, LightingSceneCell } from "../vendor/rynk-wasm/rynk_wasm";
 import type { KeyboardImage } from "../sync/image";
@@ -9,6 +9,8 @@ import { planLight, type KeyLight } from "../model/lighting/key-light";
 import type { Rules } from "../model/lighting/rules";
 import { withoutStatusLights, withStatusLight } from "../model/lighting/status-light";
 import { connectionKeyAction, replaceBatteryBar, type BatteryBarPreset, type ConnectionKeyPreset } from "../model/lighting/status-presets";
+import { profileById } from "../model/boards/profiles";
+import { magicLayerKeys, withMagicLayerRules, withMagicLayerScene } from "../model/lighting/stock-magic-layer";
 import { withKeys } from "./keys";
 import { failed, reason, type Operation, type OperationFacts, type OperationResult } from "./types";
 
@@ -126,5 +128,25 @@ export const setBatteryBar: Operation<BatteryBarPreset> = {
     } catch (error) {
       return failed(reason(error));
     }
+  },
+};
+
+export const setMagicLayer: Operation<{ layer?: number }> = {
+  name: "set_magic_layer",
+  description:
+    "Makes a layer MoErgo's Magic layer on a Glove80 or a Go60: its keys, its status lights (layers, locks, batteries, Bluetooth, USB, the maintenance lock), the left half dark, and the layer waking the lights.",
+  inputs: [{ name: "layer", kind: "integer", min: 0, optional: true, description: "The layer; the board's own Magic layer when left out." }],
+  run(image, { layer }, facts) {
+    const table = facts.board === null ? undefined : profileById(facts.board)?.magicLayer;
+    if (!table) return failed("Only the Glove80 and the Go60 have MoErgo's Magic layer.");
+    const target = layer ?? table.layer;
+    if (!image.layers[target]) return failed(`Layer ${target} does not exist`);
+    const bound = withKeys(image, facts.cols, magicLayerKeys(table).map((key) => ({ layer: target, ...key })));
+    if (typeof bound === "string") return failed(bound);
+    const lit = withLighting(bound, facts, {
+      rules: withMagicLayerRules(bound.runtimeConditionalScenes, table, target, image.layers.length),
+      scenes: facts.sceneCapacity === null ? undefined : withMagicLayerScene(bound.scenes, table, target),
+    });
+    return lit.ok ? { ...lit, image: { ...lit.image, wakeLayers: lit.image.wakeLayers | (1 << target) } } : lit;
   },
 };

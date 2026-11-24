@@ -41,6 +41,7 @@ function image(): KeyboardImage {
 }
 
 const facts: OperationFacts = {
+  board: null,
   cols: 2,
   sceneCapacity: null,
   ruleCapacity: null,

@@ -1,6 +1,7 @@
 import type { BoardEnrichment } from "../keyboard";
 import type { KeyGroups } from "./key-groups";
 import type { AddOnPlace } from "./add-ons";
+import type { MagicLayerTable } from "./magic-layer";
 
 export interface BoardDocumentTools {
   codec: "moergo";
@@ -53,7 +54,6 @@ export interface BoardProfile {
   matrix: { rows: number; cols: number };
   enrichment: BoardEnrichment;
   documents?: BoardDocumentTools;
-  presets: readonly string[];
   /** Named board-reserved User actions that the key editor can bind safely. */
   userActions?: readonly {
     id: number;
@@ -63,7 +63,8 @@ export interface BoardProfile {
     /** The key picture it shows (a name in ui/keyface/keyIconData.ts). */
     icon?: string;
   }[];
-  defaultStatusLayer?: number;
+  /** MoErgo's Magic layer: its keys and status lights (ADR 0035). */
+  magicLayer?: MagicLayerTable;
   /** Where its letter block, home row, thumbs and number row sit (ADR 0027). */
   keyGroups?: KeyGroups;
   /** The places it has for add-ons, built in or a module a layout turns on (ADR 0028). */

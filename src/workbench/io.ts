@@ -142,6 +142,8 @@ export function keepingCurrent(
 /** What the connected firmware exposes, as far as the io facade needs to
  *  know: which optional surfaces exist and how much room they have. */
 export interface IoFeatures {
+  /** The board's id in the registry; null for a board it does not know. */
+  board: string | null;
   sceneCapacity: number | null;
   conditionalSceneCapacity: number | null;
   scenesSupported: boolean;
@@ -154,6 +156,7 @@ export interface IoFeatures {
 }
 
 export const NO_IO_FEATURES: IoFeatures = {
+  board: null,
   sceneCapacity: null,
   conditionalSceneCapacity: null,
   scenesSupported: false,
@@ -169,6 +172,7 @@ export const NO_IO_FEATURES: IoFeatures = {
 export function ioFeaturesFor(bundle: ConnectedBundle): IoFeatures {
   const capabilities = resolveCapabilities(firmwareFactsOf(bundle));
   return {
+    board: bundle.boardProfile?.id ?? null,
     sceneCapacity: capabilities.get("lighting.scenes")?.slots ?? null,
     conditionalSceneCapacity: capabilities.get("lighting.rules")?.slots ?? null,
     scenesSupported: capabilities.has("lighting.scenes"),

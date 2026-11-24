@@ -24,6 +24,7 @@ export const passEverything: Judge = async () => ({ ok: true });
 /** What the keyboard is but does not store, as the operations need it. */
 export function factsOf(state: WorkbenchState, context: Pick<IoContext, "cols" | "features" | "ledNodes">): OperationFacts {
   return {
+    board: context.features.board,
     cols: context.cols,
     sceneCapacity: context.features.sceneCapacity,
     ruleCapacity: context.features.conditionalSceneCapacity,

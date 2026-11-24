@@ -61,30 +61,10 @@ export const TERMS = {
     technical: "Apply rules, the lighting presets and the Device screen write to the keyboard at once; the rest waits for Send.",
     friendly: "Lighting rules, lighting presets and the Keyboard screen save at once; the rest waits for Send.",
   },
-  // The stock Magic layer (RGB Lighting → Advanced, on a Glove80). {layer} is the layer's name.
-  "magic.needsFirmware": {
-    technical: "Update firmware to install the stock Magic layer: this one cannot show its layer and lock lights.",
-    friendly: "Update the keyboard's firmware to get its Magic layer.",
-  },
-  "magic.title": { technical: "MoErgo stock Magic layer", friendly: "Glove80's own Magic layer" },
-  "magic.what": {
-    technical:
-      "Replaces {layer} with the factory Magic layer: Bluetooth 1–{profiles} and USB on the thumbs, RGB controls on Q–T and A–G, bootloader and reset on the outer keys, F1 and F10 forget pairings. Every other key is unbound.",
-    friendly: "Replaces {layer} with the layer a Glove80 ships with: switch computers, change the lights, reset. Its other keys do nothing.",
-  },
-  "magic.lights": {
-    technical: "While held, the left half shows the held layers, lock lights, battery and profile states, for 20 s after release. No output-fallback light.",
-    friendly: "While you hold it, the keys show the battery, your connections and the lock keys.",
-  },
-  "magic.liveOnly": {
-    technical: "Installs in Live only: keys, scene and rules are written at once.",
-    friendly: "Switch to Live to install it: it changes the keyboard at once.",
-  },
-  "magic.install": { technical: "Install stock Magic layer on {layer}", friendly: "Make {layer} the Magic layer" },
-  "magic.installing": { technical: "Writing keys, scene and rules…", friendly: "Installing…" },
-  "magic.installed": {
-    technical: "{layer} is the stock Magic layer, verified. Reach it with MO({index}).",
-    friendly: "{layer} is the Magic layer now. A key that holds it on opens it.",
+  // RGB Lighting → Advanced, on a board whose status setups are Flows (ADR 0035). {board} is its name.
+  "lighting.setupsInFlows": {
+    technical: "{board} status setups in Flows",
+    friendly: "Status lights for your {board}, in Flows",
   },
 } as const satisfies Record<string, Term>;
 
@@ -122,7 +102,7 @@ export function useWording(): Wording {
 }
 
 /** The lookup screens use: `const term = useTerms(); term("mode.keymap")`,
- *  or with values: `term("magic.install", { layer: name })`. */
+ *  or with values: `term("lighting.setupsInFlows", { board: name })`. */
 export function useTerms(): (id: TermId, values?: TermValues) => string {
   const wording = useWording();
   return (id, values) => termFor(id, wording, values);

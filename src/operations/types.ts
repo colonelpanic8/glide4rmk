@@ -9,6 +9,8 @@ import type { BehaviorLabels } from "../model/behavior-labels";
 
 /** What the keyboard is but does not store: what an operation may need besides the image. */
 export interface OperationFacts {
+  /** The board's id in the registry (`glove80`, `go60`); null for a board it does not know. */
+  board: string | null;
   /** Matrix columns: a key's offset in its layer is `row * cols + col`. */
   cols: number;
   /** How many scene cells and rules the keyboard holds; null when it has no such table. */

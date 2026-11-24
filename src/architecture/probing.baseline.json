@@ -48,7 +48,6 @@
   "ui-never-probes-capability-fields src/ui/lighting/StatusKeyPicks.tsx -> caps.ble_enabled#1",
   "ui-never-probes-capability-fields src/ui/lighting/StatusKeyPicks.tsx -> caps.is_split#1",
   "ui-never-probes-capability-fields src/ui/lighting/StatusKeyPicks.tsx -> caps.num_ble_profiles#1",
-  "ui-never-probes-capability-fields src/ui/lighting/StockMagicLayerPanel.tsx -> caps.num_ble_profiles#1",
   "ui-never-probes-capability-fields src/ui/properties/DetailsSection.tsx -> caps.ble_enabled#1",
   "ui-never-probes-capability-fields src/ui/properties/DetailsSection.tsx -> caps.is_split#1",
   "ui-never-probes-capability-fields src/ui/properties/DetailsSection.tsx -> caps.max_combos#1",

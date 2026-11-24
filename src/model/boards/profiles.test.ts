@@ -13,7 +13,7 @@ describe("board profiles", () => {
     "resolves %s document tools only for its identity and matrix", (name, rows, peer) => {
       const profile = resolveBoardProfile(info(name), { num_rows: rows, num_cols: 14 });
       expect(profile?.documents?.migrationTarget?.id).toBe(peer);
-      expect(profile?.presets.includes("glove80-status")).toBe(name === "Glove80");
+      expect(profile?.magicLayer?.layer).toBe(name === "Glove80" ? 2 : 3);
       expect(profile?.userActions?.map((action) => action.id)).toEqual([10, 11]);
       expect(profile?.firmware?.targets.map((target) => target.bootloader.kind)).toEqual([
         "central",

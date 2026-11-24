@@ -1,266 +1,76 @@
-import { describe, expect, it, vi } from "vitest";
-import type { BatteryStatus, ConnectionStatus, KeyAction } from "../../vendor/rynk-wasm/rynk_wasm";
-import { GLOVE80_COLS, GLOVE80_GRID } from "../boards/glove80";
-import { firmwarePreviewCells } from "./firmware-rules";
-import {
-  STOCK_LEFT_BATTERY_KEYS,
-  STOCK_RIGHT_BATTERY_KEYS,
-  installStockMagicLayerRules,
-  sceneTableWithStockMagicLayer,
-  stockMagicIndicatorKeys,
-  stockMagicLayerGrid,
-  stockMagicLayerRules,
-  writeStockMagicLayer,
-} from "./stock-magic-layer";
+import { describe, expect, it } from "vitest";
+import { GLOVE80_MAGIC_LAYER, GO60_MAGIC_LAYER } from "../boards/magic-layer";
 import { batteryBarRules } from "./status-presets";
+import {
+  connectionLights,
+  magicLayerKeys,
+  magicLayerLeds,
+  magicLayerRules,
+  withMagicLayerRules,
+  withMagicLayerScene,
+} from "./stock-magic-layer";
 
-const at = (grid: KeyAction[], row: number, col: number) => grid[row * GLOVE80_COLS + col];
-const solid = (r: number, g: number, b: number) => ({ Solid: { color: { r, g, b } } });
-const battery = (level: number, charge_state: "Charging" | "Discharging" = "Discharging"): BatteryStatus =>
-  ({ Available: { level, charge_state } }) as BatteryStatus;
-
-const boardKeys = GLOVE80_GRID.flatMap((logical, grid) =>
-  logical === null ? [] : [{ row: Math.floor(grid / GLOVE80_COLS), col: grid % GLOVE80_COLS }],
-);
-
-describe("stock Magic layer bindings", () => {
-  it("places the factory ZMK bindings and leaves the rest unbound", () => {
-    const grid = stockMagicLayerGrid(4);
-
-    expect(at(grid, 3, 6)).toEqual({ Single: { User: 0 } });
-    expect(at(grid, 4, 6)).toEqual({ Single: { User: 1 } });
-    expect(at(grid, 0, 6)).toEqual({ Single: { User: 2 } });
-    expect(at(grid, 1, 6)).toEqual({ Single: { User: 3 } });
-    expect(at(grid, 5, 6)).toEqual({ Single: { KeyboardControl: "OutputUsb" } });
-    expect(at(grid, 0, 0)).toEqual({ Single: { User: 10 } });
-    expect(at(grid, 0, 13)).toEqual({ Single: { User: 11 } });
-    expect(at(grid, 3, 0)).toEqual({ Single: { KeyboardControl: "Bootloader" } });
-    expect(at(grid, 3, 13)).toEqual({ Single: { User: 12 } });
-    expect(at(grid, 4, 0)).toEqual({ Single: { KeyboardControl: "Reboot" } });
-    expect(at(grid, 4, 13)).toEqual({ Single: { KeyboardControl: "Reboot" } });
-    expect([1, 2, 3].map((col) => at(grid, 2, col))).toEqual(
-      ["RgbSpi", "RgbSai", "RgbHui"].map((action) => ({ Single: { Light: action } })),
-    );
-    expect(at(grid, 2, 4)).toEqual({ Single: { KeyboardControl: "MaintenanceModeToggle" } });
-    expect(at(grid, 2, 5)).toEqual({ Single: { Light: "BacklightToggle" } });
-    expect([1, 2, 3, 4, 5].map((col) => at(grid, 3, col))).toEqual(
-      ["RgbSpd", "RgbSad", "RgbHud", "BacklightDown", "RgbModeForward"].map((action) => ({ Single: { Light: action } })),
-    );
-    expect(grid.filter((action) => action !== "No")).toHaveLength(21);
+describe("the Magic layer tables", () => {
+  it("put the Glove80's lights where MoErgo's firmware has them", () => {
+    expect(GLOVE80_MAGIC_LAYER.layerLights).toEqual([35, 29, 23, 17, 11, 6]);
+    expect(GLOVE80_MAGIC_LAYER.batteries).toEqual([[36, 30, 24, 18, 12, 7], [37, 31, 25, 19, 13, 8]]);
+    expect(GLOVE80_MAGIC_LAYER.locks).toEqual({ caps_lock: 22, num_lock: 16, scroll_lock: 10 });
   });
 
-  it("follows the firmware's slot count while keeping the board-reserved clear actions", () => {
-    const grid = stockMagicLayerGrid(3);
-    expect(at(grid, 1, 6)).toBe("No");
-    expect(at(grid, 0, 0)).toEqual({ Single: { User: 10 } });
-    expect(at(grid, 0, 13)).toEqual({ Single: { User: 11 } });
-  });
-});
-
-describe("stock Magic layer indicators", () => {
-  const rules = stockMagicLayerRules(2, 6, 4);
-  const preview = (extra: Partial<Parameters<typeof firmwarePreviewCells>[3]>) =>
-    firmwarePreviewCells([], [], rules, {
-      activeLayers: new Set([0, 2]),
-      batteries: new Map(),
-      outputMode: undefined,
-      ...extra,
-    });
-
-  it("uses the devicetree LED map on the left half", () => {
-    const leds = stockMagicIndicatorKeys().map((key) => key.led);
-    expect(new Set(leds).size).toBe(leds.length);
-    expect(leds.every((led) => led < 40)).toBe(true);
-    expect(rules).toHaveLength(6 + 3 + 2 * 15 + 4 * 4 + 3 + 2);
-    expect(rules.every((entry) => entry.cell.conditions.layer?.layer === 2)).toBe(true);
+  it("put the Go60's one row up, with the locks on the left thumbs", () => {
+    expect(GO60_MAGIC_LAYER.layerLights).toEqual([26, 22, 17, 12, 7, 3]);
+    expect(GO60_MAGIC_LAYER.batteries).toEqual([[27, 23, 18, 13, 8, 4], [28, 24, 19, 14, 9, 5]]);
+    expect(GO60_MAGIC_LAYER.locks).toEqual({ caps_lock: 0, num_lock: 1, scroll_lock: 2 });
   });
 
-  it("shows whether host mutations are unlocked on Magic+R", () => {
-    expect(preview({ maintenanceUnlocked: true }).get(12)?.effect).toEqual(solid(0, 128, 0));
-    expect(preview({ maintenanceUnlocked: false }).get(12)?.effect).toEqual(solid(128, 0, 0));
-    expect(preview({}).get(12)).toBeUndefined();
+  it("light Bluetooth 1–4 and USB on the keys the layer binds to them", () => {
+    const leds = (table: typeof GLOVE80_MAGIC_LAYER) => connectionLights(table).map(({ led, kind }) => [led, kind.type === "ble" ? kind.slot : "usb"]);
+    expect(leds(GLOVE80_MAGIC_LAYER)).toEqual([[3, 0], [4, 1], [0, 2], [1, 3], [5, "usb"]]);
+    expect(leds(GO60_MAGIC_LAYER)).toEqual([[20, 0], [15, 1], [10, 2], [6, 3], [21, "usb"]]);
   });
 
-  it("shows the layers held alongside Magic in magenta, only while Magic is held", () => {
-    const cells = preview({ activeLayers: new Set([0, 2, 3]) });
-    expect(cells.get(35)?.effect).toEqual(solid(255, 0, 255));
-    expect(cells.get(23)?.effect).toEqual(solid(255, 0, 255));
-    expect(cells.get(17)?.effect).toEqual(solid(255, 0, 255));
-    expect(cells.get(29)).toBeUndefined();
-    const released = preview({ activeLayers: new Set([0, 3]) });
-    expect(released.get(35)).toBeUndefined();
-    expect(released.get(17)).toBeUndefined();
+  it("give the maintenance lock a key no other light uses, Z on both boards", () => {
+    for (const table of [GLOVE80_MAGIC_LAYER, GO60_MAGIC_LAYER]) {
+      const rules = magicLayerRules(table, table.layer, 6);
+      const maintenance = rules.filter((rule) => rule.maintenance).map((rule) => rule.cell.led_id);
+      const others = new Set(rules.filter((rule) => !rule.maintenance).map((rule) => rule.cell.led_id));
+      expect(maintenance).toHaveLength(2);
+      expect(others.has(maintenance[0])).toBe(false);
+      expect(table.maintenance).toEqual(table === GLOVE80_MAGIC_LAYER ? { row: 4, col: 1 } : { row: 3, col: 1 });
+    }
   });
 
-  it("shows the host's lock indicators in red on F3-F5", () => {
-    const locks = preview({ indicators: { num_lock: true, caps_lock: false, scroll_lock: true } });
-    expect(locks.get(22)).toBeUndefined();
-    expect(locks.get(16)?.effect).toEqual(solid(255, 0, 0));
-    expect(locks.get(10)?.effect).toEqual(solid(255, 0, 0));
-    expect(preview({}).get(16)).toBeUndefined();
-  });
-
-  it("fills each half's bar like the stock firmware", () => {
-    const lit = (level: number, charging = false) => {
-      const cells = preview({
-        batteries: new Map([[0, battery(level, charging ? "Charging" : "Discharging")]]),
-      });
-      return STOCK_LEFT_BATTERY_KEYS.flatMap(({ led }) => (cells.has(led) ? [cells.get(led)!.effect] : []));
-    };
-    expect(lit(100)).toEqual(Array(6).fill(solid(0, 255, 0)));
-    expect(lit(55)).toEqual(Array(3).fill(solid(0, 255, 0)));
-    expect(lit(25)).toEqual(Array(2).fill(solid(255, 255, 0)));
-    expect(lit(5)).toEqual([solid(255, 0, 0)]);
-    expect(lit(0)).toEqual([solid(255, 0, 0)]);
-    expect(lit(5, true)).toEqual(Array(6).fill(solid(0, 255, 0)));
-    const right = preview({ batteries: new Map([[1, battery(70)]]) });
-    expect(STOCK_RIGHT_BATTERY_KEYS.filter(({ led }) => right.has(led))).toHaveLength(4);
-  });
-
-  it("colors profile and USB keys by pairing, connection, and output", () => {
-    const connection = (ble: ConnectionStatus["ble"], usb: ConnectionStatus["usb"], preferred: "Usb" | "Ble" = "Ble") =>
-      ({ ble, usb, preferred }) as ConnectionStatus;
-    const unpaired = preview({ bondedSlots: new Set([1]), connection: connection({ profile: 1, state: "Connected", bonded: true, }, "Enabled") });
-    expect(unpaired.get(3)?.effect).toEqual(solid(107, 31, 206));
-    expect(unpaired.get(4)?.effect).toEqual(solid(255, 255, 255));
-    expect(unpaired.get(5)?.effect).toEqual(solid(107, 31, 206));
-
-    const usbTyping = preview({ bondedSlots: new Set([0]), connection: connection({ profile: 0, state: "Connected", bonded: true, }, "Configured", "Usb") });
-    expect(usbTyping.get(3)?.effect).toEqual(solid(0, 255, 104));
-    expect(usbTyping.get(5)?.effect).toEqual(solid(255, 255, 255));
-
-    const idle = preview({ bondedSlots: new Set([0]), connection: connection({ profile: 1, state: "Advertising", bonded: false, }, "Configured", "Ble") });
-    expect(idle.get(3)?.effect).toEqual(solid(255, 0, 0));
-    expect(idle.get(5)?.effect).toEqual(solid(255, 255, 255));
-  });
-
-  it("replaces its own rules and keeps other layers' rules on the same keys", () => {
-    const gamesW = batteryBarRules({ layer: 3, node: 0, leds: [24, 18, 12] })[0];
-    const magicStray = batteryBarRules({ layer: 2, node: 1, leds: [24, 18, 12] })[0];
-    const elsewhere = batteryBarRules({ layer: 2, node: 0, leds: [39, 38, 37] })[0];
-    const once = installStockMagicLayerRules([gamesW, magicStray, elsewhere], 2, 6, 4);
-    const twice = installStockMagicLayerRules(once, 2, 6, 4);
-
-    expect(once.slice(0, 2)).toEqual([gamesW, elsewhere]);
-    expect(once).toHaveLength(2 + rules.length);
-    expect(twice).toEqual(once);
-  });
-
-  it("darkens only the left half and only its own layer's scene", () => {
-    const other = { layer: 3, led_id: 24, effect: solid(160, 0, 0) };
-    const stale = { layer: 2, led_id: 70, effect: solid(1, 2, 3) };
-    const scenes = sceneTableWithStockMagicLayer([other, stale], 2);
-    expect(scenes[0]).toEqual(other);
-    expect(scenes).toHaveLength(41);
-    expect(scenes.slice(1).every((cell) => cell.layer === 2 && cell.led_id < 40)).toBe(true);
-    expect(scenes.slice(1).every((cell) => JSON.stringify(cell.effect) === JSON.stringify(solid(0, 0, 0)))).toBe(true);
+  it("bind every key of the board, the ones the layer leaves free unbound, and no hole in the matrix", () => {
+    expect(magicLayerKeys(GLOVE80_MAGIC_LAYER)).toHaveLength(80);
+    expect(magicLayerKeys(GO60_MAGIC_LAYER)).toHaveLength(60);
+    expect(magicLayerKeys(GO60_MAGIC_LAYER).filter(({ action }) => action !== "No")).toHaveLength(GO60_MAGIC_LAYER.keys.length);
   });
 });
 
-describe("writing the stock Magic layer", () => {
-  const target = () => ({
-    layer: 2,
-    numLayers: 6,
-    profiles: 4,
-    keys: boardKeys,
-    current: Array.from({ length: 84 }, () => "No" as KeyAction),
-    rules: [],
-    ruleCapacity: 64,
-    scenes: [],
-    sceneCapacity: 100,
-    wakeLayers: 0,
+describe("the Magic layer's rules", () => {
+  it("show a held layer only through the layer set; the Magic layer's own light needs none", () => {
+    const rules = magicLayerRules(GLOVE80_MAGIC_LAYER, 2, 3);
+    const layerLights = rules.filter((rule) => GLOVE80_MAGIC_LAYER.layerLights.includes(rule.cell.led_id) && !rule.cell.conditions.battery);
+    expect(layerLights.map((rule) => [rule.cell.led_id, rule.layers?.active])).toEqual([[35, 1], [29, 2], [23, undefined]]);
   });
 
-  it("writes only changed keys, then scene, rules, and wake designation", async () => {
-    const calls: string[] = [];
-    const current = target();
-    current.current[3 * GLOVE80_COLS + 6] = { Single: { User: 0 } };
-    const result = await writeStockMagicLayer(
-      {
-        async setKey(row, col) {
-          calls.push(`key ${row},${col}`);
-          return { ok: true };
-        },
-        async applyScenes(cells) {
-          calls.push(`scenes ${cells.length}`);
-          return { ok: true };
-        },
-        async applyRules(rules) {
-          calls.push(`rules ${rules.length}`);
-          return { ok: true };
-        },
-        async setWakeLayers(mask) {
-          calls.push(`wake ${mask}`);
-          return { ok: true };
-        },
-      },
-      current,
-    );
-
-    expect(result).toEqual({ ok: true });
-    expect(calls.filter((call) => call.startsWith("key"))).toHaveLength(20);
-    expect(calls).not.toContain("key 3,6");
-    expect(calls.slice(-3)).toEqual(["scenes 40", "rules 60", "wake 4"]);
+  it("replace their own rules on the layer and keep every other rule", () => {
+    const elsewhere = batteryBarRules({ layer: 1, node: 0, leds: [36, 30, 24] })[0];
+    const otherLed = batteryBarRules({ layer: 2, node: 0, leds: [60, 61, 62] })[0];
+    const stale = batteryBarRules({ layer: 2, node: 0, leds: [36, 30, 24] })[0];
+    const once = withMagicLayerRules([elsewhere, otherLed, stale], GLOVE80_MAGIC_LAYER, 2, 3);
+    expect(once.slice(0, 2)).toEqual([elsewhere, otherLed]);
+    expect(once).not.toContain(stale);
+    expect(withMagicLayerRules(once, GLOVE80_MAGIC_LAYER, 2, 3)).toEqual(once);
+    expect([...magicLayerLeds(GLOVE80_MAGIC_LAYER)].every((led) => led < 40)).toBe(true);
   });
 
-  it("skips the scene table and wake policy the firmware lacks", async () => {
-    const applyScenes = vi.fn();
-    const setWakeLayers = vi.fn();
-    const result = await writeStockMagicLayer(
-      {
-        setKey: async () => ({ ok: true }),
-        applyScenes,
-        applyRules: async () => ({ ok: true }),
-        setWakeLayers,
-      },
-      { ...target(), scenes: null, wakeLayers: null },
-    );
-    expect(result).toEqual({ ok: true });
-    expect(applyScenes).not.toHaveBeenCalled();
-    expect(setWakeLayers).not.toHaveBeenCalled();
-  });
-
-  it("refuses before writing when the rule table is too small", async () => {
-    const setKey = vi.fn();
-    const result = await writeStockMagicLayer(
-      { setKey, applyScenes: vi.fn(), applyRules: vi.fn(), setWakeLayers: vi.fn() },
-      { ...target(), ruleCapacity: 32 },
-    );
-    expect(result).toEqual({ ok: false, message: "This layout needs 60 rules; the keyboard holds 32." });
-    expect(setKey).not.toHaveBeenCalled();
-  });
-
-  it("stops at a failed key and reports a later lighting failure as resumable", async () => {
-    let writes = 0;
-    const applyScenes = vi.fn();
-    const keyFailure = await writeStockMagicLayer(
-      {
-        async setKey() {
-          writes++;
-          return writes === 2 ? { ok: false, message: "flash busy" } : { ok: true };
-        },
-        applyScenes,
-        applyRules: vi.fn(),
-        setWakeLayers: vi.fn(),
-      },
-      target(),
-    );
-    expect(keyFailure).toEqual({ ok: false, message: "flash busy" });
-    expect(writes).toBe(2);
-    expect(applyScenes).not.toHaveBeenCalled();
-
-    const ruleFailure = await writeStockMagicLayer(
-      {
-        setKey: async () => ({ ok: true }),
-        applyScenes: async () => ({ ok: true }),
-        applyRules: async () => ({ ok: false, message: "read-back mismatch" }),
-        setWakeLayers: vi.fn(),
-      },
-      target(),
-    );
-    expect(ruleFailure).toEqual({
-      ok: false,
-      message: "The keys were written, but installing the indicators failed: read-back mismatch. Retry to finish.",
-    });
+  it("darken the left half on their own layer only", () => {
+    const other = { layer: 1, led_id: 3, effect: { Solid: { color: { r: 255, g: 0, b: 0 } } } };
+    const mine = { layer: 3, led_id: 45, effect: other.effect };
+    const scene = withMagicLayerScene([other, mine], GO60_MAGIC_LAYER, 3);
+    expect(scene[0]).toEqual(other);
+    expect(scene).not.toContain(mine);
+    expect(scene.filter((cell) => cell.layer === 3).map((cell) => cell.led_id)).toEqual(Array.from({ length: 30 }, (_, led) => led));
   });
 });

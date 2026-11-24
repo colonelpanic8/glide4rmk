@@ -3,6 +3,7 @@ import { glove80Enrichment } from "../glove80";
 import { go60Enrichment } from "../go60";
 import { GLOVE80_KEY_GROUPS, GO60_KEY_GROUPS } from "../key-groups";
 import { GLOVE80_ADD_ONS, GO60_ADD_ONS } from "../add-ons";
+import { GLOVE80_MAGIC_LAYER, GO60_MAGIC_LAYER } from "../magic-layer";
 
 const documentTools = (id: string, name: string): BoardDocumentTools => ({
   codec: "moergo",
@@ -42,9 +43,8 @@ export const MOERGO_PROFILES: readonly BoardProfile[] = [
     matrix: { rows: 6, cols: 14 },
     enrichment: glove80Enrichment,
     documents: documentTools("go60", "Go60"),
-    presets: ["glove80-status", "glove80-stock-magic"],
     userActions: bleUserActions,
-    defaultStatusLayer: 2,
+    magicLayer: GLOVE80_MAGIC_LAYER,
     keyGroups: GLOVE80_KEY_GROUPS,
     addOns: GLOVE80_ADD_ONS,
     firmware: {
@@ -78,7 +78,7 @@ export const MOERGO_PROFILES: readonly BoardProfile[] = [
     keyGroups: GO60_KEY_GROUPS,
     addOns: GO60_ADD_ONS,
     documents: documentTools("glove80", "Glove80"),
-    presets: [],
+    magicLayer: GO60_MAGIC_LAYER,
     userActions: bleUserActions,
     firmware: {
       source: releaseSource,
