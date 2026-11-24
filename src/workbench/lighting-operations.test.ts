@@ -3,7 +3,7 @@
 // keyboard, and that Undo takes it back whole.
 
 import { withTestWorkbench } from "../test/harness";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { glove80Board } from "../session/mock/glove80";
 import type { WorkbenchState } from "../model/workbench-state";
 import type { RynkSession } from "../session/types";
@@ -103,6 +103,24 @@ describe("a status setup on keys picked on the board", () => {
       expect(await io.travel("undo")).toEqual({ ok: true });
       expect(state().layers[1][0]).toEqual(bound);
       expect(state().runtimeConditionalDraft).toEqual(rules);
+    });
+  });
+
+  it("in Live: when the rules cannot be written after the key, the key goes back and nothing is changed", async () => {
+    await onBoard(false, async (io, state, session) => {
+      const bound = (await session.keymap.readAll())[1].actions[0];
+      const rules = await session.lighting.conditionalScenes.read();
+      // The planner writes keys before rules: the key reaches the keyboard, then the rule table fails.
+      const keys = vi.spyOn(session.keymap, "setRows");
+      const replace = vi.spyOn(session.lighting.conditionalScenes, "replace").mockRejectedValueOnce(new Error("flash failed"));
+
+      const result = await io.apply("set_connection_key", { layer: 1, row: 0, col: 0, led: 3, kind: { type: "usb" } });
+      expect(result).toEqual({ ok: false, message: "flash failed; nothing was changed" });
+      expect(keys.mock.invocationCallOrder[0]).toBeLessThan(replace.mock.invocationCallOrder[0]);
+      expect((await session.keymap.readAll())[1].actions[0]).toEqual(bound);
+      expect(await session.lighting.conditionalScenes.read()).toEqual(rules);
+      expect(state().layers[1][0]).toEqual(bound);
+      expect(draftOf(state()).changes).toEqual([]);
     });
   });
 });
