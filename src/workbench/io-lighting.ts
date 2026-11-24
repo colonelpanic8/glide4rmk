@@ -12,7 +12,6 @@ type LightingIo = Pick<
   WorkbenchIo,
   | "refreshLighting"
   | "setLightingState"
-  | "applyScenes"
   | "applyConditionalScenes"
   | "setScenePolicy"
   | "setWakeLayers"
@@ -83,20 +82,6 @@ export function lightingIo(context: IoContext): LightingIo {
       session.lighting.setState(mutable).then(
         (lightingState) => dispatch({ type: "lightingStateSet", state: lightingState }),
         (err) => dispatch({ type: "lightingBusy", busy: false, error: errorMessage(err) }),
-      );
-    },
-    applyScenes(cells) {
-      dispatch({ type: "lightingBusy", busy: true, error: null });
-      return session.lighting.scenes.replaceScenes(cells).then(
-        (lightingState) => {
-          dispatch({ type: "scenesApplied", state: lightingState, cells });
-          return { ok: true } as const;
-        },
-        (err) => {
-          const message = errorMessage(err);
-          dispatch({ type: "lightingBusy", busy: false, error: message });
-          return { ok: false, message } as const;
-        },
       );
     },
     applyConditionalScenes(cells) {

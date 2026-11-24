@@ -20,7 +20,6 @@ const LIGHTING_ACTION_TYPES = [
   "tryOutSent",
   "tryOutCleared",
   "tryOutFailed",
-  "scenesApplied",
   "conditionalDraft",
   "conditionalDraftReset",
   "conditionalApplied",
@@ -93,8 +92,6 @@ export function reduceLighting(state: WorkbenchState, act: LightingAction): Work
       return withBusy({ ...withLightingRead(state, act.state), applied: {}, tryOut: {} }, { lightingError: null });
     case "tryOutFailed":
       return withBusy(state, { lightingError: act.error });
-    case "scenesApplied":
-      return withBusy(withLightingRead(withRead(state, { scenes: act.cells }), act.state), DONE);
     case "conditionalDraft":
       return withBusy({ ...state, runtimeConditionalDraft: act.cells }, { lightingError: null });
     case "conditionalDraftReset":

@@ -400,7 +400,6 @@ export type WorkbenchAction =
   | { type: "tryOutSent"; state: LightingState; cells: LightingOverlayCell[] }
   | { type: "tryOutCleared"; state: LightingState }
   | { type: "tryOutFailed"; error: string }
-  | { type: "scenesApplied"; state: LightingState; cells: LightingSceneCell[] }
   | { type: "conditionalDraft"; cells: RuntimeLightingRule[] }
   | { type: "conditionalDraftReset" }
   | {

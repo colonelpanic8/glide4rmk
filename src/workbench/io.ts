@@ -2,8 +2,7 @@
 // the session. An operation, an import, Undo and Send commit to what you want
 // and go through the one write path. Most others change what you want in Draft
 // and write through the session at once in Live, narrating through `dispatch`;
-// `applyScenes` and `applyConditionalScenes` write a whole table in either
-// mode, and try-out lights are never drafted. Its parts are by job (io-keys, io-layers, io-lighting,
+// `applyConditionalScenes` writes the whole rule table in either mode, and try-out lights are never drafted. Its parts are by job (io-keys, io-layers, io-lighting,
 // io-settings, io-import, io-try-out); this file is the contract and puts them together.
 
 import type {
@@ -14,7 +13,6 @@ import type {
   LightingExtensionState,
   LightingLayerPolicy,
   LightingMutableState,
-  LightingSceneCell,
   MorseHoldTriggerPosition,
 } from "../vendor/rynk-wasm/rynk_wasm";
 import type { RuntimeLightingRule, RynkSession } from "../session/types";
@@ -87,8 +85,6 @@ export interface WorkbenchIo {
   refreshLayerState(): void;
   refreshLighting(): void;
   setLightingState(state: LightingMutableState): void;
-  /** Replace the on-device scene table (only when scenes are supported). */
-  applyScenes(cells: LightingSceneCell[]): Promise<IoWriteResult>;
   setScenePolicy(policy: LightingLayerPolicy): void;
   setWakeLayers(layers: number): Promise<IoWriteResult>;
   /** Atomically replace the mutable conditional table with this exact order
