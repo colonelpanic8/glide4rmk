@@ -93,3 +93,22 @@ export function overwriteRequest(items: readonly SyncItem[], names: GuardNames):
     cancelLabel: "Don't send",
   };
 }
+
+/** What Guard says about a file that would not open again as saved (ADR 0036):
+ *  a stop when it would not open at all, a question when it opens as something else. */
+export function savedFileWords(
+  check: { opens: false; reason: string } | { opens: true; differences: string[] },
+  format: string,
+): { stop: string } | { ask: ConfirmRequest } {
+  if (!check.opens) return { stop: `Nothing was saved: GLIDE4RMK could not open this ${format} file again (${check.reason}).` };
+  return {
+    ask: {
+      guard: true,
+      title: `Save a ${format} file that opens as another layout?`,
+      body: "Read back, the file is not what you have: opening it later would change your layout.",
+      details: check.differences,
+      confirmLabel: "Save anyway",
+      cancelLabel: "Don't save",
+    },
+  };
+}
