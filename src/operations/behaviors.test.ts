@@ -40,6 +40,7 @@ function image(): KeyboardImage {
 
 const facts = (labels: BehaviorLabels = noLabels(), macroBytes = 64): OperationFacts => ({
   board: null,
+  bleProfiles: 4,
   cols: 2,
   sceneCapacity: null,
   ruleCapacity: null,

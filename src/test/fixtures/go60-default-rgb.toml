@@ -45,7 +45,7 @@ keys = """
 USER(10) KC_BRID KC_BRIU KC_MPRV KC_MNXT KC_MPLY -- -- KC_MUTE KC_VOLD KC_VOLU -- -- USER(11)
 QK_BOOT UG_SPDU UG_SATU UG_HUEU BL_UP BL_TOGG -- -- -- -- -- -- -- USER(12)
 QK_RBT UG_SPDD UG_SATD UG_HUED BL_DOWN UG_NEXT -- -- -- -- -- -- -- QK_RBT
--- MAINT_LOCK_TOG USER(0) USER(1) USER(2) USER(3) -- -- -- -- -- -- -- --
+-- MAINT_LOCK_TOG USER(0) USER(1) USER(2) -- -- -- -- -- -- -- -- --
 -- -- QK_OUTPUT_USB -- -- -- -- -- -- -- -- -- -- --
 """
 
@@ -918,59 +918,6 @@ active = true
 [lighting.conditional_scene.connection]
 transport = "ble"
 profile = 2
-ble_state = "connected"
-
-[[lighting.conditional_scene]]
-led = 6
-color = "#6b1fce"
-effect = "solid"
-
-[lighting.conditional_scene.layer]
-layer = 3
-active = true
-
-[lighting.conditional_scene.connection.bonded]
-slot = 3
-bonded = false
-
-[[lighting.conditional_scene]]
-led = 6
-color = "#ff0000"
-effect = "solid"
-
-[lighting.conditional_scene.layer]
-layer = 3
-active = true
-
-[lighting.conditional_scene.connection.bonded]
-slot = 3
-bonded = true
-
-[[lighting.conditional_scene]]
-led = 6
-color = "#00ff68"
-effect = "solid"
-
-[lighting.conditional_scene.layer]
-layer = 3
-active = true
-
-[lighting.conditional_scene.connection]
-profile = 3
-ble_state = "connected"
-
-[[lighting.conditional_scene]]
-led = 6
-color = "#ffffff"
-effect = "solid"
-
-[lighting.conditional_scene.layer]
-layer = 3
-active = true
-
-[lighting.conditional_scene.connection]
-transport = "ble"
-profile = 3
 ble_state = "connected"
 
 [[lighting.conditional_scene]]

@@ -123,7 +123,9 @@ function go60(): MagicLayerTable {
       { row: 2, col: 0, action: control("Reboot") },
       { row: 2, col: 13, action: control("Reboot") },
       ...rgbBlock(1),
-      // X C V B: Bluetooth 1–4; below them, the lower-left outer key: USB.
+      // X C V B: Bluetooth 1–4 as MoErgo has them; below them, the lower-left
+      // outer key: USB. The Go60's RMK firmware has three profiles, so B is
+      // left unbound there (set_magic_layer, withProfiles).
       { row: 3, col: 2, action: user(0) },
       { row: 3, col: 3, action: user(1) },
       { row: 3, col: 4, action: user(2) },

@@ -40,6 +40,7 @@ function image(parts: Partial<KeyboardImage> = {}): KeyboardImage {
 
 const facts: OperationFacts = {
   board: null,
+  bleProfiles: 4,
   cols: 1,
   sceneCapacity: 8,
   ruleCapacity: 32,
@@ -154,6 +155,21 @@ describe("set_battery_bar", () => {
       ok: false,
       message: expect.stringMatching(/rules; the keyboard holds 4\.$/),
     });
+  });
+});
+
+describe("a Bluetooth profile the keyboard does not have", () => {
+  it("is refused as a light and as a connection key", () => {
+    const three = { ...facts, bleProfiles: 3 };
+    expect(runOperation("set_key_light", image(), { layer: 0, leds: [0], light: { kind: "bluetooth", profile: 3 } }, three)).toEqual({
+      ok: false,
+      message: "This keyboard has 3 Bluetooth profiles: there is no profile 4.",
+    });
+    expect(runOperation("set_connection_key", image(), { layer: 0, row: 0, col: 0, led: 0, kind: { type: "ble", slot: 3 } }, { ...facts, bleProfiles: 0 })).toEqual({
+      ok: false,
+      message: "This keyboard has no Bluetooth.",
+    });
+    expect(runOperation("set_key_light", image(), { layer: 0, leds: [0], light: { kind: "bluetooth", profile: 2 } }, three).ok).toBe(true);
   });
 });
 

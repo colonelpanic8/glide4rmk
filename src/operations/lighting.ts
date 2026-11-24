@@ -11,9 +11,15 @@ import type { Rules } from "../model/lighting/rules";
 import { withoutStatusLights, withStatusLight } from "../model/lighting/status-light";
 import { connectionKeyAction, replaceBatteryBar, type BatteryBarPreset, type ConnectionKeyPreset } from "../model/lighting/status-presets";
 import { profileById } from "../model/boards/profiles";
-import { magicLayerKeys, withMagicLayerRules, withMagicLayerScene } from "../model/lighting/stock-magic-layer";
+import { magicLayerKeys, withMagicLayerRules, withMagicLayerScene, withProfiles } from "../model/lighting/stock-magic-layer";
 import { withKeys } from "./keys";
 import { failed, reason, type Operation, type OperationFacts, type OperationResult } from "./types";
+
+/** Why a light or a key for this Bluetooth profile (from 0) cannot be: the keyboard has fewer. */
+const noProfile = (profile: number, facts: OperationFacts) =>
+  facts.bleProfiles === 0
+    ? "This keyboard has no Bluetooth."
+    : `This keyboard has ${facts.bleProfiles} Bluetooth profile${facts.bleProfiles === 1 ? "" : "s"}: there is no profile ${profile + 1}.`;
 
 /** The image with these scenes and rules, if the keyboard has room for them. */
 export function withLighting(
@@ -50,6 +56,7 @@ export const setKeyLight: Operation<{ layer: number; leds: readonly number[]; li
   ],
   run(image, { layer, leds, light }, facts) {
     if (!image.layers[layer]) return failed(`Layer ${layer} does not exist`);
+    if (light.kind === "bluetooth" && light.profile >= facts.bleProfiles) return failed(noProfile(light.profile, facts));
     let plan;
     try {
       plan = planLight(light, leds, layer, image.runtimeConditionalScenes, (led) => facts.ledNodes[led] ?? 0);
@@ -109,6 +116,7 @@ export const setConnectionKey: Operation<ConnectionKeyPreset> = {
   run(image, { layer, row, col, led, kind }, facts) {
     const profile = kind?.type === "ble" && Number.isInteger(kind.slot) && kind.slot >= 0;
     if (!profile && kind?.type !== "usb") return failed("kind must be { type: ble, slot } or { type: usb }");
+    if (kind.type === "ble" && kind.slot >= facts.bleProfiles) return failed(noProfile(kind.slot, facts));
     const bound = withKeys(image, facts.cols, [{ layer, row, col, action: connectionKeyAction(kind) }]);
     if (typeof bound === "string") return failed(bound);
     const light: KeyLight = kind.type === "ble" ? { kind: "bluetooth", profile: kind.slot } : { kind: "usb" };
@@ -143,8 +151,9 @@ export const setMagicLayer: Operation<{ layer?: number }> = {
     "Makes a layer MoErgo's Magic layer on a Glove80 or a Go60: its keys, its status lights (layers, locks, batteries, Bluetooth, USB, the maintenance lock), the left half dark, and the layer waking the lights.",
   inputs: [{ name: "layer", kind: "integer", min: 0, optional: true, description: "The layer; the board's own Magic layer when left out." }],
   run(image, { layer }, facts) {
-    const table = facts.board === null ? undefined : profileById(facts.board)?.magicLayer;
-    if (!table) return failed("Only the Glove80 and the Go60 have MoErgo's Magic layer.");
+    const board = facts.board === null ? undefined : profileById(facts.board)?.magicLayer;
+    if (!board) return failed("Only the Glove80 and the Go60 have MoErgo's Magic layer.");
+    const table = withProfiles(board, facts.bleProfiles);
     const target = layer ?? table.layer;
     if (!image.layers[target]) return failed(`Layer ${target} does not exist`);
     const bound = withKeys(image, facts.cols, magicLayerKeys(table).map((key) => ({ layer: target, ...key })));

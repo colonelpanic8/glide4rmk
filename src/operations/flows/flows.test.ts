@@ -131,6 +131,7 @@ const image: KeyboardImage = {
 };
 const facts: OperationFacts = {
   board: null,
+  bleProfiles: 4,
   cols: 2, sceneCapacity: null, ruleCapacity: null, activeLayers: [], compiledScenes: [], compiledRules: [], ledNodes: {}, labels: noLabels(), macroSpace: null,
 };
 const setKey = (layer: number, col: number, code: string) => ({ name: "set_keys", input: { keys: [{ layer, row: 0, col, action: key(code) }] } });

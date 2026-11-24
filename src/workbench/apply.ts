@@ -25,6 +25,7 @@ export const passEverything: Judge = async () => ({ ok: true });
 export function factsOf(state: WorkbenchState, context: Pick<IoContext, "cols" | "features" | "ledNodes">): OperationFacts {
   return {
     board: context.features.board,
+    bleProfiles: context.features.bleProfiles,
     cols: context.cols,
     sceneCapacity: context.features.sceneCapacity,
     ruleCapacity: context.features.conditionalSceneCapacity,

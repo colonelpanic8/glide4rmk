@@ -83,9 +83,11 @@ describe("MoErgo Magic layer on the Go60", () => {
       expect(run).toMatchObject({ ok: true, message: expect.stringContaining("Go60's Magic layer") });
       const at = (row: number, col: number) => row * 14 + col;
       const after = state().layers[3];
-      // The factory keys stay; R and its neighbours become Backlight's, Z the maintenance lock.
+      // The factory keys stay; R and its neighbours become Backlight's, Z the maintenance lock,
+      // and B, MoErgo's fourth profile, is unbound: the Go60's RMK firmware has three.
       const changed = after.flatMap((action, offset) => (JSON.stringify(action) === JSON.stringify(before[offset]) ? [] : [offset]));
-      expect(changed).toEqual([at(1, 4), at(1, 5), at(2, 4), at(3, 1)]);
+      expect(changed).toEqual([at(1, 4), at(1, 5), at(2, 4), at(3, 1), at(3, 5)]);
+      expect(after[at(3, 5)]).toBe("No");
       expect(after[at(3, 1)]).toEqual({ Single: { KeyboardControl: "MaintenanceModeToggle" } });
 
       const show = (led: number) => conditionsOn(state(), 3, led);
@@ -94,8 +96,9 @@ describe("MoErgo Magic layer on the Go60", () => {
       // R2, R3: the left and right batteries, C6 to C1.
       for (const led of [27, 23, 18, 13, 8, 4]) expect(new Set(show(led))).toEqual(new Set(["battery 0"]));
       for (const led of [28, 24, 19, 14, 9, 5]) expect(new Set(show(led))).toEqual(new Set(["battery 1"]));
-      // R4 C4–C1: Bluetooth 1–4; R5 C4: USB; the left thumbs: the locks; Z: the maintenance lock.
-      for (const led of [20, 15, 10, 6, 21]) expect(new Set(show(led))).toEqual(new Set(["connection"]));
+      // R4 C4–C2: Bluetooth 1–3 (the Go60 has three); R5 C4: USB; the left thumbs: the locks; Z: the maintenance lock.
+      for (const led of [20, 15, 10, 21]) expect(new Set(show(led))).toEqual(new Set(["connection"]));
+      expect(show(6)).toEqual([]);
       for (const led of [0, 1, 2]) expect(show(led)).toEqual(["lock"]);
       expect(show(25)).toEqual(["maintenance", "maintenance"]);
       // R5 C2, output fallback in MoErgo's firmware, has no rule that could show it.
@@ -104,6 +107,18 @@ describe("MoErgo Magic layer on the Go60", () => {
       const magic = magicOf(state(), 3);
       expect(magic.scene.map((cell) => cell.led_id)).toEqual(Array.from({ length: 30 }, (_, led) => led));
       expect(magic.wakes).toBe(true);
+    });
+  });
+});
+
+describe("MoErgo Magic layer sent to a Go60", () => {
+  it("reaches the keyboard: no light for a Bluetooth profile the Go60's three do not include", async () => {
+    await withTestWorkbench({ fixture: "go60" }, { mode: "live" }, async ({ io, state, flows, session }) => {
+      expect(await io.runFlow(flow, { layer: "auto" }, flows)).toMatchObject({ ok: true });
+      const rules = await session.lighting.conditionalScenes.read();
+      expect(rules.length).toBeGreaterThan(0);
+      expect(rules.some((rule) => (rule.connection?.profile ?? rule.connection?.bonded?.slot ?? 0) >= 3)).toBe(false);
+      expect(draftOf(state()).changes).toEqual([]);
     });
   });
 });

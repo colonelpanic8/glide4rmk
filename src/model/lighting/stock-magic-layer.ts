@@ -108,9 +108,24 @@ export function connectionLights(table: MagicLayerTable): ConnectionLight[] {
     const led = ledAt(table, row, col);
     if (led === undefined) return [];
     if (same(action, { Single: { KeyboardControl: "OutputUsb" } })) return [{ led, kind: { type: "usb" } }];
-    const slot = typeof action === "object" && "Single" in action && typeof action.Single === "object" && "User" in action.Single ? action.Single.User : null;
+    const slot = profileSlot(action);
     return slot !== null && slot < PROFILES ? [{ led, kind: { type: "ble", slot } }] : [];
   });
+}
+
+const profileSlot = (action: KeyAction): number | null =>
+  typeof action === "object" && "Single" in action && typeof action.Single === "object" && "User" in action.Single ? action.Single.User : null;
+
+/** The table for a keyboard with `profiles` Bluetooth profiles: a key for a
+ *  later profile is left unbound, and so has no light. The firmware's User
+ *  actions after the profiles mean other things (next, previous …), and it
+ *  refuses a rule for a profile it does not have. */
+export function withProfiles(table: MagicLayerTable, profiles: number): MagicLayerTable {
+  const kept = table.keys.filter(({ action }) => {
+    const slot = profileSlot(action);
+    return slot === null || slot >= PROFILES || slot < profiles;
+  });
+  return kept.length === table.keys.length ? table : { ...table, keys: kept };
 }
 
 /** Every LED the layer lights. */
@@ -155,9 +170,10 @@ export function magicLayerRules(table: MagicLayerTable, layer: number, numLayers
   return rules;
 }
 
-/** `current` with this layer's rules on the table's LEDs replaced, everything else kept. */
+/** `current` with this layer's rules on the table's LEDs and its dark half
+ *  replaced (a light an earlier Magic layer put there goes too), everything else kept. */
 export function withMagicLayerRules(current: readonly StatusRule[], table: MagicLayerTable, layer: number, numLayers: number): StatusRule[] {
-  const owned = magicLayerLeds(table);
+  const owned = new Set([...magicLayerLeds(table), ...table.dark]);
   const kept = current.filter((entry) => entry.cell.conditions.layer?.layer !== layer || !owned.has(entry.cell.led_id));
   return [...kept, ...magicLayerRules(table, layer, numLayers)];
 }

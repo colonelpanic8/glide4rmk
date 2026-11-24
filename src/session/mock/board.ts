@@ -1299,15 +1299,12 @@ class MockSession implements RynkSession {
     if (cell.layers !== undefined && layersOverlap(cell.layers.active, cell.layers.inactive)) {
       throw new Error(`rule ${index + 1} wants a layer both active and inactive`);
     }
-    const { connection } = cell;
-    if (connection === undefined) return;
-    for (const [label, slot] of [
-      ["profile", connection.profile],
-      ["bonded slot", connection.bonded?.slot],
-    ] as const) {
-      if (slot !== undefined && (!Number.isInteger(slot) || slot < 0)) {
-        throw new Error(`${label} ${slot} is not a slot number`);
-      }
+    const { ble_enabled, num_ble_profiles } = this.spec.capabilities;
+    for (const [label, slot] of [["profile", cell.connection?.profile], ["bonded slot", cell.connection?.bonded?.slot]] as const) {
+      if (slot === undefined) continue;
+      if (!Number.isInteger(slot) || slot < 0) throw new Error(`${label} ${slot} is not a slot number`);
+      // As the firmware does (InvalidRequest): no rule for a profile past the last one.
+      if (ble_enabled && slot >= num_ble_profiles) throw new Error(`rule ${index + 1} names Bluetooth ${label} ${slot}, and this keyboard has ${num_ble_profiles} profiles`);
     }
   }
 

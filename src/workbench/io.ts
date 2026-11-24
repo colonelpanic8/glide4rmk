@@ -140,6 +140,8 @@ export function keepingCurrent(
 export interface IoFeatures {
   /** The board's id in the registry; null for a board it does not know. */
   board: string | null;
+  /** How many Bluetooth profiles the keyboard has; 0 without Bluetooth. */
+  bleProfiles: number;
   sceneCapacity: number | null;
   conditionalSceneCapacity: number | null;
   scenesSupported: boolean;
@@ -153,6 +155,7 @@ export interface IoFeatures {
 
 export const NO_IO_FEATURES: IoFeatures = {
   board: null,
+  bleProfiles: 0,
   sceneCapacity: null,
   conditionalSceneCapacity: null,
   scenesSupported: false,
@@ -169,6 +172,7 @@ export function ioFeaturesFor(bundle: ConnectedBundle): IoFeatures {
   const capabilities = resolveCapabilities(firmwareFactsOf(bundle));
   return {
     board: bundle.boardProfile?.id ?? null,
+    bleProfiles: bundle.caps.ble_enabled ? bundle.caps.num_ble_profiles : 0,
     sceneCapacity: capabilities.get("lighting.scenes")?.slots ?? null,
     conditionalSceneCapacity: capabilities.get("lighting.rules")?.slots ?? null,
     scenesSupported: capabilities.has("lighting.scenes"),

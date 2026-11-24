@@ -117,6 +117,7 @@ function preflightLighting(
   const tagged = hasLightingFeature(bundle.lightingCaps, RULES);
   const advanced = hasLayerIndicatorConditions(bundle.lightingCaps);
   const extended = advanced || hasConnectionEffectsConditions(bundle.lightingCaps);
+  const profiles = bundle.caps.ble_enabled ? bundle.caps.num_ble_profiles : 0;
   for (const [index, rule] of rules.entries()) {
     const unsupported = !tagged && (rule.maintenance !== undefined || rule.split_transport !== undefined || (rule.unknown_predicates?.length ?? 0) > 0)
       ? "maintenance, split-transport, or unknown tagged conditions"
@@ -127,6 +128,13 @@ function preflightLighting(
         : null;
     if (unsupported) {
       throw new Error(`Conditional rule ${index + 1}: this firmware cannot store ${unsupported}; update firmware or remove the condition. No settings were written.`);
+    }
+    // The firmware refuses a rule for a profile past its last one (InvalidRequest).
+    const profile = rule.connection?.profile ?? rule.connection?.bonded?.slot;
+    if (profile !== undefined && profile >= profiles) {
+      throw new Error(
+        `Conditional rule ${index + 1} shows Bluetooth profile ${profile + 1}, and this keyboard has ${profiles === 0 ? "no Bluetooth" : `${profiles} profile${profiles === 1 ? "" : "s"}`}. No settings were written.`,
+      );
     }
   }
 }

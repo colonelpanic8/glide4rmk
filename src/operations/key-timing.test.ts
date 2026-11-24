@@ -38,6 +38,7 @@ function image(): KeyboardImage {
 const labels: BehaviorLabels = withLabel(withLabel(noLabels(), "morse", 0, { name: "shiftdance", description: "" }), "forks", 0, { name: "caps", description: "" });
 const facts: OperationFacts = {
   board: null,
+  bleProfiles: 4,
   cols: 4,
   sceneCapacity: null,
   ruleCapacity: null,
