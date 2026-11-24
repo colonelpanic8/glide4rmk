@@ -225,6 +225,19 @@ describe("parseDocument", () => {
     expect(parseDocument(rendered, CATALOG).snapshot.pointing).toEqual(pointing);
   });
 
+  it("opens a layout it saved with a mod-tap that has no timing profile, and saves it the same again", () => {
+    // The test catalog's palettes are Amber and Classic; the keymap is what this is about.
+    const source = readFileSync("src/test/fixtures/go60-default-rgb.toml", "utf8").replace('palette = "Afterburn"', 'palette = "Classic"');
+    expect(source).toContain("MT(KC_ENT,RAlt)");
+    const parsed = parseDocument(source, CATALOG);
+    expect(parsed.snapshot.layers[0][7]).toEqual({
+      TapHold: [{ Key: { Hid: "Enter" } }, { Modifier: expect.objectContaining({ right_alt: true, left_alt: false }) }, 255],
+    });
+    const rendered = renderDocument(parsed.snapshot, CATALOG, "toml", source);
+    expect(rendered).toContain("MT(KC_ENT,RAlt)");
+    expect(parseDocument(rendered, CATALOG).snapshot.layers).toEqual(parsed.snapshot.layers);
+  });
+
   it("opens and exactly round-trips the semantic TailorKey configuration", () => {
     const source = readFileSync(
       "src/config/fixtures/tailorkey-v52-bilateral.toml",

@@ -1,0 +1,104 @@
+From afcd9b2ef470a176b0d971c6cf30bb7d3f8ce9e1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 24 Nov 2026 09:29:05 +0100
+Subject: [PATCH] Read tap-holds without a profile back from TOML
+
+A tap-hold with no named profile is written as MT(key, mods) or
+TH(tap, hold), two arguments, key first, as RMK's keyboard.toml writes
+it. The reader took key-first calls only with three arguments; two went
+to the keycode parser, which reads MT(mods, kc), so a layout saved with
+such a key could not be opened again ("unknown modifier 'KC_ENT'").
+
+Two arguments are now read key first, with no profile, when the first
+is an action and the second the hold (modifiers for MT). MT(mods, kc)
+and LT(layer, kc) still go to the keycode parser.
+---
+ crates/moergo-config/src/config.rs | 58 +++++++++++++++++++++++++-----
+ 1 file changed, 50 insertions(+), 8 deletions(-)
+
+diff --git a/crates/moergo-config/src/config.rs b/crates/moergo-config/src/config.rs
+index ba88cf7..8f7f778 100644
+--- a/crates/moergo-config/src/config.rs
++++ b/crates/moergo-config/src/config.rs
+@@ -3630,14 +3630,20 @@ fn parse_key_action(token: &str, profile_names: &[String]) -> Result<KeyAction>
+             continue;
+         };
+         let arguments = split_call_arguments(inner)?;
+-        if arguments.len() != 3 {
+-            break;
+-        }
+-        let profile = profile_names
+-            .iter()
+-            .position(|candidate| candidate == &arguments[2])
+-            .with_context(|| format!("unknown morse profile '{}'", arguments[2]))?;
+-        let profile = u8::try_from(profile).context("more than 255 morse profiles")?;
++        let profile = match arguments.len() {
++            3 => {
++                let profile = profile_names
++                    .iter()
++                    .position(|candidate| candidate == &arguments[2])
++                    .with_context(|| format!("unknown morse profile '{}'", arguments[2]))?;
++                u8::try_from(profile).context("more than 255 morse profiles")?
++            }
++            // Without a profile `render_key_action` writes `MT(key, mods)` and
++            // `TH(tap, hold)`, as RMK's keyboard.toml does. The keycode forms
++            // `MT(mods, kc)` and `LT(layer, kc)` stay with the keycode parser.
++            2 if unprofiled_tap_hold(kind, &arguments) => u8::MAX,
++            _ => break,
++        };
+         let (tap, hold) = match kind {
+             0 => (
+                 single_action(&arguments[0])?,
+@@ -3661,6 +3667,25 @@ fn parse_key_action(token: &str, profile_names: &[String]) -> Result<KeyAction>
+     ))
+ }
+ 
++/// Whether two arguments are a tap-hold without a profile, key first:
++/// `MT(key, mods)` or `TH(tap, hold)`.
++fn unprofiled_tap_hold(kind: u8, arguments: &[String]) -> bool {
++    let tap = single_action(&arguments[0]).is_ok();
++    match kind {
++        0 => {
++            tap && modifier_list_to_wire(
++                &arguments[1]
++                    .split('|')
++                    .map(|name| name.trim().to_owned())
++                    .collect::<Vec<_>>(),
++            )
++            .is_ok()
++        }
++        2 => tap && single_action(&arguments[1]).is_ok(),
++        _ => false,
++    }
++}
++
+ fn single_action(text: &str) -> Result<Action> {
+     match crate::rynk_keycode::from_via_keycode(crate::keycodes::parse_keycode(text)?) {
+         KeyAction::Single(action) => Ok(action),
+@@ -5493,6 +5518,23 @@ primary_button = 2
+         assert_eq!(parse_key_actions(&rendered, &profiles).unwrap(), parsed);
+     }
+ 
++    #[test]
++    fn tap_holds_without_a_profile_round_trip() {
++        let keys = "\n-- -- MT(MOD_RALT, KC_ENT) TH(B, LSFT) LT(2, Escape) -- -- -- -- -- -- -- -- --\n-- -- -- -- -- -- -- -- -- -- -- -- -- --\n-- -- -- -- -- -- -- -- -- -- -- -- -- --\n-- -- -- -- -- -- -- -- -- -- -- -- -- --\n-- -- -- -- -- -- -- -- -- -- -- -- -- --\n-- -- -- -- -- -- -- -- -- -- -- -- -- --\n";
++        let parsed = parse_key_actions(keys, &[]).unwrap();
++        assert!(matches!(
++            parsed[2],
++            KeyAction::TapHold(_, Action::Modifier(_), u8::MAX)
++        ));
++        assert!(matches!(parsed[3], KeyAction::TapHold(_, _, u8::MAX)));
++        let rendered = render_key_actions(&parsed, &[]);
++        assert!(rendered.contains("MT(KC_ENT,RAlt)"), "{rendered}");
++        assert_eq!(parse_key_actions(&rendered, &[]).unwrap(), parsed);
++        // The key-first form with a modifier second, as GLIDE4RMK wrote it.
++        let written = keys.replace("MT(MOD_RALT, KC_ENT)", "MT(KC_ENT,RAlt)");
++        assert_eq!(parse_key_actions(&written, &[]).unwrap(), parsed);
++    }
++
+     #[test]
+     fn combo_triggers_preserve_parameterized_tap_holds() {
+         let profiles = vec!["autoshift".to_owned(), "thumb".to_owned()];
+-- 
+2.43.0
+

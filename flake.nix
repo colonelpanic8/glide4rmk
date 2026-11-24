@@ -155,6 +155,8 @@
           ./nix/patches/moergo-rmk-export-tap-patterns.patch
           # The Go60's MoErgo JSON (on top of the one above).
           ./nix/patches/moergo-rmk-go60-moergo-json.patch
+          # A tap-hold without a profile, saved as MT(key, mods), opens again.
+          ./nix/patches/moergo-rmk-read-unprofiled-tap-holds.patch
         ];
         moergo-config-wasm = rustPlatform.buildRustPackage {
           pname = "moergo-config-wasm";

@@ -26,6 +26,8 @@ const FIXTURES = {
   plain: "src/test/fixtures/glove80-plain.toml",
   /** MoErgo's default Glove80 layout with its stock Magic layer's lights, the maintenance lock on Z (ADR 0035). */
   "glove80-magic": "src/test/fixtures/glove80-default-rgb.toml",
+  /** MoErgo's default Go60 layout with its Magic layer's lights, as GLIDE4RMK saves it (a mod-tap without a profile on the base layer). */
+  "go60-magic": "src/test/fixtures/go60-default-rgb.toml",
   /** MoErgo's Go60 factory layout, as MoErgo JSON: four layers. */
   go60: "src/test/fixtures/go60-factory-default.json",
 } as const;
