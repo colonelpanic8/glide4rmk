@@ -1,26 +1,20 @@
-// Status setups, in Layout properties' RGB Lighting tab under Advanced: a
-// layer's status lights installed together with the keys that switch what
-// they show. On a Glove80, the Magic status cluster (a battery bar per half,
-// Bluetooth 1–3 and USB) and MoErgo's stock Magic layer; on any keyboard with
-// lit keys, a connection key and a battery bar on keys picked on the board
-// (StatusKeyPicks.tsx). One key's status light is set on the key itself (its
-// RGB Lighting tab). The rules join the draft (sent with Review & send; in
-// Live, once you pause, or at once for the picked setups), as every light does.
+// Status setups, in Layout properties' RGB Lighting tab under Advanced: on a
+// Glove80, MoErgo's stock Magic layer; on any keyboard with lit keys, a
+// connection key and a battery bar on keys picked on the board
+// (StatusKeyPicks.tsx). The Glove80 status cluster is a Flow (ADR 0035). One
+// key's status light is set on the key itself (its RGB Lighting tab).
 
 import { useState } from "react";
 import type { KeyView } from "../../model/keyboard";
-import { Button, SectionLabel } from "../kit";
-import { useCapability } from "../use-capabilities";
+import { SectionLabel } from "../kit";
+import { useCapabilities } from "../use-capabilities";
 import { layerName } from "../layer-names";
-import { useBusy, useDevice, useWorkbench } from "../state";
+import { useDevice, useWorkbench } from "../state";
 import { StatusKeyPicks } from "./StatusKeyPicks";
 import { useTerms } from "../terms";
 import { StockMagicLayerPanel } from "./StockMagicLayerPanel";
 import { stockMagicIndicatorKeys } from "../../model/lighting/stock-magic-layer";
-import { GLOVE80_BAR_LAYOUTS, glove80ConnectionKeys, installGlove80StatusRules, writeGlove80StatusSetup } from "../../model/lighting/status-presets";
-import type { Glove80BarLayout } from "../../model/lighting/status-presets";
 import { layersInMask } from "../../model/lighting/wake-layers";
-import { hasConnectionEffectsConditions, hasLayerIndicatorConditions } from "../../session/lighting-features";
 
 const selectClass = "mt-1 w-full rounded-md border border-line bg-raised px-2 py-1.5 text-body text-ink";
 
@@ -29,11 +23,10 @@ function keyAt(keys: KeyView[], row: number, col: number): KeyView | undefined {
 }
 
 export function StatusPresetsPanel() {
-  const { bundle, state, dispatch, io } = useWorkbench();
-  const busy = useBusy();
+  const { bundle, state } = useWorkbench();
   const device = useDevice();
   const term = useTerms();
-  const ruleTable = useCapability("lighting.rules");
+  const capabilities = useCapabilities();
   const numLayers = bundle.caps.num_layers;
   const wakeLayers = state.lightingOutputMode?.wake_layers ?? state.lightingControls.wake_layers;
   const [wakeLayer] = layersInMask(wakeLayers, numLayers);
@@ -42,53 +35,17 @@ export function StatusPresetsPanel() {
   // Follow the current wake policy until a layer is chosen.
   const [chosenLayer, setChosenLayer] = useState<number | null>(null);
   const layer = chosenLayer !== null && chosenLayer < numLayers ? chosenLayer : defaultLayer;
-  const [layout, setLayout] = useState<Glove80BarLayout>("outer-columns");
-  const [message, setMessage] = useState<string | null>(null);
 
-  if (ruleTable === undefined) return null;
+  if (!capabilities.has("lighting.rules")) return null;
 
   const nameOf = (n: number) => layerName(state.layerMetadata, n);
-  const predicatesSupported = hasConnectionEffectsConditions(bundle.lightingCaps);
-  // The tagged rule API carries the layer and lock-indicator predicates the
-  // stock Magic layer needs, so firmware shipping RULES alone qualifies.
-  const magicSupported = hasLayerIndicatorConditions(bundle.lightingCaps);
-  const glove80Available =
-    bundle.boardProfile?.presets.includes("glove80-status") &&
-    numLayers > 2 &&
-    bundle.caps.num_split_peripherals > 0 &&
-    bundle.caps.num_ble_profiles >= 3 &&
-    glove80ConnectionKeys(layer).every((preset) => keyAt(bundle.model.keys, preset.row, preset.col)?.ledId === preset.led);
+  const magicSupported = capabilities.has("lighting.rules.indicators");
   const stockMagicAvailable =
-    glove80Available &&
     bundle.boardProfile?.presets.includes("glove80-stock-magic") &&
+    numLayers > 2 &&
     stockMagicIndicatorKeys().every((indicator) => keyAt(bundle.model.keys, indicator.row, indicator.col)?.ledId === indicator.led);
   const lit = bundle.model.keys.some((key) => key.ledId !== undefined);
-  if (!glove80Available && !lit) return null;
-
-  const installGlove80 = async () => {
-    const rules = installGlove80StatusRules(state.runtimeConditionalDraft, layer, layout);
-    if (rules.length > ruleTable.slots) {
-      setMessage(`The complete Glove80 setup needs ${rules.length} rules; this keyboard holds ${ruleTable.slots}.`);
-      return;
-    }
-    const result = await writeGlove80StatusSetup(
-      {
-        setKey: (preset, action) => io.setKey(preset.layer, preset.row, preset.col, action),
-        applyRules: async (next) => {
-          dispatch({ type: "conditionalDraft", cells: next });
-          return { ok: true };
-        },
-      },
-      state.runtimeConditionalDraft,
-      layer,
-      layout,
-    );
-    setMessage(
-      result.ok
-        ? `${nameOf(layer)} has ${layout === "stock" ? "MoErgo-style" : "outer-column"} battery bars, three Bluetooth profile keys and the USB status key.`
-        : `Not installed: ${result.message}`,
-    );
-  };
+  if (!stockMagicAvailable && !lit) return null;
 
   return (
     <div>
@@ -105,37 +62,11 @@ export function StatusPresetsPanel() {
         </select>
       </label>
 
-      {!glove80Available ? null : predicatesSupported ? (
-        <div className="mt-2 rounded-lg border border-accent-deep/40 bg-accent-dim/15 p-3">
-          <div className="text-body font-medium text-ink">Glove80 Magic status cluster</div>
-          <p className="mt-1 text-small leading-relaxed text-faint">
-            A battery bar per half, Bluetooth 1–3 on the lower left thumb arc and USB on the upper thumb key. Running it again
-            replaces it.
-          </p>
-          <label className="mt-2 block text-small text-faint">
-            Battery bars
-            <select value={layout} onChange={(event) => setLayout(event.target.value as Glove80BarLayout)} className={selectClass}>
-              {GLOVE80_BAR_LAYOUTS.map((entry) => (
-                <option key={entry.id} value={entry.id}>
-                  {entry.label} · {entry.hint}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Button variant="primary" className="mt-2 w-full" disabled={busy.lightingBusy} onClick={installGlove80}>
-            Install complete Glove80 setup on {nameOf(layer)}
-          </Button>
-        </div>
-      ) : (
-        <p className="mt-2 text-small leading-relaxed text-warn">Update firmware to install Bluetooth and USB status keys.</p>
-      )}
-
       {stockMagicAvailable && magicSupported && <StockMagicLayerPanel layer={layer} />}
       {stockMagicAvailable && !magicSupported && (
         <p className="mt-2 text-small leading-relaxed text-warn">{term("magic.needsFirmware")}</p>
       )}
-      {lit && <StatusKeyPicks layer={layer} connections={predicatesSupported} />}
-      {message && <p className="mt-2 text-small leading-relaxed text-mute">{message}</p>}
+      {lit && <StatusKeyPicks layer={layer} connections={capabilities.has("lighting.rules.connection")} />}
     </div>
   );
 }

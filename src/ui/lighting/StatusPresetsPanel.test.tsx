@@ -104,9 +104,8 @@ describe("Glove80 presets", () => {
     );
   }
 
-  it("keeps the cluster on older firmware while requiring an update for stock Magic", () => {
+  it("asks for a firmware update for stock Magic on firmware whose rules cannot test layers or locks", () => {
     const html = renderGlove80("Glove80", 1 << 15);
-    expect(html).toContain("Install complete Glove80 setup");
     expect(html).not.toContain("Install stock Magic layer");
     expect(html).toContain("Update firmware to install the stock Magic layer");
   });
@@ -128,7 +127,7 @@ describe("Glove80 presets", () => {
 
   it("offers the stock Magic layer template only on a Glove80 with the stock LED map", () => {
     const html = renderGlove80("Glove80");
-    expect(html).toContain("Install complete Glove80 setup on Layer 2");
+    expect(html).not.toContain("Glove80 Magic status cluster");
     expect(html).toContain("Install stock Magic layer on Layer 2");
     expect(html).toContain("Bluetooth 1–4 and USB on the thumbs");
     expect(renderGlove80("Go60")).not.toContain("stock Magic layer");

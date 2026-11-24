@@ -10,6 +10,7 @@ import { ConditionalRulesPanel } from "../lighting/ConditionalRulesPanel";
 import { FirmwareRulesPanel } from "../lighting/FirmwareRulesPanel";
 import { LayerLightingSettings } from "./LayerLightingSettings";
 import { StatusPresetsPanel } from "../lighting/StatusPresetsPanel";
+import { StatusSetupsInFlows } from "../lighting/StatusSetupsInFlows";
 import { ChevronDownIcon } from "../icons";
 import { useWorkbench } from "../state";
 import { useCapabilities } from "../use-capabilities";
@@ -41,6 +42,7 @@ export function LightingSection() {
           {advanced && (
             <div className="mt-3 flex flex-col gap-4 [&>*+*]:border-t [&>*+*]:border-line-soft [&>*+*]:pt-4">
               {layers && <LayerLightingSettings />}
+              {rules && <StatusSetupsInFlows />}
               {rules && <StatusPresetsPanel />}
               {rules && <ConditionalRulesPanel />}
               {firmware && <FirmwareRulesPanel />}

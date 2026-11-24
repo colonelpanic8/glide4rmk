@@ -11,6 +11,5 @@
   "ui-never-dispatches-edits src/ui/keymap/useKeyLights.ts -> paint#2",
   "ui-never-dispatches-edits src/ui/lighting/ConditionalRulesPanel.tsx -> conditionalDraft#1",
   "ui-never-dispatches-edits src/ui/lighting/ConditionalRulesPanel.tsx -> conditionalDraftReset#1",
-  "ui-never-dispatches-edits src/ui/lighting/StatusPresetsPanel.tsx -> conditionalDraft#1",
   "ui-never-dispatches-edits src/ui/properties/LayerLightingSettings.tsx -> dispatch(action)#1"
 ]

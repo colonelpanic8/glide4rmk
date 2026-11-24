@@ -259,7 +259,7 @@ function FlowsButton() {
     <button
       type="button"
       data-testid="flows-open"
-      onClick={openFlows}
+      onClick={() => openFlows()}
       aria-pressed={open}
       title="Flows Automations"
       className={cx(
