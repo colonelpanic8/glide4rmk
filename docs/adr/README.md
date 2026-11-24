@@ -41,6 +41,7 @@ The table is built from each record's `# NNNN. Title` and `**Status:**` line by 
 | [0032](0032-workbench-state-groups.md) | The workbench state in groups: the keyboard's reports and the busy flags | Accepted |
 | [0033](0033-converter-patches-in-the-flake.md) | Changes to the MoErgo converter travel as patches in the flake | Accepted |
 | [0034](0034-a-file-opens-on-its-own-board.md) | A layout file opens on the board it is for | Accepted |
+| [0035](0035-lighting-setups-as-flows.md) | Lighting setups that run once become Flows; the editors stay | Proposed |
 <!-- /adr-index -->
 
 The glossary is in [../glossary.md](../glossary.md).
