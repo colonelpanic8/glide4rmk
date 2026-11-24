@@ -45,6 +45,8 @@ export const MOERGO_PROFILES: readonly BoardProfile[] = [
     documents: documentTools("go60", "Go60"),
     userActions: bleUserActions,
     magicLayer: GLOVE80_MAGIC_LAYER,
+    // moergo-rmk crates/glove80-rmk/keyboard.toml: ble_profiles_num = 4.
+    build: { bleProfiles: 4 },
     keyGroups: GLOVE80_KEY_GROUPS,
     addOns: GLOVE80_ADD_ONS,
     firmware: {
@@ -79,6 +81,8 @@ export const MOERGO_PROFILES: readonly BoardProfile[] = [
     addOns: GO60_ADD_ONS,
     documents: documentTools("glove80", "Glove80"),
     magicLayer: GO60_MAGIC_LAYER,
+    // moergo-rmk crates/go60-rmk/keyboard.toml: ble_profiles_num = 3.
+    build: { bleProfiles: 3 },
     userActions: bleUserActions,
     firmware: {
       source: releaseSource,

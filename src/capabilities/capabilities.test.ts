@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { firmwareFactsOf, resolveCapabilities, type FactSource } from "./resolve";
+import { bleProfilesOf, firmwareFactsOf, resolveCapabilities, type FactSource } from "./resolve";
 
 const none: FactSource = {
   sceneStatus: null,
@@ -11,7 +11,7 @@ const none: FactSource = {
   lightingState: null,
   lightingOutputMode: null,
   overlayReadSupported: false,
-  caps: { max_morse: 0, max_patterns_per_key: 0, max_macros: 0, macro_space_size: 0, macros_writable: false, max_forks: 0 },
+  caps: { max_morse: 0, max_patterns_per_key: 0, max_macros: 0, macro_space_size: 0, macros_writable: false, max_forks: 0, ble_enabled: false, num_ble_profiles: 0 },
   morseProfileCapacity: 0,
 };
 
@@ -36,6 +36,7 @@ describe("firmwareFactsOf", () => {
       macrosWritable: false,
       forkSlots: 0,
       profileSlots: 0,
+      bleProfiles: null,
     });
   });
 
@@ -95,6 +96,7 @@ describe("resolveCapabilities", () => {
       macrosWritable: false,
       forkSlots: 0,
       profileSlots: 0,
+      bleProfiles: null,
     });
     expect(set.get("lighting.scenes")).toEqual({ id: "lighting.scenes", slots: 16, reach: "device", readOnly: false });
     expect(set.get("lighting.rules")).toEqual({ id: "lighting.rules", slots: 24, reach: "device", readOnly: false });
@@ -131,6 +133,14 @@ describe("resolveCapabilities", () => {
     expect(offered({ ...table, lightingCaps: { features: 0 } })).toEqual([]);
     // No rule table: nothing to test with.
     expect(offered({ ...none, lightingCaps: { features: RULES } })).toEqual([]);
+  });
+
+  it("offers Bluetooth with the host profiles the firmware keeps, none without it", () => {
+    const ble = (enabled: boolean, profiles: number) => resolveCapabilities(firmwareFactsOf({ ...none, caps: { ...none.caps, ble_enabled: enabled, num_ble_profiles: profiles } }));
+    expect(ble(true, 3).get("bluetooth")).toEqual({ id: "bluetooth", slots: 3, reach: "device", readOnly: false });
+    expect(bleProfilesOf(ble(true, 4))).toBe(4);
+    expect(ble(false, 4).has("bluetooth")).toBe(false);
+    expect(bleProfilesOf(ble(false, 4))).toBe(0);
   });
 
   it("offers a double tap only when a morse entry fits tap, hold and tap-tap", () => {

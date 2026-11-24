@@ -26,7 +26,7 @@ import type {
   WorkbenchAction,
   WorkbenchState,
 } from "../model/workbench-state";
-import { firmwareFactsOf, resolveCapabilities } from "../capabilities";
+import { bleProfilesOf, firmwareFactsOf, resolveCapabilities } from "../capabilities";
 import type { SendOptions } from "./draft/send";
 import type { InputOf, OperationName } from "../operations";
 import { applyOperation, passEverything, type Judge } from "./apply";
@@ -172,7 +172,7 @@ export function ioFeaturesFor(bundle: ConnectedBundle): IoFeatures {
   const capabilities = resolveCapabilities(firmwareFactsOf(bundle));
   return {
     board: bundle.boardProfile?.id ?? null,
-    bleProfiles: bundle.caps.ble_enabled ? bundle.caps.num_ble_profiles : 0,
+    bleProfiles: bleProfilesOf(capabilities),
     sceneCapacity: capabilities.get("lighting.scenes")?.slots ?? null,
     conditionalSceneCapacity: capabilities.get("lighting.rules")?.slots ?? null,
     scenesSupported: capabilities.has("lighting.scenes"),

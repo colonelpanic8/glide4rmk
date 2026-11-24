@@ -27,6 +27,7 @@ import { ledNodesOf, lightingDraftFor, type IoWriteResult } from "../../workbenc
 import { useWorkbench } from "../state";
 import { useCapabilities, useCapability } from "../use-capabilities";
 import { useTryOut } from "./useTryOut";
+import { bleProfilesOf } from "../../capabilities";
 
 export function useKeyLights() {
   const { bundle, state, dispatch, io } = useWorkbench();
@@ -54,7 +55,7 @@ export function useKeyLights() {
     statusLights: rulesTable !== undefined,
     /** How many Bluetooth profiles a profile's status light can show; none without Bluetooth
      *  or rules that can ask about it. */
-    bleProfiles: bundle.caps.ble_enabled && capabilities.has("lighting.rules.connection") ? bundle.caps.num_ble_profiles : 0,
+    bleProfiles: capabilities.has("lighting.rules.connection") ? bleProfilesOf(capabilities) : 0,
     /** A light can show whether RGB effects are on, and the lighting policy. */
     effectsLight: capabilities.has("lighting.extension") && capabilities.has("lighting.rules.connection"),
     policyLight: capabilities.has("lighting.output"),

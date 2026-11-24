@@ -19,15 +19,9 @@ import type {
   LightingZone,
   Morse,
 } from "../../vendor/rynk-wasm/rynk_wasm";
-import {
-  GLOVE80_BOARD_KEYS,
-  GLOVE80_COLS,
-  GLOVE80_GRID,
-  GLOVE80_ROWS,
-  glove80Enrichment,
-  type Glove80Key,
-} from "../../model/boards/glove80";
+import { GLOVE80_BOARD_KEYS, GLOVE80_COLS, GLOVE80_GRID, GLOVE80_ROWS, glove80Enrichment, type Glove80Key } from "../../model/boards/glove80";
 import { emptyFork, emptyMorse, emptyMorseProfile, noModifiers, noStateBits } from "../../model/slots";
+import { profileById } from "../../model/boards/profiles";
 import { hid, layerOn, type BoardSpec } from "./board";
 import { buildTopology, type SimLed } from "./topology";
 
@@ -173,7 +167,7 @@ const capabilities: DeviceCapabilities = {
   is_split: true,
   num_split_peripherals: 1,
   ble_enabled: true,
-  num_ble_profiles: 4,
+  num_ble_profiles: profileById("glove80")!.build!.bleProfiles,
   max_payload_size: 256,
   max_bulk_keys: 28,
   max_bulk_items: 4,

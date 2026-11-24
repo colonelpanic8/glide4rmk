@@ -9,6 +9,7 @@ import type { DeviceCapabilities, DeviceInfo, Key, KeyAction } from "../../vendo
 import { GO60_COLS, GO60_KEYS, GO60_LABELS, GO60_ROWS } from "../../model/boards/go60";
 import { GO60_GLIDE_CENTERS } from "../../model/boards/go60-geometry";
 import { addPointingDevice } from "../../model/pointing";
+import { profileById } from "../../model/boards/profiles";
 import type { BoardSpec } from "../mock/board";
 import { actionForLegend, glove80Board } from "../mock/glove80";
 import { buildTopology, type SimLed } from "../mock/topology";
@@ -61,7 +62,7 @@ const capabilities: DeviceCapabilities = {
   num_cols: GO60_COLS,
   max_combos: 32,
   max_morse: 64,
-  num_ble_profiles: 3,
+  num_ble_profiles: profileById("go60")!.build!.bleProfiles,
 };
 
 const info: DeviceInfo = {

@@ -29,7 +29,9 @@ export type CapabilityId =
   | "behaviors.macros"
   | "behaviors.morse"
   | "behaviors.forks"
-  | "behaviors.profiles";
+  | "behaviors.profiles"
+  /** Bluetooth, its slots the host profiles the firmware keeps (the Glove80's RMK build four, the Go60's three). */
+  | "bluetooth";
 
 /** The capabilities that are tables with a fixed number of slots. */
 export type TableCapabilityId =
@@ -39,7 +41,8 @@ export type TableCapabilityId =
   | "behaviors.macros"
   | "behaviors.morse"
   | "behaviors.forks"
-  | "behaviors.profiles";
+  | "behaviors.profiles"
+  | "bluetooth";
 
 export interface Capability {
   id: CapabilityId;

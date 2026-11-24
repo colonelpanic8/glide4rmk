@@ -65,6 +65,9 @@ export interface BoardProfile {
   }[];
   /** MoErgo's Magic layer: its keys and status lights (ADR 0035). */
   magicLayer?: MagicLayerTable;
+  /** What GLIDE4RMK's RMK build for this board keeps, for the simulated and
+   *  offline boards. A connected keyboard says for itself (capabilities). */
+  build?: { bleProfiles: number };
   /** Where its letter block, home row, thumbs and number row sit (ADR 0027). */
   keyGroups?: KeyGroups;
   /** The places it has for add-ons, built in or a module a layout turns on (ADR 0028). */

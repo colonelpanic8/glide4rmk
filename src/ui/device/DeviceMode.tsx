@@ -3,6 +3,7 @@
 
 import { KeyboardCanvas } from "../KeyboardCanvas";
 import { useDevice, useWorkbench } from "../state";
+import { useCapability } from "../use-capabilities";
 import { Chip, Panel, Row, SectionLabel } from "../kit";
 import { BatteryGlyph } from "../icons";
 import { KIND_LABEL } from "../session-labels";
@@ -29,6 +30,7 @@ export function DeviceMode() {
   const { bundle } = useWorkbench();
   const device = useDevice();
   const { info, caps, protocol, build, lightingCaps } = bundle;
+  const bluetooth = useCapability("bluetooth");
   const battery = device.battery !== "Unavailable" ? device.battery.Available : null;
   const conn = device.connection;
 
@@ -90,7 +92,7 @@ export function DeviceMode() {
               {caps.storage_enabled && <Chip>storage</Chip>}
               {caps.lighting_enabled && <Chip>lighting</Chip>}
               {caps.is_split && <Chip>split · {caps.num_split_peripherals}p</Chip>}
-              {caps.ble_enabled && <Chip>BLE · {caps.num_ble_profiles} profiles</Chip>}
+              {bluetooth && <Chip>BLE · {bluetooth.slots} profiles</Chip>}
               {caps.bulk_transfer_supported && <Chip>bulk transfer</Chip>}
             </div>
           </Panel>
@@ -145,9 +147,9 @@ export function DeviceMode() {
           </Panel>
         </div>
 
-        {caps.ble_enabled && caps.num_ble_profiles > 0 && <BleCard />}
+        {bluetooth && bluetooth.slots > 0 && <BleCard />}
 
-        {caps.is_split && caps.ble_enabled && <SplitLatencyCard />}
+        {caps.is_split && bluetooth && <SplitLatencyCard />}
 
         <MatrixTester />
 

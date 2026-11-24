@@ -5,6 +5,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useWorkbench } from "../state";
+import { useCapability } from "../use-capabilities";
 import { useSharedDocumentTransfer } from "../transfer-actions";
 import { TextInput } from "../kit";
 import { closeProperties } from "./store";
@@ -26,6 +27,7 @@ export function DetailsSection() {
   const { workspaceName, renameWorkspace, migrationTarget, previewMigration } = useSharedDocumentTransfer();
   const [name, setName] = useState(workspaceName);
   const caps = bundle.caps;
+  const bluetooth = useCapability("bluetooth");
   const keyboard = bundle.boardProfile?.name ?? bundle.model.name;
   const commit = () => {
     const next = name.trim();
@@ -82,7 +84,7 @@ export function DetailsSection() {
         {caps.max_morse > 0 && <Fact label="Tap patterns (morse)">{caps.max_morse}</Fact>}
         {caps.max_macros > 0 && <Fact label="Macros">{caps.max_macros}</Fact>}
         {caps.max_forks > 0 && <Fact label="Forks">{caps.max_forks}</Fact>}
-        {caps.ble_enabled && <Fact label="Bluetooth profiles">{caps.num_ble_profiles}</Fact>}
+        {bluetooth && <Fact label="Bluetooth profiles">{bluetooth.slots}</Fact>}
         {caps.is_split && <Fact label="Halves">{caps.num_split_peripherals + 1}</Fact>}
       </div>
     </div>
