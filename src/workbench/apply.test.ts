@@ -73,7 +73,7 @@ describe("applying an operation (ADR 0019)", () => {
         { layer: 1, row: 0, col: 0, action: letter("Y") },
       ];
       const result = await io.apply("set_keys", { keys });
-      expect(result).toEqual({ ok: false, message: "flash failed; nothing was changed" });
+      expect(result).toEqual({ ok: false, message: "Layer 2's row 1 did not reach the keyboard: flash failed; nothing was changed" });
       expect(await firstTwo(session)).toEqual(before);
       expect(state().history.past).toEqual([]);
       expect(draftOf(state()).changes).toEqual([]);

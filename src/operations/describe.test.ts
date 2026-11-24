@@ -32,14 +32,14 @@ group("describe", () => {
 
   it("gives the board as the registry knows it: its groups, keys, capabilities and extras", () => {
     const board = describe(image([]), {
-      id: "glove80", name: "Glove80", cols: 2, keyCount: 80, groups: GLOVE80_KEY_GROUPS, capabilities: ["behaviors.morse", "pointing"], magicLayer: 2,
+      id: "glove80", name: "Glove80", cols: 2, keyCount: 80, groups: GLOVE80_KEY_GROUPS, capabilities: ["behaviors.morse", "pointing"], magicLayer: true,
     }).board;
-    expect(board).toMatchObject({ id: "glove80", name: "Glove80", keys: 80, capabilities: ["behaviors.morse", "pointing"], extras: ["pointing"], magic_layer: 2 });
+    expect(board).toMatchObject({ id: "glove80", name: "Glove80", keys: 80, capabilities: ["behaviors.morse", "pointing"], extras: ["pointing"], magic_layer: true });
     expect(board.groups.home_row?.[0]).toEqual({ row: 3, col: 1, hand: "left", finger: "pinky" });
   });
 
   it("gives a board the registry does not know no groups, and its matrix as its key count", () => {
-    expect(describe(image([]), { id: null, cols: 2 }).board).toEqual({ id: null, name: "Keyboard", keys: 4, groups: {}, capabilities: [], extras: [], magic_layer: null });
+    expect(describe(image([]), { id: null, cols: 2 }).board).toEqual({ id: null, name: "Keyboard", keys: 4, groups: {}, capabilities: [], extras: [], magic_layer: false });
   });
 
   it("gives the timing profiles by name and counts the combos", () => {

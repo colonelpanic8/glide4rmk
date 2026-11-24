@@ -17,7 +17,9 @@ import {
   withValues,
   type ImageFeatures,
   type ReadImage,
+  SyncStopped,
   type SyncItem,
+  type SyncStep,
 } from "../../sync";
 import { errorMessage } from "../../session/errors";
 import { sameValue } from "../../model/deep-equal";
@@ -87,7 +89,7 @@ export async function sendStaged(deps: SendDeps, options: SendOptions = {}): Pro
     dispatch({ type: "batchApplyDone", error: leftBehind() });
     return { ok: true };
   } catch (error) {
-    const message = errorMessage(error);
+    const message = error instanceof SyncStopped ? `${failedPart(error.step)} did not reach the keyboard: ${error.message}` : errorMessage(error);
     // Whatever reached the keyboard leaves the draft; the rest is sent next time.
     let unread = false;
     try {
@@ -111,5 +113,23 @@ export async function sendStaged(deps: SendDeps, options: SendOptions = {}): Pro
    *  draft, and what this send wrote (`wrote`) is based on it. */
   function stored({ activeLayers: _layers, layerStateComplete: _complete, ...image }: ReadImage, wrote: SyncItem[] = []) {
     dispatch({ type: "draftStored", image, wrote });
+  }
+}
+
+/** The part of the draft a failed write was carrying, so the message says where to look. */
+function failedPart(step: SyncStep): string {
+  switch (step.kind) {
+    case "rules":
+      return `The lighting rules (${step.value.length})`;
+    case "scenes":
+      return `The layer lights (${step.value.length} cells)`;
+    case "keys":
+      return `Layer ${step.layer + 1}'s row ${step.row + 1}`;
+    case "layerMetadata":
+      return `Layer ${step.layer + 1}'s name`;
+    case "wakeLayers":
+      return "The layers that wake the lights";
+    default:
+      return `A change (${step.kind})`;
   }
 }

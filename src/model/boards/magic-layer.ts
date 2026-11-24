@@ -20,8 +20,8 @@ export interface LitPlace {
 }
 
 export interface MagicLayerTable {
-  /** The layer MoErgo's default layout keeps it on. */
-  layer: number;
+  /** The key on the default layer that MoErgo's layout holds the Magic layer down with. */
+  reach: { row: number; col: number };
   /** Every key of the board: each one the layer does not bind is left unbound there. */
   places: readonly LitPlace[];
   /** What the layer binds. */
@@ -75,7 +75,7 @@ function glove80(): MagicLayerTable {
   const places = glove80Places();
   const z = { row: 4, col: 1 };
   return {
-    layer: 2,
+    reach: { row: 5, col: 0 },
     places,
     keys: [
       { row: 0, col: 0, action: user(CLEAR_ACTIVE_PROFILE) },
@@ -105,7 +105,7 @@ function go60(): MagicLayerTable {
   const places = GO60_KEYS.map(({ row, col, led }) => ({ row, col, led }));
   const z = { row: 3, col: 1 };
   return {
-    layer: 3,
+    reach: { row: 3, col: 0 },
     places,
     keys: [
       { row: 0, col: 0, action: user(CLEAR_ACTIVE_PROFILE) },

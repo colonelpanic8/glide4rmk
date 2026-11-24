@@ -56,6 +56,8 @@ export type OperationResult =
       layerOrder?: number[];
       /** The behavior labels after the change, when it changed them (ADR 0020). */
       labels?: BehaviorLabels;
+      /** What the person should look at: done, but not all as asked. */
+      notes?: string[];
     }
   | { ok: false; message: string };
 

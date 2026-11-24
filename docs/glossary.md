@@ -37,6 +37,6 @@ One word, one meaning. Code, docs and screens use these terms.
 - **Try out (not saved):** lights put on the keyboard at once and never stored: not in the draft, Send or Undo; gone on a restart. "Keep these lights on <layer>" stores them (ADR 0024).
 - **Status light:** a key's light that shows the keyboard's state: a lock, a battery level, a Bluetooth profile, USB, whether RGB effects are on, or the lighting policy. Set on the key, in the key editor's RGB Lighting tab.
 - **Battery bar:** three to eight selected keys given one status light together: they light one after the other as a half's battery fills (the RGB Lighting tab's Status light, Battery bar).
-- **Magic layer:** MoErgo's layer for controlling the keyboard (Bluetooth, USB, RGB, Bootloader), with its status lights while held; on a Glove80 or Go60 the "MoErgo Magic layer" Flow makes one (ADR 0035).
+- **Magic layer:** MoErgo's layer for controlling the keyboard (Bluetooth, USB, RGB, Bootloader), with its status lights while held; on a Glove80 or Go60 the "MoErgo Magic layer" Flow sets up the layer named Magic, or adds one (ADR 0035, 0038).
 - **Behavior:** a numbered slot RMK stores that keys refer to: a macro, a tap pattern (morse), a fork or a tap-hold profile. Listed in the Behavior Library (ADR 0020).
 - **Label:** a behavior's name and description. The keyboard stores none (a profile's name excepted); labels live beside what you want, in the browser per keyboard and in the layout file (ADR 0020).

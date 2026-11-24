@@ -81,7 +81,7 @@ describe("Send", () => {
       let failures = 1;
       session.keymap.setRows = (layer, row, actions) =>
         layer === 2 && failures-- > 0 ? Promise.reject(new Error("link dropped")) : setRows(layer, row, actions);
-      expect(await io.applyBatch()).toEqual({ ok: false, message: "link dropped", waiting: 1 });
+      expect(await io.applyBatch()).toEqual({ ok: false, message: "Layer 3's row 1 did not reach the keyboard: link dropped", waiting: 1 });
       expect(draftOf(state()).changes.map(({ item }) => item)).toEqual([{ kind: "key", layer: 2, offset: 0 }]);
       const before = storedSegmentsOf(session);
       expect(await io.applyBatch()).toEqual({ ok: true });

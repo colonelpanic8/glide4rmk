@@ -42,7 +42,7 @@ describe("layer transaction preflight", () => {
       const before = await session.keymap.readAll();
       const everything = vi.spyOn(session.keymap, "replaceAll");
       vi.spyOn(session.keymap, "setLayerMetadata").mockRejectedValueOnce(new Error("flash failed"));
-      expect(await io.deleteLayer(1)).toEqual({ ok: false, message: "flash failed; nothing was changed" });
+      expect(await io.deleteLayer(1)).toEqual({ ok: false, message: "Layer 2's name did not reach the keyboard: flash failed; nothing was changed" });
       expect(everything).not.toHaveBeenCalled(); // only what changes is written, and written back (ADR 0012)
       expect(await session.keymap.readAll()).toEqual(before);
       expect((await session.keymap.getLayerMetadata(1)).name).toBe("Lower");

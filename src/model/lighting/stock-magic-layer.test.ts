@@ -32,7 +32,7 @@ describe("the Magic layer tables", () => {
 
   it("give the maintenance lock a key no other light uses, Z on both boards", () => {
     for (const table of [GLOVE80_MAGIC_LAYER, GO60_MAGIC_LAYER]) {
-      const rules = magicLayerRules(table, table.layer, 6);
+      const rules = magicLayerRules(table, 2, 6);
       const maintenance = rules.filter((rule) => rule.maintenance).map((rule) => rule.cell.led_id);
       const others = new Set(rules.filter((rule) => !rule.maintenance).map((rule) => rule.cell.led_id));
       expect(maintenance).toHaveLength(2);
@@ -55,13 +55,17 @@ describe("the Magic layer's rules", () => {
     expect(layerLights.map((rule) => [rule.cell.led_id, rule.layers?.active])).toEqual([[35, 1], [29, 2], [23, undefined]]);
   });
 
-  it("replace their own rules on the layer and keep every other rule", () => {
+  it("clear the layer's own rules first and keep every other layer's; with only the status lights, keep the layer's other rules", () => {
     const elsewhere = batteryBarRules({ layer: 1, node: 0, leds: [36, 30, 24] })[0];
     const otherLed = batteryBarRules({ layer: 2, node: 0, leds: [60, 61, 62] })[0];
     const stale = batteryBarRules({ layer: 2, node: 0, leds: [36, 30, 24] })[0];
     const once = withMagicLayerRules([elsewhere, otherLed, stale], GLOVE80_MAGIC_LAYER, 2, 3);
-    expect(once.slice(0, 2)).toEqual([elsewhere, otherLed]);
+    expect(once[0]).toEqual(elsewhere);
+    expect(once).not.toContain(otherLed);
     expect(once).not.toContain(stale);
+    const lightsOnly = withMagicLayerRules([elsewhere, otherLed, stale], GLOVE80_MAGIC_LAYER, 2, 3, false);
+    expect(lightsOnly.slice(0, 2)).toEqual([elsewhere, otherLed]);
+    expect(lightsOnly).not.toContain(stale);
     expect(withMagicLayerRules(once, GLOVE80_MAGIC_LAYER, 2, 3)).toEqual(once);
     expect([...magicLayerLeds(GLOVE80_MAGIC_LAYER)].every((led) => led < 40)).toBe(true);
   });

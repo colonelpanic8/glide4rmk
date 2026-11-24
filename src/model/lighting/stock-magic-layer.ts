@@ -170,18 +170,42 @@ export function magicLayerRules(table: MagicLayerTable, layer: number, numLayers
   return rules;
 }
 
-/** `current` with this layer's rules on the table's LEDs replaced, everything
- *  else kept. With `wholeHalf`, every rule on the dark half goes too (a light an
- *  earlier Magic layer put there); without it, only the status lights' own LEDs. */
-export function withMagicLayerRules(current: readonly StatusRule[], table: MagicLayerTable, layer: number, numLayers: number, wholeHalf = true): StatusRule[] {
-  const owned = new Set([...magicLayerLeds(table), ...(wholeHalf ? table.dark : [])]);
-  const kept = current.filter((entry) => entry.cell.conditions.layer?.layer !== layer || !owned.has(entry.cell.led_id));
+/** `current` with this layer's status lights replaced, everything else kept.
+ *  With `whole`, every rule watching the layer goes first (the layer starts
+ *  clean); without it, only the rules on the status lights' own LEDs. */
+export function withMagicLayerRules(current: readonly StatusRule[], table: MagicLayerTable, layer: number, numLayers: number, whole = true): StatusRule[] {
+  const owned = magicLayerLeds(table);
+  const kept = current.filter((entry) => entry.cell.conditions.layer?.layer !== layer || (!whole && !owned.has(entry.cell.led_id)));
   return [...kept, ...magicLayerRules(table, layer, numLayers)];
 }
 
-/** `current` with this layer's scene the table's dark half, in place of what it had. */
-export function withMagicLayerScene(current: readonly LightingSceneCell[], table: MagicLayerTable, layer: number): LightingSceneCell[] {
-  return [...current.filter((cell) => cell.layer !== layer), ...table.dark.map((led_id) => ({ layer, led_id, effect: BLACK }))];
+/** `current` with this layer's scene the table's dark half, in place of what
+ *  it had; with `dark` false, the layer's scene emptied. */
+export function withMagicLayerScene(current: readonly LightingSceneCell[], table: MagicLayerTable, layer: number, dark = true): LightingSceneCell[] {
+  const others = current.filter((cell) => cell.layer !== layer);
+  return dark ? [...others, ...table.dark.map((led_id) => ({ layer, led_id, effect: BLACK }))] : others;
+}
+
+/** The name a layout's Magic layer goes by. */
+export const MAGIC_LAYER_NAME = "Magic";
+
+const isMagicName = (name: string | undefined) => name?.trim().toLowerCase() === MAGIC_LAYER_NAME.toLowerCase();
+
+/** What finding the Magic layer reads of a layout. */
+export interface MagicLayerLayout {
+  metadata: readonly { occupied: boolean; name: string }[];
+  layers: readonly (readonly KeyAction[])[];
+  defaultLayer: number;
+}
+
+/** The layout's Magic layer: the layer named Magic, else the layer that the
+ *  default layer's key MoErgo uses for it holds down; null when it has none. */
+export function findMagicLayer(layout: MagicLayerLayout, table: MagicLayerTable, cols: number): number | null {
+  const named = layout.metadata.findIndex((slot) => slot.occupied && isMagicName(slot.name));
+  if (named >= 0) return named;
+  const key = layout.layers[layout.defaultLayer]?.[table.reach.row * cols + table.reach.col];
+  const held = typeof key === "object" && "Single" in key && typeof key.Single === "object" && "LayerOn" in key.Single ? key.Single.LayerOn : null;
+  return held !== null && held !== layout.defaultLayer && held < layout.layers.length ? held : null;
 }
 
 /** Each key of the board as the layer has it: what the table binds, the rest unbound. */
