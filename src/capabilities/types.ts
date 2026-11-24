@@ -11,6 +11,12 @@ export type CapabilityId =
   | "lighting.state"
   | "lighting.scenes"
   | "lighting.rules"
+  /** Rules that can test Bluetooth, USB and whether RGB effects are on. */
+  | "lighting.rules.connection"
+  /** Rules that can test which layers are on and the host's lock lights. */
+  | "lighting.rules.indicators"
+  /** Rules that can test the keyboard's own state: the maintenance lock, the split link. */
+  | "lighting.rules.device"
   | "lighting.compiled"
   | "lighting.extension"
   | "lighting.output"
