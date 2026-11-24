@@ -40,7 +40,7 @@ The top bar has buttons only for the areas that open over the keymap (Device, In
 | --- | --- | --- | --- |
 | Layout | Keymap, layers, encoders | keymap | every board |
 | Behaviors | All your behaviors (ADR 0020), combos, forks, macros, morse, Profiles | `behaviors.*`, combos | boards that have any of them |
-| (Lighting) | no area since ADR 0016: each key's light in the key editor's RGB Lighting tab and Paint; the lights as a whole, effects, status setups and rules in Layout properties (RGB Lighting, RGB Effects) | `lighting.state` and its surfaces | boards with RGB |
+| (Lighting) | no area since ADR 0016: each key's light in the key editor's RGB Lighting tab and Paint; status lights and battery bars on the key too; the lights as a whole, effects and rules in Layout properties (RGB Lighting, RGB Effects); MoErgo's status setups in Flows, "Looks & lighting" (ADR 0035) | `lighting.state` and its surfaces | boards with RGB |
 | Device | Device, connection, firmware update | device, `firmware.update` on desktop | connected boards |
 | Library | Import and export, board transfer, backups | none | always |
 | Insights | Live, health check | `live.*` for Live | Live when connected |

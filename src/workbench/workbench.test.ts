@@ -147,7 +147,7 @@ describe("layer lighting drafts", () => {
     s = reducer(s, { type: "erase", ledIds: [9], layer: 0 });
     s = reducer(s, { type: "paint", cells: [cell(8, 8)], layer: 1 });
 
-    s = reducer(s, { type: "scenesApplied", state: LIGHTING, cells: [{ layer: 0, led_id: 4, effect: solid(4) }] });
+    s = reducer(s, { type: "lightingRefresh", state: LIGHTING, overlay: [], scenes: [{ layer: 0, led_id: 4, effect: solid(4) }] });
 
     expect(s.layerDrafts[0]).toEqual({ 4: cell(4, 4) });
     expect(s.layerDrafts[1]).toEqual({ 8: cell(8, 8) });

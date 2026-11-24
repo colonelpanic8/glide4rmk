@@ -4,6 +4,7 @@ import { firmwareFactsOf, resolveCapabilities, type FactSource } from "./resolve
 const none: FactSource = {
   sceneStatus: null,
   runtimeConditionalStatus: null,
+  lightingCaps: null,
   compiledSceneStatus: null,
   lightingExtension: null,
   pointingConfig: null,
@@ -19,6 +20,9 @@ describe("firmwareFactsOf", () => {
     expect(firmwareFactsOf(none)).toEqual({
       sceneSlots: null,
       ruleSlots: null,
+      ruleConnections: false,
+      ruleIndicators: false,
+      ruleDevice: false,
       lighting: false,
       compiledScenes: false,
       extensionEffects: false,
@@ -75,6 +79,9 @@ describe("resolveCapabilities", () => {
     const set = resolveCapabilities({
       sceneSlots: 16,
       ruleSlots: 24,
+      ruleConnections: false,
+      ruleIndicators: false,
+      ruleDevice: false,
       lighting: true,
       compiledScenes: true,
       extensionEffects: true,
@@ -100,6 +107,30 @@ describe("resolveCapabilities", () => {
     expect(set.get("keys.doubleTap")).toEqual({ id: "keys.doubleTap", slots: 32, reach: "device", readOnly: false });
     expect(set.get("behaviors.morse")).toEqual({ id: "behaviors.morse", slots: 32, reach: "device", readOnly: false });
     expect(set.list()).toHaveLength(10);
+  });
+
+  it("offers what the rules can test from the firmware's feature bits, only with a rule table", () => {
+    const RULES = 1 << 17;
+    const EFFECTS = 1 << 15;
+    const INDICATORS = 1 << 16;
+    const table = { ...none, runtimeConditionalStatus: { capacity: 32 } };
+    const offered = (source: FactSource) =>
+      resolveCapabilities(firmwareFactsOf(source))
+        .list()
+        .map((capability) => capability.id)
+        .filter((id) => id.startsWith("lighting.rules."));
+    // The tagged rule table carries every predicate.
+    expect(offered({ ...table, lightingCaps: { features: RULES } })).toEqual([
+      "lighting.rules.connection",
+      "lighting.rules.indicators",
+      "lighting.rules.device",
+    ]);
+    // The older encodings each carry their own, and never the device's state.
+    expect(offered({ ...table, lightingCaps: { features: EFFECTS } })).toEqual(["lighting.rules.connection"]);
+    expect(offered({ ...table, lightingCaps: { features: INDICATORS } })).toEqual(["lighting.rules.indicators"]);
+    expect(offered({ ...table, lightingCaps: { features: 0 } })).toEqual([]);
+    // No rule table: nothing to test with.
+    expect(offered({ ...none, lightingCaps: { features: RULES } })).toEqual([]);
   });
 
   it("offers a double tap only when a morse entry fits tap, hold and tap-tap", () => {

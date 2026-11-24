@@ -1,6 +1,6 @@
 # 0035. MoErgo lighting setups become Flows; the rest is done on the key
 
-**Status:** Proposed. Builds on ADR 0025 and 0027 (Flows), ADR 0019 (operations) and ADR 0024 (lighting tools on the keymap); settles todo items 11 and 12 with item 6's lighting part.
+**Status:** Accepted, #46. Builds on ADR 0025 and 0027 (Flows), ADR 0019 (operations) and ADR 0024 (lighting tools on the keymap); settles todo items 11 and 12 with item 6's lighting part.
 
 ## Context
 
@@ -21,8 +21,8 @@ A key's light menu (`KeyLightFields.tsx`, `set_key_light`) already gives selecte
 
 - **Two Flows**, category "Looks & lighting", both assuming four Bluetooth profiles, so neither needs the board's LEDs or profile count in the description:
   - *Glove80 status cluster* (`flows/glove80/`, `keyboards = ["glove80"]`): choices `layer` (default 2) and `bars` (`outer-columns`, `stock`); `requires = ["lighting.rules", "lighting.rules.connection"]`. It holds its positions, and calls `set_battery_bar` twice and `set_connection_key` four times; no new operation.
-  - *MoErgo Magic layer* (`flows/shared/`, `keyboards = ["glove80", "go60"]`): choice `layer`, default "the board's Magic layer" (2 on the Glove80, 3 on the Go60); `requires = ["lighting.rules", "lighting.rules.indicators", "lighting.output"]`. One new operation, `set_magic_layer`: the keys, the dark scene on the left half when the board has scenes, the rules, the layer added to the wake mask. It runs in Draft too.
-- **Each board's Magic layer is data in `model/boards/`**, on its profile, as its key groups are (ADR 0027): the layer's keys and where its lights are. `set_magic_layer` takes the table by the board's id and refuses with a sentence on a board without one (`OperationFacts` gains the id), so the shared catalog stays safe for WebMCP. The pure functions in `model/lighting/stock-magic-layer.ts` build the rules from a table instead of the Glove80's constants. The Bluetooth and USB lights go on the keys the layer binds to profiles 0–3 and to USB output, so they follow the bindings. MoErgo's indicator layout, the Go60's one row up from the Glove80's:
+  - *MoErgo Magic layer* (`flows/shared/`, `keyboards = ["glove80", "go60"]`): choice `layer`, default "the board's Magic layer" (2 on the Glove80, 3 on the Go60); `requires = ["lighting.rules", "lighting.rules.connection", "lighting.rules.indicators", "lighting.rules.device", "lighting.output"]`. One new operation, `set_magic_layer`: the keys, the dark scene on the left half when the board has scenes, the rules, the layer added to the wake mask. It runs in Draft too.
+- **Each board's Magic layer is data in `model/boards/`** (`magic-layer.ts`), on its profile as `magicLayer`, as its key groups are (ADR 0027): the layer's keys and where its lights are. It replaces the profile's `presets` flags and `defaultStatusLayer`. `set_magic_layer` takes the table by the board's id and refuses with a sentence on a board without one (`OperationFacts` gains the id), so the shared catalog stays safe for WebMCP. The pure functions in `model/lighting/stock-magic-layer.ts` build the rules from a table instead of the Glove80's constants. The Bluetooth and USB lights go on the keys the layer binds to profiles 0–3 and to USB output, so they follow the bindings. MoErgo's indicator layout, the Go60's one row up from the Glove80's:
 
   | Lights | Glove80 | Go60 |
   |---|---|---|
@@ -34,10 +34,10 @@ A key's light menu (`KeyLightFields.tsx`, `set_key_light`) already gives selecte
   | Maintenance lock (key and light) | Z, LH-C5R5 | Z, LH-C5R4 |
 
   The maintenance lock moves from R to Z on both boards: on R its light hid the left battery's 80% segment, since one of its two rules always matches and comes last. Z is free on both Magic layers and lights nothing else. R takes Output brightness + (`BacklightUp`), beside Output brightness − below it. MoErgo's Go60 also shows output fallback (R5 C2); the rules cannot test fallback, so that key stays dark.
-- **Everything else is done on the key.** The light menu gains three status lights: *RGB effects* (on or off), *Lighting policy* (always on, always off, USB-powered only), and *Battery bar* for the selected keys (filling in the order they lie, `set_battery_bar` underneath). With the action set in the key editor, that covers the connection key, the battery bar and both key presets. The Status setup block in Advanced, the picked-key cards and the key presets panel go.
+- **Everything else is done on the key.** The light menu gains three status lights: *RGB effects* (on or off; with `lighting.extension` and `lighting.rules.connection`), *Lighting policy* (always on, always off, USB-powered only; with `lighting.output`), and *Battery bar* for three to eight selected keys (filling up a column or along a row; `set_key_light` with `{ kind: "bar" }`). Bluetooth and USB lights also need `lighting.rules.connection`. With the action set in the key editor, that covers the connection key, the battery bar and both key presets. The Status setup block in Advanced, the picked-key cards and the key presets panel go.
 - **The settings stay**: the rule editor (its Apply becomes a `set_rules` commit), firmware rules, background, layer policy, wake layers.
-- **What Flows gain first:** capabilities `lighting.rules.connection` and `lighting.rules.indicators`, resolved from the feature bits as `hasConnectionEffectsConditions` and `hasLayerIndicatorConditions` do (firmware with the newer rule table alone counts), and the screens asking those instead.
-- **Advanced keeps a pointer** on a Glove80: "Status setups are in Flows" opens Flows at "Looks & lighting".
+- **What Flows gain first:** capabilities `lighting.rules.connection`, `lighting.rules.indicators` and `lighting.rules.device` (the maintenance lock and the split link, which only the tagged rule table carries), resolved from the feature bits as `hasConnectionEffectsConditions`, `hasLayerIndicatorConditions` and `RULES` do (firmware with the newer rule table alone counts); the bits move into `capabilities/`, and the screens ask the capabilities.
+- **Advanced keeps a pointer** on a board with a Magic layer table (the Glove80 and the Go60): "<board> status setups in Flows" opens Flows at "Looks & lighting".
 
 ## Consequences
 

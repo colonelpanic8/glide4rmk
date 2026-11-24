@@ -6,7 +6,7 @@ import { setKeys, swapKeys } from "./keys";
 import { setKeyTiming } from "./key-timing";
 import { addLayer, deleteLayer, duplicateLayer, moveLayer, renameLayer } from "./layers";
 import { setTimingProfile } from "./timing-profiles";
-import { clearLayerLights, setBatteryBar, setConnectionKey, setKeyEffects, setKeyLight } from "./lighting";
+import { clearLayerLights, setBatteryBar, setConnectionKey, setKeyEffects, setKeyLight, setMagicLayer } from "./lighting";
 import { applyTransform } from "./transform";
 import { setCombos } from "./combos";
 import {
@@ -40,6 +40,7 @@ const NAMED = {
   clear_layer_lights: clearLayerLights,
   set_connection_key: setConnectionKey,
   set_battery_bar: setBatteryBar,
+  set_magic_layer: setMagicLayer,
   apply_transform: applyTransform,
   add_behavior: createBehavior,
   update_behavior: setBehavior,

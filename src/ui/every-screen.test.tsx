@@ -21,7 +21,6 @@ import { ALL_SECTIONS, areaOfSection, areasFor, sectionTerm, type SectionId } fr
 import { openBundle } from "../workbench/open";
 import { ConditionalRulesPanel } from "./lighting/ConditionalRulesPanel";
 import { FirmwareRulesPanel } from "./lighting/FirmwareRulesPanel";
-import { StatusPresetsPanel } from "./lighting/StatusPresetsPanel";
 import { DetailsSection } from "./properties/DetailsSection";
 import { EffectsSection } from "./properties/EffectsSection";
 import { FirmwareOptions } from "./properties/FirmwareOptions";
@@ -131,10 +130,7 @@ describe.each(BOARDS)("%s", (_board, spec) => {
       if (capabilities.has("lighting.extension")) expect(draw(<EffectsSection />)).toContain('role="switch"');
       // RGB Lighting's Advanced parts, which open closed.
       if (capabilities.has("lighting.scenes")) expect(draw(<LayerLightingSettings />)).toContain("lit keys stored");
-      if (capabilities.has("lighting.rules")) {
-        draw(<StatusPresetsPanel />);
-        draw(<ConditionalRulesPanel />);
-      }
+      if (capabilities.has("lighting.rules")) draw(<ConditionalRulesPanel />);
       if (capabilities.has("lighting.compiled")) draw(<FirmwareRulesPanel />);
     });
   });

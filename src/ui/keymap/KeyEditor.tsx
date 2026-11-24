@@ -18,9 +18,6 @@ import { isDrafted, keyPendingId } from "../../workbench";
 import { useWorkbench } from "../state";
 import { useCapabilities } from "../use-capabilities";
 import { selectedKeys } from "../../model/key-selection";
-import { pickPrompt } from "../../model/lighting/key-pick";
-import { layerName } from "../layer-names";
-import { useKeyPick } from "../lighting/keyPick";
 
 import { WarningIcon } from "../icons";
 import { showToast } from "../messages/store";
@@ -35,8 +32,7 @@ import {
 } from "../../model/key-slots";
 
 import { OtherBehaviors } from "./OtherBehaviors";
-import { LightingKeyPresetPanel } from "../lighting/LightingKeyPresetPanel";
-import { EditorHeading, EditorPanel, EditorPlaceholder, EditorPrompt } from "./EditorPanel";
+import { EditorHeading, EditorPanel, EditorPrompt } from "./EditorPanel";
 import { useEditorTabs, type EditorTab } from "./editorTabs";
 import { LayerLighting } from "./LayerLighting";
 
@@ -67,12 +63,6 @@ export function KeyEditor({ size = 310 }: { size?: number }) {
   const uses = useMemo(() => morseUses(state.layers), [state.layers]);
 
   const tabs = useEditorTabs(true);
-  const pick = useKeyPick();
-
-  // A status setup is choosing its keys: a click selects, it does not edit.
-  if (pick) {
-    return <EditorPlaceholder size={size}>↑ {pickPrompt(pick, layerName(state.layerMetadata, state.uiLayer))}</EditorPlaceholder>;
-  }
   if (!selection) return <IdleKeyEditor size={size} tabs={tabs} tab={tab} onTab={setTab} />;
 
   const { row, col } = selection;
@@ -222,9 +212,7 @@ export function KeyEditor({ size = 310 }: { size?: number }) {
       {tab === "layer" && <SwitchLayer onPick={pickLayer} disabled={false} />}
       {tab === "behaviors" && <OtherBehaviors onPick={fill} current={action} />}
       {tab === "lighting" && (
-        <LayerLighting ledId={key?.ledId}>
-          {key && <LightingKeyPresetPanel layer={layer} target={key} current={action} />}
-        </LayerLighting>
+        <LayerLighting ledId={key?.ledId} />
       )}
     </EditorPanel>
   );

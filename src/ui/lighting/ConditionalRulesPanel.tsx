@@ -27,7 +27,7 @@ import { useDevice, useWorkbench } from "../state";
 import { busyOf } from "../../model/busy-state";
 import { conditionalTablesEqual } from "../../model/lighting/compare";
 import { ApplyBar, Button, SectionLabel, Segmented, TextInput, cx } from "../kit";
-import { useCapability } from "../use-capabilities";
+import { useCapabilities, useCapability } from "../use-capabilities";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, TrashIcon } from "../icons";
 import { cssEmissiveRgb } from "../../model/lighting/color";
 import { describeRuleConditions, runtimeConditionalSupported } from "../../model/lighting/firmware-rules";
@@ -36,7 +36,6 @@ import { EffectEditor } from "./EffectEditor";
 import { keyAddressWithLegend } from "../key-address";
 import { layerName } from "../layer-names";
 import { appendRule, moveRule, newRule, removeRule, replaceRule, retargetLayer, rulesOnLayer, type Rule, type Rules } from "../../model/lighting/rules";
-import { RULES, hasLayerIndicatorConditions, hasLightingFeature } from "../../session/lighting-features";
 import { maskHasLayer, setLayerInMask } from "../../model/lighting/wake-layers";
 import { useTextContext } from "../useKeyText";
 
@@ -105,6 +104,7 @@ export function ConditionalRulesPanel() {
   const device = useDevice();
   const text = useTextContext();
   const ruleTable = useCapability("lighting.rules");
+  const capabilities = useCapabilities();
   const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
   const [moveFrom, setMoveFrom] = useState<number | null>(null);
   const [moveTo, setMoveTo] = useState(0);
@@ -184,11 +184,10 @@ export function ConditionalRulesPanel() {
   const rule = selected === null ? undefined : rules[selected];
   const conditions = rule?.cell.conditions;
   const connection = rule?.connection;
-  // Gate on the encoding bit, not on the connection bit: firmware advertising
-  // only the earlier predicate bits speaks a shorter extended cell that this
-  // build does not write.
-  const rulesSupported = hasLightingFeature(bundle.lightingCaps, RULES);
-  const predicatesSupported = hasLayerIndicatorConditions(bundle.lightingCaps);
+  // The tagged rule table alone carries the keyboard's own state; firmware with
+  // only the earlier predicate bits speaks a shorter cell that has no room for it.
+  const rulesSupported = capabilities.has("lighting.rules.device");
+  const predicatesSupported = capabilities.has("lighting.rules.indicators");
   const layerSet = rule?.layers;
   const setLayerSet = (target: Rule, next: { active: number; inactive: number }) => {
     if (selected === null) return;

@@ -24,7 +24,7 @@ import { Button, ErrorBanner, SectionLabel, TextInput, cx } from "../kit";
 import { CloseIcon, FlowsIcon, SearchIcon } from "../icons";
 import { browserJq } from "./browserJq";
 import { FlowResultBar, FlowResultBody } from "./FlowResult";
-import { closeFlows } from "./store";
+import { closeFlows, flowsStartCategory } from "./store";
 
 let jq: JqRunner | null = null;
 const jqRunner = (): JqRunner => (jq ??= browserJq());
@@ -119,7 +119,7 @@ export function FlowsWindow() {
   const capabilities = useCapabilities();
   const [flows, setFlows] = useState<Flow[] | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
-  const [category, setCategory] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>(flowsStartCategory);
   const [uid, setUid] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [values, setValues] = useState<Record<string, Record<string, unknown>>>({});

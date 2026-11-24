@@ -40,9 +40,9 @@ describe("terms", () => {
   });
 
   it("fills a term's placeholders, and leaves one it is not given", () => {
-    expect(termFor("magic.install", "technical", { layer: "Magic" })).toBe("Install stock Magic layer on Magic");
-    expect(termFor("magic.installed", "friendly", { layer: "Magic" })).toBe("Magic is the Magic layer now. A key that holds it on opens it.");
-    expect(termFor("magic.install", "friendly")).toBe("Make {layer} the Magic layer");
+    expect(termFor("lighting.setupsInFlows", "technical", { board: "Go60" })).toBe("Go60 status setups in Flows");
+    expect(termFor("lighting.setupsInFlows", "friendly", { board: "Glove80" })).toBe("Status lights for your Glove80, in Flows");
+    expect(termFor("lighting.setupsInFlows", "friendly")).toBe("Status lights for your {board}, in Flows");
   });
 
   it("uses no word for what the app no longer has", () => {

@@ -12,16 +12,14 @@ import { openBundle } from "../workbench/open";
 import { hoveredBehavior } from "./behaviors/hoveredBehavior";
 import { openFlows } from "./flows/store";
 import { lightView } from "./keymap/lightView";
-import { keyPick } from "./lighting/keyPick";
 import { openProperties } from "./properties/store";
 import { Workbench } from "./Workbench";
 import { workbenchStores } from "./workbench-store";
 
 /** Leaves every registered store somewhere other than its start. */
 function leaveStoresBusy() {
-  keyPick.start({ kind: "connection", layer: 0, connection: { type: "usb" } });
   openProperties("lighting");
-  openFlows();
+  openFlows("Looks & lighting");
   lightView.setTryingOut(true);
   hoveredBehavior.enter({ id: "macros:0", places: [] });
   const stores = workbenchStores();

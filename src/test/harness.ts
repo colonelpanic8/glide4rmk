@@ -24,6 +24,8 @@ const FIXTURES = {
   tailorkey: "src/test/fixtures/glove80-tailorkey-qwerty.toml",
   /** Three layers, no home-row mods, no combos, no Magic layer. */
   plain: "src/test/fixtures/glove80-plain.toml",
+  /** MoErgo's default Glove80 layout with its stock Magic layer's lights, the maintenance lock on Z (ADR 0035). */
+  "glove80-magic": "src/test/fixtures/glove80-default-rgb.toml",
   /** MoErgo's Go60 factory layout, as MoErgo JSON: four layers. */
   go60: "src/test/fixtures/go60-factory-default.json",
 } as const;

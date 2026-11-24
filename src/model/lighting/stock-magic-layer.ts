@@ -1,104 +1,15 @@
-import type {
-  KeyAction,
-  KeyboardAction,
-  LightAction,
-  LightingConnectionCondition,
-  LightingEffect,
-  LightingSceneCell,
-} from "../../vendor/rynk-wasm/rynk_wasm";
-import { GLOVE80_COLS, GLOVE80_ROWS } from "../boards/glove80";
+// MoErgo's stock Magic layer on RMK lighting rules, for a board's table
+// (model/boards/magic-layer.ts): its keys, its half dark, and its status lights
+// as MoErgo's firmware shows them (colours from rgb_underglow.c of
+// moergo-sc/zmk): which layers are on, the lock lights, each half's battery,
+// Bluetooth 1–4 and USB on the keys bound to them, and the maintenance lock.
+// Pure; the set_magic_layer operation applies it.
+
+import type { KeyAction, LightingConnectionCondition, LightingEffect, LightingSceneCell } from "../../vendor/rynk-wasm/rynk_wasm";
+import type { MagicLayerTable } from "../boards/magic-layer";
 import { same } from "../deep-equal";
-import type { StatusRule, StatusSetupResult } from "./status-presets";
-import { setLayerInMask } from "./wake-layers";
-
-// MoErgo's factory Glove80 Magic layer, rebuilt from RMK actions and runtime
-// lighting rules. Bindings follow glove80.keymap in moergo-sc/glove80-zmk-config;
-// indicator positions and colors follow the `underglow_indicators` node in
-// glove80_lh.dts and rgb_underglow.c of moergo-sc/zmk.
-
-export interface IndicatorKey {
-  row: number;
-  col: number;
-  led: number;
-}
-
-const rowKeys = (row: number, leds: number[]): IndicatorKey[] =>
-  leds.map((led, col) => ({ row, col, led }));
-/** Thumb keys sit in matrix column 6; each one's LED id equals its row. */
-const thumb = (row: number): IndicatorKey => ({ row, col: 6, led: row });
-
-/** Number row: layers 0-5, outer key first. */
-export const STOCK_LAYER_KEYS = rowKeys(1, [35, 29, 23, 17, 11, 6]);
-/** Left battery on row 3, right battery on row 4, each filling inward. */
-export const STOCK_LEFT_BATTERY_KEYS = rowKeys(2, [36, 30, 24, 18, 12, 7]);
-export const STOCK_RIGHT_BATTERY_KEYS = rowKeys(3, [37, 31, 25, 19, 13, 8]);
-/** R on the Magic layer: the host-mutation lock toggle and its status LED. */
-export const STOCK_MAINTENANCE_KEY: IndicatorKey = { row: 2, col: 4, led: 12 };
-/** Bluetooth profiles 0-3 on T4, T5, T1, T2; USB on T6. */
-export const STOCK_PROFILE_KEYS = [thumb(3), thumb(4), thumb(0), thumb(1)];
-export const STOCK_USB_KEY = thumb(5);
-
-export type LockIndicator = "caps_lock" | "num_lock" | "scroll_lock";
-
-/** Caps, num, and scroll lock on F3, F4, and F5. */
-export const STOCK_LOCK_KEYS: Array<IndicatorKey & { lock: LockIndicator }> = [
-  { row: 0, col: 2, led: 22, lock: "caps_lock" },
-  { row: 0, col: 3, led: 16, lock: "num_lock" },
-  { row: 0, col: 4, led: 10, lock: "scroll_lock" },
-];
-
-/** Every key the template lights, for checking a board against the stock LED map. */
-export function stockMagicIndicatorKeys(): IndicatorKey[] {
-  return [
-    ...STOCK_LAYER_KEYS,
-    ...STOCK_LOCK_KEYS,
-    ...STOCK_LEFT_BATTERY_KEYS,
-    ...STOCK_RIGHT_BATTERY_KEYS,
-    ...STOCK_PROFILE_KEYS,
-    STOCK_USB_KEY,
-  ];
-}
-
-/** Board-reserved User action that forwards a bootloader request to the right half. */
-const PERIPHERAL_BOOTLOADER_ACTION = 12;
-const CLEAR_ACTIVE_BLE_PROFILE_ACTION = 10;
-const CLEAR_ALL_BLE_PROFILES_ACTION = 11;
-/** LEDs of the left half, the only half ZMK's status view draws on. */
-const LEFT_HALF_LEDS = 40;
-
-const light = (action: LightAction): KeyAction => ({ Single: { Light: action } });
-const control = (action: KeyboardAction): KeyAction => ({ Single: { KeyboardControl: action } });
-const user = (id: number): KeyAction => ({ Single: { User: id } });
-
-/** The layer's 6x14 row-major actions. Every key the stock layer leaves as
- *  `&none` is unbound. */
-export function stockMagicLayerGrid(profiles: number): KeyAction[] {
-  const grid: KeyAction[] = Array.from({ length: GLOVE80_ROWS * GLOVE80_COLS }, () => "No");
-  const set = (row: number, col: number, action: KeyAction) => {
-    grid[row * GLOVE80_COLS + col] = action;
-  };
-  set(0, 0, user(CLEAR_ACTIVE_BLE_PROFILE_ACTION));
-  set(0, 13, user(CLEAR_ALL_BLE_PROFILES_ACTION));
-  set(2, 1, light("RgbSpi"));
-  set(2, 2, light("RgbSai"));
-  set(2, 3, light("RgbHui"));
-  set(2, 4, control("MaintenanceModeToggle"));
-  // RGB_TOG turns all underglow off; on this firmware that is the output
-  // toggle, while RgbTog only flips the uniform background band.
-  set(2, 5, light("BacklightToggle"));
-  set(3, 0, control("Bootloader"));
-  set(3, 1, light("RgbSpd"));
-  set(3, 2, light("RgbSad"));
-  set(3, 3, light("RgbHud"));
-  set(3, 4, light("BacklightDown"));
-  set(3, 5, light("RgbModeForward"));
-  set(3, 13, user(PERIPHERAL_BOOTLOADER_ACTION));
-  set(4, 0, control("Reboot"));
-  set(4, 13, control("Reboot"));
-  STOCK_PROFILE_KEYS.slice(0, profiles).forEach((key, slot) => set(key.row, key.col, user(slot)));
-  set(STOCK_USB_KEY.row, STOCK_USB_KEY.col, control("OutputUsb"));
-  return grid;
-}
+import type { Lock } from "./status-light";
+import type { StatusRule } from "./status-presets";
 
 const rgb = (r: number, g: number, b: number): LightingEffect => ({ Solid: { color: { r, g, b } } });
 
@@ -113,6 +24,10 @@ const LILAC = rgb(107, 31, 206);
 const BLACK = rgb(0, 0, 0);
 const MAINTENANCE_UNLOCKED = rgb(0, 128, 0);
 const MAINTENANCE_LOCKED = rgb(128, 0, 0);
+
+/** At most this many layers have a light. */
+const SHOWN_LAYERS = 6;
+const PROFILES = 4;
 
 function rule(layer: number, led: number, effect: LightingEffect): StatusRule {
   return {
@@ -141,31 +56,20 @@ function connection(fields: Partial<LightingConnectionCondition>): LightingConne
 
 /** Six segments at 0, 20, …, 100 percent; the whole bar is green from 40,
  *  yellow from 20, red below, and green throughout while charging. */
-function batteryRules(layer: number, node: number, keys: IndicatorKey[]): StatusRule[] {
-  const banded = (
-    led: number,
-    effect: LightingEffect,
-    min: number,
-    max: number | undefined,
-    charge: "Any" | "Charging" = "Any",
-  ): StatusRule => {
+function batteryRules(layer: number, node: number, leds: readonly number[]): StatusRule[] {
+  const banded = (led: number, effect: LightingEffect, min: number, max: number | undefined, charge: "Any" | "Charging" = "Any"): StatusRule => {
     const entry = rule(layer, led, effect);
-    entry.cell.conditions.battery = {
-      node,
-      min_level: min > 0 ? min : undefined,
-      max_level: max,
-      charge,
-    };
+    entry.cell.conditions.battery = { node, min_level: min > 0 ? min : undefined, max_level: max, charge };
     return entry;
   };
   const rules: StatusRule[] = [];
-  keys.forEach(({ led }, index) => {
-    const level = Math.round((index * 100) / (keys.length - 1));
+  leds.forEach((led, index) => {
+    const level = Math.round((index * 100) / (leds.length - 1));
     rules.push(banded(led, GREEN, Math.max(level, 40), undefined));
     if (level < 40) rules.push(banded(led, YELLOW, Math.max(level, 20), 39));
     if (level < 20) rules.push(banded(led, RED, level, 19));
   });
-  for (const { led } of keys) rules.push(banded(led, GREEN, 0, undefined, "Charging"));
+  for (const led of leds) rules.push(banded(led, GREEN, 0, undefined, "Charging"));
   return rules;
 }
 
@@ -193,139 +97,81 @@ function usbRules(layer: number, led: number): StatusRule[] {
   return [unplugged, plugged, active];
 }
 
-/** The indicator rules for a Magic layer at `layer` on a board with
- *  `numLayers` layers and `profiles` BLE slots. Every rule watches the Magic
- *  layer; a layer indicator adds the shown layer through the layer-set
- *  predicate, and a lock indicator adds the host's lock state. */
-export function stockMagicLayerRules(layer: number, numLayers: number, profiles: number): StatusRule[] {
+const ledAt = (table: MagicLayerTable, row: number, col: number): number | undefined =>
+  table.places.find((place) => place.row === row && place.col === col)?.led;
+
+/** The keys the layer binds to a Bluetooth profile or to USB, each with its LED: their lights follow the bindings. */
+export type ConnectionLight = { led: number; kind: { type: "ble"; slot: number } | { type: "usb" } };
+
+export function connectionLights(table: MagicLayerTable): ConnectionLight[] {
+  return table.keys.flatMap(({ row, col, action }): ConnectionLight[] => {
+    const led = ledAt(table, row, col);
+    if (led === undefined) return [];
+    if (same(action, { Single: { KeyboardControl: "OutputUsb" } })) return [{ led, kind: { type: "usb" } }];
+    const slot = typeof action === "object" && "Single" in action && typeof action.Single === "object" && "User" in action.Single ? action.Single.User : null;
+    return slot !== null && slot < PROFILES ? [{ led, kind: { type: "ble", slot } }] : [];
+  });
+}
+
+/** Every LED the layer lights. */
+export function magicLayerLeds(table: MagicLayerTable): Set<number> {
+  const maintenance = ledAt(table, table.maintenance.row, table.maintenance.col);
+  return new Set([
+    ...table.layerLights,
+    ...Object.values(table.locks),
+    ...table.batteries.flat(),
+    ...connectionLights(table).map(({ led }) => led),
+    ...(maintenance === undefined ? [] : [maintenance]),
+  ]);
+}
+
+/** The status rules of a Magic layer on `layer`, on a layout with `numLayers`
+ *  layers. Every rule watches the Magic layer; a layer light adds the layer it
+ *  shows, a lock light the host's lock. */
+export function magicLayerRules(table: MagicLayerTable, layer: number, numLayers: number): StatusRule[] {
   const rules: StatusRule[] = [];
-  STOCK_LAYER_KEYS.slice(0, numLayers).forEach((key, shown) => {
-    const entry = rule(layer, key.led, MAGENTA);
+  table.layerLights.slice(0, Math.min(numLayers, SHOWN_LAYERS)).forEach((led, shown) => {
+    const entry = rule(layer, led, MAGENTA);
     if (shown !== layer) entry.layers = { active: 2 ** shown, inactive: 0 };
     rules.push(entry);
   });
-  for (const key of STOCK_LOCK_KEYS) {
-    const entry = rule(layer, key.led, RED);
-    entry.indicators = {
-      num_lock: undefined,
-      caps_lock: undefined,
-      scroll_lock: undefined,
-      [key.lock]: true,
-    };
+  for (const lock of ["caps_lock", "num_lock", "scroll_lock"] as const satisfies readonly Lock[]) {
+    const entry = rule(layer, table.locks[lock], RED);
+    entry.indicators = { num_lock: undefined, caps_lock: undefined, scroll_lock: undefined, [lock]: true };
     rules.push(entry);
   }
-  rules.push(...batteryRules(layer, 0, STOCK_LEFT_BATTERY_KEYS));
-  rules.push(...batteryRules(layer, 1, STOCK_RIGHT_BATTERY_KEYS));
-  STOCK_PROFILE_KEYS.slice(0, profiles).forEach((key, slot) =>
-    rules.push(...profileRules(layer, key.led, slot)),
-  );
-  rules.push(...usbRules(layer, STOCK_USB_KEY.led));
-  const unlocked = rule(layer, STOCK_MAINTENANCE_KEY.led, MAINTENANCE_UNLOCKED);
-  unlocked.maintenance = { unlocked: true };
-  const locked = rule(layer, STOCK_MAINTENANCE_KEY.led, MAINTENANCE_LOCKED);
-  locked.maintenance = { unlocked: false };
-  rules.push(unlocked, locked);
+  table.batteries.forEach((leds, node) => rules.push(...batteryRules(layer, node, leds)));
+  for (const { led, kind } of connectionLights(table)) {
+    rules.push(...(kind.type === "usb" ? usbRules(layer, led) : profileRules(layer, led, kind.slot)));
+  }
+  const maintenance = ledAt(table, table.maintenance.row, table.maintenance.col);
+  if (maintenance !== undefined) {
+    const unlocked = rule(layer, maintenance, MAINTENANCE_UNLOCKED);
+    unlocked.maintenance = { unlocked: true };
+    const locked = rule(layer, maintenance, MAINTENANCE_LOCKED);
+    locked.maintenance = { unlocked: false };
+    rules.push(unlocked, locked);
+  }
   return rules;
 }
 
-/** Replace this layer's rules on the template's LEDs, keeping everything else. */
-export function installStockMagicLayerRules(
-  current: StatusRule[],
-  layer: number,
-  numLayers: number,
-  profiles: number,
-): StatusRule[] {
-  const owned = new Set(stockMagicIndicatorKeys().map((key) => key.led));
-  const kept = current.filter((entry) => {
-    const watched = entry.cell.conditions.layer?.layer;
-    if (watched === undefined || !owned.has(entry.cell.led_id)) return true;
-    if (watched === layer) return false;
-    // A layer indicator watches its own layer, not Magic.
-    return STOCK_LAYER_KEYS[watched]?.led !== entry.cell.led_id;
-  });
-  return [...kept, ...stockMagicLayerRules(layer, numLayers, profiles)];
+/** `current` with this layer's rules on the table's LEDs replaced, everything else kept. */
+export function withMagicLayerRules(current: readonly StatusRule[], table: MagicLayerTable, layer: number, numLayers: number): StatusRule[] {
+  const owned = magicLayerLeds(table);
+  const kept = current.filter((entry) => entry.cell.conditions.layer?.layer !== layer || !owned.has(entry.cell.led_id));
+  return [...kept, ...magicLayerRules(table, layer, numLayers)];
 }
 
-/** The layer's scene: the left half dark, as under ZMK's status view. */
-export function stockMagicLayerScene(layer: number): LightingSceneCell[] {
-  return Array.from({ length: LEFT_HALF_LEDS }, (_, led_id) => ({ layer, led_id, effect: BLACK }));
+/** `current` with this layer's scene the table's dark half, in place of what it had. */
+export function withMagicLayerScene(current: readonly LightingSceneCell[], table: MagicLayerTable, layer: number): LightingSceneCell[] {
+  return [...current.filter((cell) => cell.layer !== layer), ...table.dark.map((led_id) => ({ layer, led_id, effect: BLACK }))];
 }
 
-export function sceneTableWithStockMagicLayer(
-  current: LightingSceneCell[],
-  layer: number,
-): LightingSceneCell[] {
-  return [...current.filter((cell) => cell.layer !== layer), ...stockMagicLayerScene(layer)];
-}
-
-export interface StockMagicLayerWriter {
-  setKey(row: number, col: number, action: KeyAction): Promise<StatusSetupResult>;
-  applyScenes(cells: LightingSceneCell[]): Promise<StatusSetupResult>;
-  applyRules(rules: StatusRule[]): Promise<StatusSetupResult>;
-  setWakeLayers(mask: number): Promise<StatusSetupResult>;
-}
-
-export interface StockMagicLayerTarget {
-  layer: number;
-  numLayers: number;
-  profiles: number;
-  /** The board's keys; matrix holes are never written. */
-  keys: Array<{ row: number; col: number }>;
-  /** The layer's current actions, row-major, so unchanged keys are skipped. */
-  current: KeyAction[];
-  rules: StatusRule[];
-  ruleCapacity: number;
-  /** `null` when the firmware has no scene table. */
-  scenes: LightingSceneCell[] | null;
-  sceneCapacity: number;
-  /** `null` when the firmware has no wake-layer policy. */
-  wakeLayers: number | null;
-}
-
-/** Bind the layer, darken it, install its indicators, and make it wake
- *  lighting, in that order. Capacity is checked before anything is written. */
-export async function writeStockMagicLayer(
-  writer: StockMagicLayerWriter,
-  target: StockMagicLayerTarget,
-): Promise<StatusSetupResult> {
-  const rules = installStockMagicLayerRules(target.rules, target.layer, target.numLayers, target.profiles);
-  if (rules.length > target.ruleCapacity) {
-    return {
-      ok: false,
-      message: `This layout needs ${rules.length} rules; the keyboard holds ${target.ruleCapacity}.`,
-    };
-  }
-  const scenes = target.scenes && sceneTableWithStockMagicLayer(target.scenes, target.layer);
-  if (scenes && scenes.length > target.sceneCapacity) {
-    return {
-      ok: false,
-      message: `This layout needs ${scenes.length} scene cells; the keyboard holds ${target.sceneCapacity}.`,
-    };
-  }
-  const grid = stockMagicLayerGrid(target.profiles);
-  const later = (step: string, message: string): StatusSetupResult => ({
-    ok: false,
-    message: `The keys were written, but ${step} failed: ${message}. Retry to finish.`,
-  });
-  try {
-    for (const { row, col } of target.keys) {
-      const index = row * GLOVE80_COLS + col;
-      if (same(target.current[index], grid[index])) continue;
-      const result = await writer.setKey(row, col, grid[index]);
-      if (!result.ok) return result;
-    }
-    if (scenes) {
-      const result = await writer.applyScenes(scenes);
-      if (!result.ok) return later("darkening the layer", result.message);
-    }
-    const applied = await writer.applyRules(rules);
-    if (!applied.ok) return later("installing the indicators", applied.message);
-    if (target.wakeLayers !== null) {
-      const woken = await writer.setWakeLayers(setLayerInMask(target.wakeLayers, target.layer, true));
-      if (!woken.ok) return later("the Magic designation", woken.message);
-    }
-    return { ok: true };
-  } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : String(error) };
-  }
+/** Each key of the board as the layer has it: what the table binds, the rest unbound. */
+export function magicLayerKeys(table: MagicLayerTable): { row: number; col: number; action: KeyAction }[] {
+  return table.places.map(({ row, col }) => ({
+    row,
+    col,
+    action: table.keys.find((key) => key.row === row && key.col === col)?.action ?? "No",
+  }));
 }

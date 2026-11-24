@@ -10,9 +10,8 @@ import type { RynkSession } from "../session/types";
 import { openBundle } from "../workbench/open";
 import { hoveredBehavior } from "./behaviors/hoveredBehavior";
 import { earlierDraft } from "./draft/earlier";
-import { openFlows } from "./flows/store";
+import { flowsStartCategory, openFlows } from "./flows/store";
 import { lightView } from "./keymap/lightView";
-import { keyPick } from "./lighting/keyPick";
 import { openProperties } from "./properties/store";
 import { Workbench } from "./Workbench";
 import { endWorkbench, workbenchStores } from "./workbench-store";
@@ -39,9 +38,8 @@ describe("the workbench", () => {
     draw();
 
     // What the first workbench was doing when it went away.
-    keyPick.start({ kind: "connection", layer: 0, connection: { type: "usb" } });
     openProperties("lighting");
-    openFlows();
+    openFlows("Looks & lighting");
     lightView.setTryingOut(true);
     hoveredBehavior.enter({ id: "macros:0", places: [] });
     const stores = workbenchStores();
@@ -52,7 +50,7 @@ describe("the workbench", () => {
     endWorkbench();
     draw();
     for (const { store, initial } of stores) expect(store.get()).toBe(initial);
-    expect(keyPick.get()).toBeNull();
+    expect(flowsStartCategory()).toBeNull();
     expect(lightView.get().tryingOut).toBe(false);
     expect(hoveredBehavior.get()).toBeNull();
     expect(earlierDraft.get()).toBeNull();

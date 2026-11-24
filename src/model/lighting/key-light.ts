@@ -3,7 +3,9 @@
 // - Color: a scene cell with a colour and an effect (steady, blink, breathe)
 //   at a named speed or with its own timing;
 // - Layer below: no cell, so the layers underneath show;
-// - Status light: rules in the firmware's rule table (status-light.ts).
+// - Status light: rules in the firmware's rule table (status-light.ts);
+// - Battery bar: three to eight keys lighting one after the other as a half's
+//   battery fills, given in the order they fill (status-presets.ts).
 // And the colours a layout already uses, most used first, to pick again or
 // change everywhere. Pure.
 
@@ -13,16 +15,23 @@ import { buildEffect, DEFAULT_TIMING, effectKind, effectRgb, effectTiming, type 
 import { BLACK_EFFECT } from "./preview";
 import type { Rules } from "./rules";
 import { statusShownColor, withStatusLight, type StatusLight } from "./status-light";
+import { MAX_BAR_SEGMENTS, MIN_BAR_SEGMENTS, replaceBatteryBar, type BarStyle } from "./status-presets";
 
 export type KeyLight =
   | { kind: "off" }
   | { kind: "below" }
   | { kind: "color"; color: LightingRgb8; effect: EffectKind; timing: EffectTiming }
-  | StatusLight;
+  | StatusLight
+  /** Several keys at once, given empty to full. `node`: whose battery; unset, the first key's half. */
+  | { kind: "bar"; style: BarStyle; node?: number };
 
 const BLACK: LightingRgb8 = { r: 0, g: 0, b: 0 };
 const isBlack = (c: LightingRgb8) => c.r === 0 && c.g === 0 && c.b === 0;
-const isStatus = (light: KeyLight): light is StatusLight => light.kind !== "off" && light.kind !== "below" && light.kind !== "color";
+const isStatus = (light: KeyLight): light is StatusLight =>
+  light.kind !== "off" && light.kind !== "below" && light.kind !== "color" && light.kind !== "bar";
+
+/** Whether a battery bar can be made of this many keys. */
+export const barFits = (keys: number) => keys >= MIN_BAR_SEGMENTS && keys <= MAX_BAR_SEGMENTS;
 
 /* ---- a key's light ----------------------------------------------------- */
 
@@ -38,6 +47,7 @@ export function keyLightOf(effect: LightingEffect | undefined, status: StatusLig
 /** The colour a lit board shows for a key; none while it is off or shows the layer below. */
 export function shownColor(light: KeyLight): LightingRgb8 | null {
   if (light.kind === "color") return light.color;
+  if (light.kind === "bar") return { r: 0, g: 128, b: 0 };
   return isStatus(light) ? statusShownColor(light) : null;
 }
 
@@ -86,6 +96,13 @@ export function planLight(
   rules: Rules,
   nodeOf: (led: number) => number = () => 0,
 ): LightPlan {
+  if (light.kind === "bar") {
+    if (!barFits(leds.length)) throw new Error(`A battery bar is ${MIN_BAR_SEGMENTS} to ${MAX_BAR_SEGMENTS} keys: ${leds.length} given`);
+    // Each key shows one status light: what the chosen keys showed before goes.
+    const cleared = leds.reduce((table, led) => withStatusLight(table, layer, led, null), rules);
+    const bar = replaceBatteryBar(cleared, { layer, node: light.node ?? nodeOf(leds[0]), leds: [...leds], style: light.style });
+    return { paint: [], erase: [...leds], rules: bar };
+  }
   const status = isStatus(light) ? light : null;
   let nextRules = rules;
   for (const led of leds) nextRules = withStatusLight(nextRules, layer, led, status, nodeOf(led));

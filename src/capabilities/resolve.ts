@@ -3,6 +3,7 @@
 // layer needs nothing from the wire package, the session or the screen.
 
 import type { Capability, CapabilityId, CapabilitySet } from "./types";
+import { hasConnectionEffectsConditions, hasLayerIndicatorConditions, hasLightingFeature, RULES } from "./lighting-features";
 
 /** The firmware facts the capabilities derive from, reduced to primitives so a
  *  hook can memoize on them without chasing object identity. */
@@ -11,6 +12,10 @@ export interface FirmwareFacts {
   sceneSlots: number | null;
   /** Capacity of the runtime lighting rule table; null when the firmware has none. */
   ruleSlots: number | null;
+  /** What the rules can test besides a layer and a battery (`lighting-features.ts`). */
+  ruleConnections: boolean;
+  ruleIndicators: boolean;
+  ruleDevice: boolean;
   /** The firmware has the lighting subsystem at all. */
   lighting: boolean;
   /** Layer scenes compiled into this firmware build. */
@@ -40,6 +45,8 @@ export interface FirmwareFacts {
 export interface FactSource {
   sceneStatus: { capacity: number } | null;
   runtimeConditionalStatus: { capacity: number } | null;
+  /** The firmware's lighting feature bits; null when it has no lighting. */
+  lightingCaps: { features: number } | null;
   compiledSceneStatus: unknown;
   lightingExtension: unknown;
   pointingConfig: unknown;
@@ -63,6 +70,9 @@ export function firmwareFactsOf(source: FactSource): FirmwareFacts {
   return {
     sceneSlots: source.sceneStatus?.capacity ?? null,
     ruleSlots: source.runtimeConditionalStatus?.capacity ?? null,
+    ruleConnections: hasConnectionEffectsConditions(source.lightingCaps),
+    ruleIndicators: hasLayerIndicatorConditions(source.lightingCaps),
+    ruleDevice: hasLightingFeature(source.lightingCaps, RULES),
     lighting: source.lightingState !== null,
     compiledScenes: source.compiledSceneStatus !== null,
     extensionEffects: source.lightingExtension !== null,
@@ -91,6 +101,9 @@ export function resolveCapabilities(facts: FirmwareFacts): CapabilitySet {
   }
   if (facts.ruleSlots !== null) {
     add({ id: "lighting.rules", slots: facts.ruleSlots, reach: "device", readOnly: false });
+    if (facts.ruleConnections) add({ id: "lighting.rules.connection", reach: "device", readOnly: false });
+    if (facts.ruleIndicators) add({ id: "lighting.rules.indicators", reach: "device", readOnly: false });
+    if (facts.ruleDevice) add({ id: "lighting.rules.device", reach: "device", readOnly: false });
   }
   if (facts.compiledScenes) {
     add({ id: "lighting.compiled", reach: "build", readOnly: true });

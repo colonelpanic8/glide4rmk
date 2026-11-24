@@ -48,15 +48,6 @@ function Frame({ size, className, children }: { size: number; className: string;
   );
 }
 
-/** Shown while nothing is selected. */
-export function EditorPlaceholder({ size, children }: { size: number; children: ReactNode }) {
-  return (
-    <Frame size={size} className="min-h-[132px] items-center justify-center px-6 py-8 text-center">
-      <p className="text-ui font-semibold text-mute">{children}</p>
-    </Frame>
-  );
-}
-
 /** A line pointing at the keyboard, centred in what is left of its column. */
 export function EditorPrompt({ children }: { children: ReactNode }) {
   return <p className="flex flex-1 items-center justify-center py-6 text-center text-ui font-semibold text-mute">{children}</p>;

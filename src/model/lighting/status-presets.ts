@@ -37,70 +37,8 @@ export interface ConnectionKeyPreset {
   kind: { type: "ble"; slot: number } | { type: "usb" };
 }
 
-export type StatusSetupResult = { ok: true } | { ok: false; message: string };
-
-export interface StatusSetupWriter {
-  setKey(preset: ConnectionKeyPreset, action: KeyAction): Promise<StatusSetupResult>;
-  applyRules(rules: StatusRule[]): Promise<StatusSetupResult>;
-}
-
-/** The layer MoErgo's stock Glove80 config keeps its Magic cluster on. */
-export const GLOVE80_MAGIC_LAYER = 2;
-
-/** Where the Glove80 preset draws its bars.
- *  - `outer-columns`: five keys up each half's outer column, below the top key.
- *  - `stock`: MoErgo's firmware layout — six keys across the left half, the
- *    left battery on row 2 and the right battery on row 3. */
-export type Glove80BarLayout = "outer-columns" | "stock";
-
-export const GLOVE80_BAR_LAYOUTS: Array<{ id: Glove80BarLayout; label: string; hint: string }> = [
-  {
-    id: "outer-columns",
-    label: "Outer columns",
-    hint: "five vertical segments per half, each on its own half",
-  },
-  {
-    id: "stock",
-    label: "MoErgo stock",
-    hint: "six horizontal segments per half, both across the left half's rows 2 and 3",
-  },
-];
-
-export function glove80BatteryBars(
-  layer = GLOVE80_MAGIC_LAYER,
-  layout: Glove80BarLayout = "outer-columns",
-): BatteryBarPreset[] {
-  if (layout === "stock") {
-    return [
-      { layer, node: 0, leds: [36, 30, 24, 18, 12, 7], style: "stock" },
-      { layer, node: 1, leds: [37, 31, 25, 19, 13, 8], style: "stock" },
-    ];
-  }
-  return [
-    { layer, node: 0, leds: [39, 38, 37, 36, 35] },
-    { layer, node: 1, leds: [79, 78, 77, 76, 75] },
-  ];
-}
-
-export function glove80ConnectionKeys(layer = GLOVE80_MAGIC_LAYER): ConnectionKeyPreset[] {
-  return [
-    { layer, row: 3, col: 6, led: 3, kind: { type: "ble", slot: 0 } },
-    { layer, row: 4, col: 6, led: 4, kind: { type: "ble", slot: 1 } },
-    { layer, row: 5, col: 6, led: 5, kind: { type: "ble", slot: 2 } },
-    { layer, row: 0, col: 6, led: 0, kind: { type: "usb" } },
-  ];
-}
-
 /** The way a battery bar fills: its first key lights first, its last at a full battery. */
-export type BarOrder = "bottom-up" | "top-down" | "left-right" | "right-left" | "selection";
-
-export const BAR_ORDERS: Array<{ id: BarOrder; label: string }> = [
-  { id: "bottom-up", label: "Bottom to top" },
-  { id: "top-down", label: "Top to bottom" },
-  { id: "left-right", label: "Left to right" },
-  { id: "right-left", label: "Right to left" },
-  { id: "selection", label: "As chosen" },
-];
+export type BarOrder = "bottom-up" | "top-down" | "left-right" | "right-left";
 
 export interface BarKey {
   ledId: number;
@@ -320,53 +258,23 @@ export function replaceBatteryBar(
   return [...kept, ...batteryBarRules(preset)];
 }
 
-export function replaceBleStatus(
-  current: StatusRule[],
-  layer: number,
-  led: number,
-  slot: number,
-): StatusRule[] {
-  const kept = current.filter((entry) => {
-    if (entry.cell.led_id !== led || entry.cell.conditions.layer?.layer !== layer) return true;
-    const connection = entry.connection;
-    return connection?.profile !== slot && connection?.bonded?.slot !== slot;
+/** Whether RGB effects are on: green on, dim red off. */
+export function effectsStatusRules(layer: number, led: number): StatusRule[] {
+  return [
+    { enabled: true, effect: solid(0, 128, 0) },
+    { enabled: false, effect: solid(128, 0, 0) },
+  ].map(({ enabled, effect }) => ({ ...rule(led, layer, effect), effects: { enabled } }));
+}
+
+/** The lighting policy: green always on, red always off, blue only on USB power. */
+export function policyStatusRules(layer: number, led: number): StatusRule[] {
+  return [
+    { mode: "AlwaysOn" as const, effect: solid(0, 128, 0) },
+    { mode: "AlwaysOff" as const, effect: solid(128, 0, 0) },
+    { mode: "PoweredOnly" as const, effect: solid(0, 64, 160) },
+  ].map(({ mode, effect }) => {
+    const entry = rule(led, layer, effect);
+    entry.cell.conditions.output_mode = mode;
+    return entry;
   });
-  return [...kept, ...bleStatusRules(layer, led, slot)];
-}
-
-export function replaceUsbStatus(current: StatusRule[], layer: number, led: number): StatusRule[] {
-  const kept = current.filter((entry) => {
-    if (entry.cell.led_id !== led || entry.cell.conditions.layer?.layer !== layer) return true;
-    const connection = entry.connection;
-    return connection?.usb_connected === undefined && connection?.transport !== "Usb";
-  });
-  return [...kept, ...usbStatusRules(layer, led)];
-}
-
-export function installGlove80StatusRules(
-  current: StatusRule[],
-  layer = GLOVE80_MAGIC_LAYER,
-  layout: Glove80BarLayout = "outer-columns",
-): StatusRule[] {
-  let rules = current;
-  for (const bar of glove80BatteryBars(layer, layout)) rules = replaceBatteryBar(rules, bar);
-  for (const key of glove80ConnectionKeys(layer)) {
-    rules = key.kind.type === "ble"
-      ? replaceBleStatus(rules, key.layer, key.led, key.kind.slot)
-      : replaceUsbStatus(rules, key.layer, key.led);
-  }
-  return rules;
-}
-
-export async function writeGlove80StatusSetup(
-  writer: StatusSetupWriter,
-  current: StatusRule[],
-  layer = GLOVE80_MAGIC_LAYER,
-  layout: Glove80BarLayout = "outer-columns",
-): Promise<StatusSetupResult> {
-  for (const preset of glove80ConnectionKeys(layer)) {
-    const result = await writer.setKey(preset, connectionKeyAction(preset.kind));
-    if (!result.ok) return result;
-  }
-  return writer.applyRules(installGlove80StatusRules(current, layer, layout));
 }

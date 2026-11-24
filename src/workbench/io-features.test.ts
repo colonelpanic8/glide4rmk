@@ -6,6 +6,7 @@ import { type ConnectedBundle } from "../model/workbench-state";
  *  so the migration is proven to change nothing, for every combination. */
 function legacy(bundle: Pick<ConnectedBundle, "sceneStatus" | "runtimeConditionalStatus" | "lightingExtension" | "pointingConfig" | "lightingState" | "lightingOutputMode">) {
   return {
+    board: null,
     sceneCapacity: bundle.sceneStatus?.capacity ?? null,
     conditionalSceneCapacity: bundle.runtimeConditionalStatus?.capacity ?? null,
     scenesSupported: bundle.sceneStatus !== null,
