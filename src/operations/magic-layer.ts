@@ -1,7 +1,8 @@
 // MoErgo's Magic layer on the boards that have one (ADR 0035, 0038): found by
 // its name, or by the key MoErgo's layout holds it down with, or added when the
-// layout has none; then its keys, its status lights, the left half dark and the
-// layer waking the lights. Pure.
+// layout has none; then MoErgo's keys on it (a layer you have keeps your other
+// keys), its status lights, the left half dark and the layer waking the lights.
+// Pure.
 
 import type { KeyAction } from "../vendor/rynk-wasm/rynk_wasm";
 import type { KeyboardImage } from "../sync/image";
@@ -11,6 +12,7 @@ import {
   findMagicLayer,
   MAGIC_LAYER_NAME,
   magicLayerKeys,
+  magicLayerOwnKeys,
   withMagicLayerRules,
   withMagicLayerScene,
   withProfiles,
@@ -42,7 +44,7 @@ function addMagicLayer(image: KeyboardImage, table: MagicLayerTable, facts: Oper
 export const setMagicLayer: Operation<{ layer?: number; keys?: boolean }> = {
   name: "set_magic_layer",
   description:
-    "Makes a layer MoErgo's Magic layer on a Glove80 or a Go60: its keys, its status lights (layers, locks, batteries, Bluetooth, USB, the maintenance lock), the left half dark, and the layer waking the lights; the layer's own earlier lights go first. With keys false, only the status lights and the waking: the layer's keys and its other lights stay.",
+    "Makes a layer MoErgo's Magic layer on a Glove80 or a Go60: MoErgo's keys on it (on a new layer every other key unbound; on yours, your other keys stay), its status lights (layers, locks, batteries, Bluetooth, USB, the maintenance lock), the left half dark, and the layer waking the lights; the layer's own earlier lights go first. With keys false, only the status lights and the waking: the layer's keys and its other lights stay.",
   inputs: [
     {
       name: "layer",
@@ -60,6 +62,7 @@ export const setMagicLayer: Operation<{ layer?: number; keys?: boolean }> = {
     let base = image;
     let target = layer ?? findMagicLayer(image, table, facts.cols);
     const notes: string[] = [];
+    const created = target === null;
     if (target === null) {
       const added = addMagicLayer(image, table, facts);
       if (typeof added === "string") return failed(added);
@@ -67,7 +70,9 @@ export const setMagicLayer: Operation<{ layer?: number; keys?: boolean }> = {
       notes.push(...added.notes);
     }
     if (!base.layers[target]) return failed(`Layer ${target} does not exist`);
-    const bound = keys ? withKeys(base, facts.cols, magicLayerKeys(table).map((key) => ({ layer: target, ...key }))) : base;
+    // A new layer gets MoErgo's whole layer; one you have keeps your other keys (a TO(1) of yours among them).
+    const written = created ? magicLayerKeys(table) : magicLayerOwnKeys(board, table);
+    const bound = keys ? withKeys(base, facts.cols, written.map((key) => ({ layer: target, ...key }))) : base;
     if (typeof bound === "string") return failed(bound);
     const rules = withMagicLayerRules(bound.runtimeConditionalScenes, table, target, base.layers.length, keys);
     let scenes = !keys || facts.sceneCapacity === null ? undefined : withMagicLayerScene(bound.scenes, table, target);
