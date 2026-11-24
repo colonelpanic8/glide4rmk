@@ -37,18 +37,8 @@ export interface ConnectionKeyPreset {
   kind: { type: "ble"; slot: number } | { type: "usb" };
 }
 
-export type StatusSetupResult = { ok: true } | { ok: false; message: string };
-
 /** The way a battery bar fills: its first key lights first, its last at a full battery. */
-export type BarOrder = "bottom-up" | "top-down" | "left-right" | "right-left" | "selection";
-
-export const BAR_ORDERS: Array<{ id: BarOrder; label: string }> = [
-  { id: "bottom-up", label: "Bottom to top" },
-  { id: "top-down", label: "Top to bottom" },
-  { id: "left-right", label: "Left to right" },
-  { id: "right-left", label: "Right to left" },
-  { id: "selection", label: "As chosen" },
-];
+export type BarOrder = "bottom-up" | "top-down" | "left-right" | "right-left";
 
 export interface BarKey {
   ledId: number;
@@ -266,4 +256,25 @@ export function replaceBatteryBar(
       entry.cell.conditions.layer?.layer !== preset.layer;
   });
   return [...kept, ...batteryBarRules(preset)];
+}
+
+/** Whether RGB effects are on: green on, dim red off. */
+export function effectsStatusRules(layer: number, led: number): StatusRule[] {
+  return [
+    { enabled: true, effect: solid(0, 128, 0) },
+    { enabled: false, effect: solid(128, 0, 0) },
+  ].map(({ enabled, effect }) => ({ ...rule(led, layer, effect), effects: { enabled } }));
+}
+
+/** The lighting policy: green always on, red always off, blue only on USB power. */
+export function policyStatusRules(layer: number, led: number): StatusRule[] {
+  return [
+    { mode: "AlwaysOn" as const, effect: solid(0, 128, 0) },
+    { mode: "AlwaysOff" as const, effect: solid(128, 0, 0) },
+    { mode: "PoweredOnly" as const, effect: solid(0, 64, 160) },
+  ].map(({ mode, effect }) => {
+    const entry = rule(led, layer, effect);
+    entry.cell.conditions.output_mode = mode;
+    return entry;
+  });
 }

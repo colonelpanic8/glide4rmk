@@ -1,13 +1,15 @@
 // The fields under a chosen light in the Key Lighting tab: a colour and its
 // effect, at a named speed or (Custom) with its timing in numbers; for a
-// status light what it shows (a lock, the battery, a Bluetooth profile, USB)
-// and that one's own fields. Every colour is the same ColorChoice.
+// status light what it shows (a lock, the battery, a battery bar over several
+// keys, a Bluetooth profile, USB, whether RGB effects are on, the lighting
+// policy) and that one's own fields. Every colour is the same ColorChoice.
 
 import { useState, type ReactNode } from "react";
 import type { LightingEffect, LightingRgb8 } from "../../model/lighting-types";
 import { SPEEDS, speedOf, speedTiming, type KeyLight, type Speed } from "../../model/lighting/key-light";
-import { BATTERY_LEVELS, type Lock, type StatusLight } from "../../model/lighting/status-light";
-import { STATUS_COLORS } from "../../model/lighting/status-presets";
+import { BATTERY_LEVELS, type Lock } from "../../model/lighting/status-light";
+import { barFits } from "../../model/lighting/key-light";
+import { BAR_STYLES, effectsStatusRules, policyStatusRules, STATUS_COLORS } from "../../model/lighting/status-presets";
 import { effectColor } from "../lighting/decor";
 import type { EffectKind } from "../../model/lighting/effect";
 import { ColorChoice } from "../lighting/ColorChoice";
@@ -34,27 +36,39 @@ const HALVES = [
   { id: 0, label: "Left half" },
   { id: 1, label: "Right half" },
 ];
-type Shows = Lock | "battery" | "bluetooth" | "usb";
-const SHOWS: Array<{ id: Shows; label: string; wireless?: boolean }> = [
+type StatusKind = Exclude<KeyLight, { kind: "off" | "below" | "color" }>;
+type Shows = Lock | "battery" | "bar" | "bluetooth" | "usb" | "effects" | "policy";
+/** `needs`: what the keyboard (or, for a bar, the keys chosen) must have for it. */
+const SHOWS: Array<{ id: Shows; label: string; needs?: "wireless" | "bar" | "effects" | "policy" }> = [
   { id: "caps_lock", label: "Caps Lock" },
   { id: "num_lock", label: "Num Lock" },
   { id: "scroll_lock", label: "Scroll Lock" },
   { id: "battery", label: "Battery" },
-  { id: "bluetooth", label: "Bluetooth", wireless: true },
-  { id: "usb", label: "USB", wireless: true },
+  { id: "bar", label: "Battery bar", needs: "bar" },
+  { id: "bluetooth", label: "Bluetooth", needs: "wireless" },
+  { id: "usb", label: "USB", needs: "wireless" },
+  { id: "effects", label: "RGB effects", needs: "effects" },
+  { id: "policy", label: "Lighting policy", needs: "policy" },
 ];
-const showsOf = (light: StatusLight): Shows => (light.kind === "lock" ? light.lock : light.kind);
+const showsOf = (light: StatusKind): Shows => (light.kind === "lock" ? light.lock : light.kind);
 
 /** The status light that shows `shows`, keeping a lock light's colours from one lock to another. */
-function showing(light: StatusLight, shows: Shows): StatusLight {
+function showing(light: StatusKind, shows: Shows): StatusKind {
   if (shows === "battery") return { kind: "battery", level: 40, below: RED, above: GREEN };
+  if (shows === "bar") return { kind: "bar", style: "bands" };
   if (shows === "bluetooth") return { kind: "bluetooth", profile: 0 };
   if (shows === "usb") return { kind: "usb" };
+  if (shows === "effects") return { kind: "effects" };
+  if (shows === "policy") return { kind: "policy" };
   return light.kind === "lock" ? { ...light, lock: shows } : { kind: "lock", lock: shows, on: RED, off: null };
 }
 
-/** What a Bluetooth profile's or USB's light shows, in the status preset's colours. */
-const STATES: Record<"bluetooth" | "usb", Array<{ effect: LightingEffect; label: string }>> = {
+const effectsOf = (rules: ReturnType<typeof effectsStatusRules>) => rules.map((rule) => rule.cell.effect);
+const [EFFECTS_ON, EFFECTS_OFF] = effectsOf(effectsStatusRules(0, 0));
+const [ALWAYS_ON, ALWAYS_OFF, POWERED_ONLY] = effectsOf(policyStatusRules(0, 0));
+
+/** What a status light's colours mean: a Bluetooth profile's and USB's in the status preset's colours. */
+const STATES: Record<"bluetooth" | "usb" | "effects" | "policy", Array<{ effect: LightingEffect; label: string }>> = {
   bluetooth: [
     { effect: STATUS_COLORS.empty, label: "Free" },
     { effect: STATUS_COLORS.bonded, label: "Paired" },
@@ -67,9 +81,18 @@ const STATES: Record<"bluetooth" | "usb", Array<{ effect: LightingEffect; label:
     { effect: STATUS_COLORS.selected, label: "Plugged in" },
     { effect: STATUS_COLORS.active, label: "In use" },
   ],
+  effects: [
+    { effect: EFFECTS_ON, label: "On" },
+    { effect: EFFECTS_OFF, label: "Off" },
+  ],
+  policy: [
+    { effect: ALWAYS_ON, label: "Always on" },
+    { effect: ALWAYS_OFF, label: "Always off" },
+    { effect: POWERED_ONLY, label: "On USB power" },
+  ],
 };
 
-function States({ of }: { of: "bluetooth" | "usb" }) {
+function States({ of }: { of: keyof typeof STATES }) {
   return (
     <div className="flex flex-wrap gap-x-3 gap-y-1">
       {STATES[of].map((state) => (
@@ -116,9 +139,11 @@ function Segments<T extends string | number>({ options, value, onPick }: {
   );
 }
 
-export function KeyLightFields({ light, lights, onChange, onTyping }: {
+export function KeyLightFields({ light, lights, keys, onChange, onTyping }: {
   light: KeyLight;
   lights: KeyLights;
+  /** How many keys get the light: a battery bar is several. */
+  keys: number;
   /** Gives the keys `light`; false, or a promise of false, when that was refused. */
   onChange: (light: KeyLight) => unknown;
   /** A timing number as it is typed, before it settles. */
@@ -182,7 +207,8 @@ export function KeyLightFields({ light, lights, onChange, onTyping }: {
     );
   }
   if (light.kind === "off" || light.kind === "below") return null;
-  const shows = SHOWS.filter((option) => !option.wireless || lights.bleProfiles > 0);
+  const offered = { wireless: lights.bleProfiles > 0, bar: barFits(keys), effects: lights.effectsLight, policy: lights.policyLight };
+  const shows = SHOWS.filter((option) => !option.needs || offered[option.needs] || option.id === showsOf(light));
   return (
     <>
       <Field label="Shows">
@@ -224,9 +250,21 @@ export function KeyLightFields({ light, lights, onChange, onTyping }: {
           </div>
         </Field>
       )}
-      {light.kind === "usb" && (
+      {light.kind === "bar" && (
+        <>
+          {lights.split && (
+            <Field label="Battery">
+              <Segments options={HALVES} value={light.node ?? 0} onPick={(node) => onChange({ ...light, node })} />
+            </Field>
+          )}
+          <Field label="Colors">
+            <Segments options={BAR_STYLES} value={light.style} onPick={(style) => onChange({ ...light, style })} />
+          </Field>
+        </>
+      )}
+      {(light.kind === "usb" || light.kind === "effects" || light.kind === "policy") && (
         <Field label="Colors">
-          <States of="usb" />
+          <States of={light.kind} />
         </Field>
       )}
     </>

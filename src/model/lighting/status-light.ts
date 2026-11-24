@@ -6,7 +6,10 @@
 // - Battery level: one colour below a level, another above, for either half;
 // - Bluetooth profile: the profile's state (free, paired, chosen, connecting,
 //   in use), in the colours of the Glove80 status preset;
-// - USB: unplugged, plugged in, in use, likewise.
+// - USB: unplugged, plugged in, in use, likewise;
+// - RGB effects: green while the effects are on, dim red while off;
+// - Lighting policy: green always on, red always off, blue only on USB power.
+// A battery bar is several keys' battery lights at once (key-light.ts).
 // Only rules that are exactly one of these are the key's own; any other rule
 // on its LED belongs to the condition rules (Layout properties) and is never
 // touched. Pure.
@@ -15,7 +18,7 @@ import { canonicalJson, same } from "../deep-equal";
 import type { LightingEffect, LightingRgb8 } from "../lighting-types";
 import { effectRgb } from "./effect";
 import type { Rule, Rules } from "./rules";
-import { bleStatusRules, STATUS_COLORS, usbStatusRules } from "./status-presets";
+import { bleStatusRules, effectsStatusRules, policyStatusRules, STATUS_COLORS, usbStatusRules } from "./status-presets";
 
 export type Lock = "caps_lock" | "num_lock" | "scroll_lock";
 export const BATTERY_LEVELS = [20, 40, 60, 80] as const;
@@ -28,7 +31,9 @@ export type StatusLight =
   | { kind: "battery"; level: number; below: LightingRgb8; above: LightingRgb8; node?: number }
   /** `profile`: the firmware's slot, from 0. */
   | { kind: "bluetooth"; profile: number }
-  | { kind: "usb" };
+  | { kind: "usb" }
+  | { kind: "effects" }
+  | { kind: "policy" };
 
 const BLACK: LightingRgb8 = { r: 0, g: 0, b: 0 };
 const isBlack = (c: LightingRgb8) => c.r === 0 && c.g === 0 && c.b === 0;
@@ -39,6 +44,7 @@ const solid = (color: LightingRgb8): LightingEffect => ({ Solid: { color } });
 export function statusShownColor(light: StatusLight): LightingRgb8 {
   if (light.kind === "lock") return light.on;
   if (light.kind === "battery") return light.above;
+  if (light.kind === "effects" || light.kind === "policy") return { r: 0, g: 128, b: 0 };
   return effectRgb(STATUS_COLORS.active);
 }
 
@@ -49,12 +55,18 @@ export function statusShownColor(light: StatusLight): LightingRgb8 {
 function onKey(rule: Rule, layer: number, led: number): boolean {
   const { conditions } = rule.cell;
   if (rule.cell.led_id !== led || conditions.layer?.layer !== layer || conditions.layer.active !== true) return false;
-  return !conditions.output_mode && !rule.effects && !rule.layers && !rule.maintenance && !rule.split_transport && !rule.unknown_predicates?.length;
+  return !rule.layers && !rule.maintenance && !rule.split_transport && !rule.unknown_predicates?.length;
 }
 
+/** A rule with only an effects condition, or only a lighting-policy one. */
+const isEffects = (rule: Rule) => Boolean(rule.effects) && !rule.connection && !rule.indicators && !rule.cell.conditions.battery && !rule.cell.conditions.output_mode;
+const isPolicy = (rule: Rule) => Boolean(rule.cell.conditions.output_mode) && !rule.effects && !rule.connection && !rule.indicators && !rule.cell.conditions.battery;
+/** A rule that sets none of these but a lock, a battery or a connection. */
+const isPlain = (rule: Rule) => !rule.effects && !rule.cell.conditions.output_mode;
+
 /** A lock or battery rule: only a lock or only a battery condition. */
-const isLockOrBattery = (rule: Rule) => !rule.connection && Boolean(rule.indicators) !== Boolean(rule.cell.conditions.battery);
-const isConnection = (rule: Rule) => Boolean(rule.connection) && !rule.indicators && !rule.cell.conditions.battery;
+const isLockOrBattery = (rule: Rule) => isPlain(rule) && !rule.connection && Boolean(rule.indicators) !== Boolean(rule.cell.conditions.battery);
+const isConnection = (rule: Rule) => isPlain(rule) && Boolean(rule.connection) && !rule.indicators && !rule.cell.conditions.battery;
 
 /** The same rules, in any order (the key's own rules can sit anywhere in the table). */
 const sameSet = (a: Rules, b: Rules) => same(a.map(canonicalJson).sort(), b.map(canonicalJson).sort());
@@ -68,11 +80,24 @@ function connectionLight(own: Rules, layer: number, led: number): Extract<Status
   return null;
 }
 
+/** The effects or policy light the key's rules of that kind are exactly, if any. */
+function stateLight(here: Rules, layer: number, led: number): { light: Extract<StatusLight, { kind: "effects" | "policy" }>; rules: Rules } | null {
+  const effects = here.filter(isEffects);
+  if (effects.length > 0 && sameSet(effects, effectsStatusRules(layer, led))) return { light: { kind: "effects" }, rules: effects };
+  const policy = here.filter(isPolicy);
+  if (policy.length > 0 && sameSet(policy, policyStatusRules(layer, led))) return { light: { kind: "policy" }, rules: policy };
+  return null;
+}
+
 /** The rules of `rules` that are the key's own status light on this layer. */
 function ownRules(rules: Rules, layer: number, led: number): Set<Rule> {
   const here = rules.filter((rule) => onKey(rule, layer, led));
   const connection = here.filter(isConnection);
-  return new Set([...here.filter(isLockOrBattery), ...(connectionLight(connection, layer, led) ? connection : [])]);
+  return new Set([
+    ...here.filter(isLockOrBattery),
+    ...(connectionLight(connection, layer, led) ? connection : []),
+    ...(stateLight(here, layer, led)?.rules ?? []),
+  ]);
 }
 
 /* ---- reading and writing ---------------------------------------------- */
@@ -119,7 +144,7 @@ export function statusLightOf(rules: Rules, layer: number, led: number): StatusL
       above: colorOf(above) ?? BLACK,
     };
   }
-  return connectionLight(here.filter(isConnection), layer, led);
+  return connectionLight(here.filter(isConnection), layer, led) ?? stateLight(here, layer, led)?.light ?? null;
 }
 
 /** The rules with this key's status light replaced by `light` (none: removed). */
@@ -129,6 +154,8 @@ export function withStatusLight(rules: Rules, layer: number, led: number, light:
   if (!light) return kept;
   if (light.kind === "bluetooth") return [...kept, ...bleStatusRules(layer, led, light.profile)];
   if (light.kind === "usb") return [...kept, ...usbStatusRules(layer, led)];
+  if (light.kind === "effects") return [...kept, ...effectsStatusRules(layer, led)];
+  if (light.kind === "policy") return [...kept, ...policyStatusRules(layer, led)];
   if (light.kind === "lock") {
     const state = (value: boolean, color: LightingRgb8) => {
       const rule = newRule(layer, led, color);

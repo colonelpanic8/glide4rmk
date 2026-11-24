@@ -58,8 +58,8 @@ export const TERMS = {
   "history.covers": { technical: "Undo covers every change, in Draft and Live.", friendly: "Undo takes back any change, one at a time." },
   // Review & send: what is on the keyboard already.
   "review.atOnce": {
-    technical: "Apply rules, the lighting presets and the Device screen write to the keyboard at once; the rest waits for Send.",
-    friendly: "Lighting rules, lighting presets and the Keyboard screen save at once; the rest waits for Send.",
+    technical: "Apply rules and the Device screen write to the keyboard at once; the rest waits for Send.",
+    friendly: "Lighting rules and the Keyboard screen save at once; the rest waits for Send.",
   },
   // RGB Lighting → Advanced, on a board whose status setups are Flows (ADR 0035). {board} is its name.
   "lighting.setupsInFlows": {

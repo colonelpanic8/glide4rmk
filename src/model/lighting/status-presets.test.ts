@@ -86,7 +86,6 @@ describe("status lighting presets", () => {
     expect(detectBarOrder(row)).toBe("left-right");
     expect(orderBatteryBar(row, "left-right")).toEqual([34, 33, 32, 31, 30]);
     expect(orderBatteryBar(row, "right-left")).toEqual([30, 31, 32, 33, 34]);
-    expect(orderBatteryBar(row, "selection")).toEqual([30, 33, 31, 34, 32]);
 
     const column = [
       { ledId: 35, x: 5, y: 0 },

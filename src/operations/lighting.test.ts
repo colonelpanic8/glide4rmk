@@ -182,3 +182,15 @@ describe("set_magic_layer", () => {
     expect(runOperation("set_magic_layer", glove80Image(), { layer: 5 }, glove80)).toEqual({ ok: false, message: "Layer 5 does not exist" });
   });
 });
+
+describe("set_key_light with a battery bar", () => {
+  it("makes the keys a bar as one change, and says when there are too few", () => {
+    const layers = [Array.from({ length: 8 }, () => "No" as const)];
+    const result = runOperation("set_key_light", image({ layers, encoders: [[]] }), { layer: 0, leds: [1, 2, 3], light: { kind: "bar", style: "stock" } }, facts);
+    expect(result.ok && result.image.runtimeConditionalScenes.every((rule) => rule.cell.conditions.battery?.node === 0)).toBe(true);
+    expect(runOperation("set_key_light", image({ layers, encoders: [[]] }), { layer: 0, leds: [1, 2], light: { kind: "bar", style: "stock" } }, facts)).toEqual({
+      ok: false,
+      message: "A battery bar is 3 to 8 keys: 2 given",
+    });
+  });
+});

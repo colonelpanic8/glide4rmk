@@ -25,13 +25,14 @@ import { targetPreviewEffects } from "../../model/lighting/preview";
 import { tryOutLightOf, tryOutPlan, withTryOut } from "../../model/lighting/try-out";
 import { ledNodesOf, lightingDraftFor, type IoWriteResult } from "../../workbench";
 import { useWorkbench } from "../state";
-import { useCapability } from "../use-capabilities";
+import { useCapabilities, useCapability } from "../use-capabilities";
 import { useTryOut } from "./useTryOut";
 
 export function useKeyLights() {
   const { bundle, state, dispatch, io } = useWorkbench();
   const scenes = useCapability("lighting.scenes");
   const rulesTable = useCapability("lighting.rules");
+  const capabilities = useCapabilities();
   const layer = state.uiLayer;
   const layers = Array.from({ length: bundle.caps.num_layers }, (_, index) => index);
   const draft = lightingDraftFor(state, layer);
@@ -51,8 +52,12 @@ export function useKeyLights() {
     writable: scenes !== undefined,
     /** Status lights need the firmware's rule table. */
     statusLights: rulesTable !== undefined,
-    /** How many Bluetooth profiles a profile's status light can show; none without Bluetooth. */
-    bleProfiles: bundle.caps.ble_enabled ? bundle.caps.num_ble_profiles : 0,
+    /** How many Bluetooth profiles a profile's status light can show; none without Bluetooth
+     *  or rules that can ask about it. */
+    bleProfiles: bundle.caps.ble_enabled && capabilities.has("lighting.rules.connection") ? bundle.caps.num_ble_profiles : 0,
+    /** A light can show whether RGB effects are on, and the lighting policy. */
+    effectsLight: capabilities.has("lighting.extension") && capabilities.has("lighting.rules.connection"),
+    policyLight: capabilities.has("lighting.output"),
     /** A split board has a battery on each half. */
     split: bundle.caps.is_split,
     /** The layer's stored lights, firmware defaults included. */

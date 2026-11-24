@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { LightingEffect } from "../../vendor/rynk-wasm/rynk_wasm";
 import { DEFAULT_TIMING } from "./effect";
-import { colorsInUse, keyLightOf, planLight, recolorCells, recolorRules, SPEEDS, speedOf, speedTiming, withColor, type KeyLight } from "./key-light";
+import { barFits, colorsInUse, keyLightOf, planLight, recolorCells, recolorRules, SPEEDS, speedOf, speedTiming, withColor, type KeyLight } from "./key-light";
 import { statusLightOf, withStatusLight } from "./status-light";
-import { bleStatusRules } from "./status-presets";
+import { batteryBarRules, bleStatusRules } from "./status-presets";
 import { BLACK_EFFECT } from "./preview";
 import { newRule } from "./rules";
 
@@ -174,5 +174,49 @@ describe("withColor", () => {
   it("makes any other light a steady colour, and no colour Off", () => {
     expect(withColor({ kind: "below" }, blue)).toEqual({ kind: "color", color: blue, effect: "Solid", timing: DEFAULT_TIMING });
     expect(withColor({ kind: "color", color: blue, effect: "Solid", timing: DEFAULT_TIMING }, null)).toEqual({ kind: "off" });
+  });
+});
+
+describe("RGB effects and lighting policy lights", () => {
+  it("write their state's colours and read back the same light", () => {
+    for (const light of [{ kind: "effects" }, { kind: "policy" }] as const) {
+      const rules = withStatusLight([], 2, 7, light);
+      expect(rules).toHaveLength(light.kind === "effects" ? 2 : 3);
+      expect(statusLightOf(rules, 2, 7)).toEqual(light);
+      expect(withStatusLight(rules, 2, 7, null)).toEqual([]);
+    }
+  });
+
+  it("leave a condition rule that also asks for an output mode alone", () => {
+    const custom = newRule(7, solid(BLUE));
+    custom.cell.conditions.layer = { layer: 2, active: true };
+    custom.cell.conditions.output_mode = "PoweredOnly";
+    expect(statusLightOf([custom], 2, 7)).toBeNull();
+    expect(withStatusLight([custom], 2, 7, { kind: "usb" })[0]).toBe(custom);
+    expect(planLight({ kind: "off" }, [7], 2, [custom]).rules).toBeNull();
+  });
+});
+
+describe("a battery bar", () => {
+  const bar: KeyLight = { kind: "bar", style: "bands" };
+
+  it("lights the keys one after the other, in the order given, on the first key's half", () => {
+    const plan = planLight(bar, [39, 38, 37, 36, 35], 2, [], () => 1);
+    expect(plan.rules).toEqual(batteryBarRules({ layer: 2, node: 1, leds: [39, 38, 37, 36, 35], style: "bands" }));
+    expect(plan.erase).toEqual([39, 38, 37, 36, 35]);
+    expect(statusLightOf(plan.rules ?? [], 2, 39)?.kind).toBe("battery");
+  });
+
+  it("replaces what its keys showed, and a bar the same battery had on the layer", () => {
+    const before = withStatusLight(batteryBarRules({ layer: 2, node: 0, leds: [1, 2, 3] }), 2, 9, { kind: "usb" });
+    const plan = planLight({ ...bar, node: 0 }, [9, 10, 11], 2, before);
+    expect(statusLightOf(plan.rules ?? [], 2, 9)?.kind).toBe("battery");
+    expect((plan.rules ?? []).some((rule) => rule.cell.led_id === 1)).toBe(false);
+  });
+
+  it("is three to eight keys", () => {
+    expect(barFits(2)).toBe(false);
+    expect(barFits(3) && barFits(8)).toBe(true);
+    expect(() => planLight(bar, [1, 2], 2, [])).toThrow("A battery bar is 3 to 8 keys: 2 given");
   });
 });

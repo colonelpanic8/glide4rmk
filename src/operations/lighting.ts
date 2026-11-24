@@ -1,7 +1,8 @@
-// Lighting: a key's light on a layer (its scene cell or its status rules),
-// keys each given their own effect, clearing a layer of them, the status setups that take their keys from the
-// board (a connection key, a battery bar), MoErgo's Magic layer on the boards
-// that have one, and the capacity checks every lighting operation shares. Pure.
+// Lighting: a key's light on a layer (its scene cell or its status rules, a
+// battery bar over several keys), keys each given their own effect, clearing a
+// layer of them, a connection key and a battery bar for Flows to place, MoErgo's
+// Magic layer on the boards that have one, and the capacity checks every
+// lighting operation shares. Pure.
 
 import type { LightingEffect, LightingSceneCell } from "../vendor/rynk-wasm/rynk_wasm";
 import type { KeyboardImage } from "../sync/image";
@@ -41,15 +42,20 @@ export function withLighting(
 
 export const setKeyLight: Operation<{ layer: number; leds: readonly number[]; light: KeyLight }> = {
   name: "set_key_light",
-  description: "Gives keys a light on a layer: off, a colour with an effect, the layer below, or a status light.",
+  description: "Gives keys a light on a layer: off, a colour with an effect, the layer below, a status light, or together a battery bar (the keys empty to full).",
   inputs: [
     { name: "layer", kind: "integer", min: 0, description: "The layer the keys light on." },
     { name: "leds", kind: "integer", list: true, min: 0, description: "The keys' LEDs." },
-    { name: "light", kind: "value", description: "{ kind: off | below | color | a status light, … }." },
+    { name: "light", kind: "value", description: "{ kind: off | below | color | lock | battery | bluetooth | usb | effects | policy | bar, … }." },
   ],
   run(image, { layer, leds, light }, facts) {
     if (!image.layers[layer]) return failed(`Layer ${layer} does not exist`);
-    const plan = planLight(light, leds, layer, image.runtimeConditionalScenes, (led) => facts.ledNodes[led] ?? 0);
+    let plan;
+    try {
+      plan = planLight(light, leds, layer, image.runtimeConditionalScenes, (led) => facts.ledNodes[led] ?? 0);
+    } catch (error) {
+      return failed(reason(error));
+    }
     const touched = new Set([...plan.erase, ...plan.paint.map((cell) => cell.led_id)]);
     const kept = image.scenes.filter((cell) => cell.layer !== layer || !touched.has(cell.led_id));
     const painted = plan.paint.map((cell): LightingSceneCell => ({ layer, led_id: cell.led_id, effect: cell.effect }));

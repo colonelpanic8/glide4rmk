@@ -1,15 +1,15 @@
 // Layout properties' RGB Lighting tab (ADR 0016): the keyboard's lights as a
 // whole (on or off, brightness, background), and under Advanced, closed: how
-// layers light up, the status setups, the condition rules and what the
-// firmware lights on its own. Each key's own light is set on the key, in the
-// key editor's RGB Lighting tab.
+// layers light up, where the board's status setups are (Flows), the condition
+// rules and what the firmware lights on its own. Each key's own light, status
+// lights and battery bars included, is set on the key, in the key editor's RGB
+// Lighting tab.
 
 import { useState } from "react";
 import { BackgroundPanel } from "../lighting/BackgroundPanel";
 import { ConditionalRulesPanel } from "../lighting/ConditionalRulesPanel";
 import { FirmwareRulesPanel } from "../lighting/FirmwareRulesPanel";
 import { LayerLightingSettings } from "./LayerLightingSettings";
-import { StatusPresetsPanel } from "../lighting/StatusPresetsPanel";
 import { StatusSetupsInFlows } from "../lighting/StatusSetupsInFlows";
 import { ChevronDownIcon } from "../icons";
 import { useWorkbench } from "../state";
@@ -43,7 +43,6 @@ export function LightingSection() {
             <div className="mt-3 flex flex-col gap-4 [&>*+*]:border-t [&>*+*]:border-line-soft [&>*+*]:pt-4">
               {layers && <LayerLightingSettings />}
               {rules && <StatusSetupsInFlows />}
-              {rules && <StatusPresetsPanel />}
               {rules && <ConditionalRulesPanel />}
               {firmware && <FirmwareRulesPanel />}
             </div>

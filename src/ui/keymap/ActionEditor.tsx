@@ -12,8 +12,6 @@ import { noModifiers } from "../../model/slots";
 import { decodeMacros, macroPreview } from "../../model/macros";
 import { DEFAULT_TAP_HOLD_PROFILE, morsePatternGlyph } from "../../model/morse";
 import { useWorkbench } from "../state";
-import type { KeyView } from "../../model/keyboard";
-import { LightingKeyPresetPanel } from "../lighting/LightingKeyPresetPanel";
 import { morseProfileSummary } from "../morse-profile";
 import { Button, SectionLabel, Segmented, cx } from "../kit";
 import { PickKey } from "./PickKey";
@@ -385,13 +383,10 @@ export function ActionEditor({
   current,
   numLayers,
   onCommit,
-  lightingKey,
 }: {
   current: KeyAction;
   numLayers: number;
   onCommit: (action: KeyAction) => void;
-  /** The physical key being edited, when there is one: enables key presets. */
-  lightingKey?: { layer: number; key: KeyView };
 }) {
   const { bundle, state } = useWorkbench();
   const [tab, setTab] = useState<Tab>(() => initialTab(current));
@@ -528,13 +523,6 @@ export function ActionEditor({
 
       {tab === "lighting" && (
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-          {lightingKey && (
-            <LightingKeyPresetPanel
-              layer={lightingKey.layer}
-              target={lightingKey.key}
-              current={current}
-            />
-          )}
           {boardLightingActions.length > 0 && (
             <div>
               <SectionLabel>Board controls</SectionLabel>

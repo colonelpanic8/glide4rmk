@@ -9,10 +9,9 @@
 // Changes join the draft (sent with Review & send; in Live, once painting
 // pauses). With "Try out (not saved)" on, the choice, the selection and Paint
 // give try-out lights instead: a colour, or Off for none (TryOut.tsx).
-// The lights as a whole are in Layout properties (RGB settings…); the key
-// editor puts the lighting keys that show their own state at the foot (children).
+// The lights as a whole are in Layout properties (RGB settings…).
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { openProperties } from "../properties/store";
 import type { LightingEffect } from "../../model/lighting-types";
 import { useBusy, useWorkbench } from "../state";
@@ -21,6 +20,7 @@ import { DEFAULT_TIMING } from "../../model/lighting/effect";
 import { sameLight, type KeyLight } from "../../model/lighting/key-light";
 import { LED_PRESETS } from "../../model/lighting/color";
 import { ledsOf, selectedKeys } from "../../model/key-selection";
+import { detectBarOrder, orderBatteryBar } from "../../model/lighting/status-presets";
 import { layerName } from "../layer-names";
 import { Button, cx, ErrorBanner } from "../kit";
 import { askConfirm, showToast } from "../messages/store";
@@ -50,7 +50,7 @@ const CHOICES: Array<{ id: Choice; start: KeyLight; title: string; text: string;
     id: "status",
     start: { kind: "lock", lock: "caps_lock", on: RED, off: null },
     title: "Status light",
-    text: "Shows a lock, the battery or the connection.",
+    text: "Shows a lock, the battery, the connection or the lights' own state.",
     needsRules: true,
     stored: true,
   },
@@ -76,7 +76,7 @@ const toolClass = (on: boolean) =>
   );
 
 /** `ledId`: the LED of the key the editor shows; the other selected keys' are found here. */
-export function LayerLighting({ ledId, children }: { ledId: number | undefined; children?: ReactNode }) {
+export function LayerLighting({ ledId }: { ledId: number | undefined }) {
   const { bundle, state, dispatch } = useWorkbench();
   const busy = useBusy();
   const view = useLightView();
@@ -94,6 +94,14 @@ export function LayerLighting({ ledId, children }: { ledId: number | undefined; 
   const several = keys.length > 1;
   const leds = several ? ledsOf(bundle.model.keys, keys) : ledId === undefined ? [] : [ledId];
   const lead = ledId ?? leds.at(-1);
+  /** A battery bar's keys, empty to full: up a column, or right along a row. */
+  const fillOrder = (chosen: readonly number[]) => {
+    const placed = chosen.flatMap((led) => {
+      const key = bundle.model.keys.find((each) => each.ledId === led);
+      return key ? [{ ledId: led, x: key.shape.rect.x, y: key.shape.rect.y }] : [];
+    });
+    return orderBatteryBar(placed, detectBarOrder(placed));
+  };
   const current: KeyLight = lead === undefined ? { kind: "below" } : lights.lightOf(lead);
   // What each choice had last, so trying another and coming back keeps its fields.
   const [kept, setKept] = useState<Partial<Record<Choice, KeyLight>>>({});
@@ -116,7 +124,7 @@ export function LayerLighting({ ledId, children }: { ledId: number | undefined; 
       return true;
     }
     if (!differ(light)) return true;
-    const result = await lights.set(light, leds);
+    const result = await lights.set(light, light.kind === "bar" ? fillOrder(leds) : leds);
     if (!result.ok && !result.guarded) showToast(`The light was not changed: ${result.message}`, { tone: "danger" });
     return result.ok;
   };
@@ -244,6 +252,7 @@ export function LayerLighting({ ledId, children }: { ledId: number | undefined; 
                   key={`${layer}:${leds.join()}`}
                   light={shown}
                   lights={lights}
+                  keys={view.brush ? 1 : leds.length}
                   onChange={choose}
                   onTyping={view.brush ? lightView.setBrush : undefined}
                 />
@@ -273,7 +282,6 @@ export function LayerLighting({ ledId, children }: { ledId: number | undefined; 
           </Button>
         )}
       </div>
-      {children}
     </div>
   );
 }

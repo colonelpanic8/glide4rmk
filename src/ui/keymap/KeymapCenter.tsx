@@ -3,8 +3,6 @@
 // card. Keys are edited below it (KeyEditor.tsx); trackpads and encoders in
 // SideInspector.tsx. Several keys can be selected (useKeySelection.ts): the
 // last one is the key the editor, the quick menu, copy and paste work on.
-// While a status setup picks its keys (PickBanner.tsx) the canvas only selects,
-// and only keys with an LED.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -31,9 +29,6 @@ import { CanvasPill } from "./CanvasPill";
 import { CarriedKey } from "./CarriedKey";
 import { useKeyMoves } from "./useKeyMoves";
 import { useKeySelection } from "./useKeySelection";
-import { PickBanner } from "./PickBanner";
-import { useKeyPick } from "../lighting/keyPick";
-import { pickTakes } from "../../model/lighting/key-pick";
 import { selectionShowing } from "../../model/key-selection";
 import { useLightView } from "./lightView";
 import { LightsButton } from "./LightsButton";
@@ -87,8 +82,7 @@ export function KeymapCenter() {
   // The layer's staged scene, previewed under the legends so bindings and
   // lighting can be judged together; the Key Lighting tab paints it.
   const light = useLightView();
-  const pick = useKeyPick();
-  const chosen = useKeySelection(pick ? pickTakes(pick) : light.selecting ? "many" : null);
+  const chosen = useKeySelection(light.selecting ? "many" : null);
 
   const keyboardActivateKey = (key: KeyView, event: React.KeyboardEvent) => {
     if (event.key === "Escape") return moves.keyboardStep(key, event);
@@ -152,7 +146,6 @@ export function KeymapCenter() {
       ariaKeyShortcuts: `Enter Space Escape Control+Enter Meta+Enter Shift+Enter${selected ? " Control+C Meta+C Control+V Meta+V" : ""}`,
       selected,
       inSelection: among && !selected,
-      disabled: pick !== null && key.ledId === undefined,
       highlight: dropTarget,
       usedBy: usedKeys?.has(`${key.row},${key.col}`) ?? false,
       lifted,
@@ -215,7 +208,7 @@ export function KeymapCenter() {
       <BoardWell
         model={bundle.model}
         flush
-        top={pick ? <PickBanner pick={pick} /> : <CanvasPill message={moves.status() ?? moves.message} />}
+        top={<CanvasPill message={moves.status() ?? moves.message} />}
         tools={
           <>
             {hovered && !drag && <KeyHoverCard keyView={hovered} />}
@@ -250,7 +243,6 @@ export function KeymapCenter() {
             };
           }}
           onKeyContextMenu={(key, event) => {
-            if (pick) return;
             dispatch({ type: "select", selection: selectionShowing(state.selection, key) });
             // From the keyboard (the menu key, Shift+F10) there is no pointer: open by the key.
             const fromKeyboard = event.clientX === 0 && event.clientY === 0;
@@ -281,10 +273,10 @@ export function KeymapCenter() {
           }
           onKeyDrop={moves.dragDrop}
           onEncoderPointerDown={(enc) => {
-            if (!pick) dispatch({ type: "select", selection: { type: "encoder", id: enc.id } });
+            dispatch({ type: "select", selection: { type: "encoder", id: enc.id } });
           }}
           onPointingDeviceActivate={(device) => {
-            if (!pick) dispatch({ type: "select", selection: { type: "pointing", id: device.id } });
+            dispatch({ type: "select", selection: { type: "pointing", id: device.id } });
           }}
           onBackgroundPointerDown={() => {
             moves.cancelKeyboardMove();
