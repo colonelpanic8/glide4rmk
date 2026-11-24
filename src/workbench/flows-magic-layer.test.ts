@@ -65,6 +65,17 @@ describe("MoErgo Magic layer on the Glove80", () => {
 });
 
 describe("MoErgo Magic layer on the Go60", () => {
+  it("gives the Magic layer of MoErgo's default Go60 layout with its lights, as GLIDE4RMK saves it", async () => {
+    let golden: ReturnType<typeof magicOf> | undefined;
+    await withTestWorkbench({ fixture: "go60-magic" }, { mode: "draft" }, async ({ state }) => {
+      golden = magicOf(state(), 3);
+    });
+    await withTestWorkbench({ fixture: "go60" }, { mode: "draft" }, async ({ io, state, flows }) => {
+      expect(await io.runFlow(flow, { layer: "auto" }, flows)).toMatchObject({ ok: true });
+      expect(magicOf(state(), 3)).toEqual(golden);
+    });
+  });
+
   it("lights MoErgo's Go60 indicator layout on its Magic layer, layer 4", async () => {
     await withTestWorkbench({ fixture: "go60" }, { mode: "draft" }, async ({ io, state, flows }) => {
       const before = state().layers[3];
