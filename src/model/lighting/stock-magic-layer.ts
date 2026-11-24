@@ -208,7 +208,15 @@ export function findMagicLayer(layout: MagicLayerLayout, table: MagicLayerTable,
   return held !== null && held !== layout.defaultLayer && held < layout.layers.length ? held : null;
 }
 
-/** Each key of the board as the layer has it: what the table binds, the rest unbound. */
+/** Only the keys the layer itself binds, for a Magic layer you already have:
+ *  what `table` binds, and unbound where the board's own table binds a profile
+ *  this keyboard does not have (`withProfiles`). Your other keys stay. */
+export function magicLayerOwnKeys(board: MagicLayerTable, table: MagicLayerTable): { row: number; col: number; action: KeyAction }[] {
+  const dropped = board.keys.filter((key) => !table.keys.includes(key)).map(({ row, col }) => ({ row, col, action: "No" as const }));
+  return [...table.keys, ...dropped];
+}
+
+/** Each key of the board as a new Magic layer has it: what the table binds, the rest unbound. */
 export function magicLayerKeys(table: MagicLayerTable): { row: number; col: number; action: KeyAction }[] {
   return table.places.map(({ row, col }) => ({
     row,

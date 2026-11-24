@@ -4,14 +4,13 @@ runs_on = "glide4rmk"
 
 title = "MoErgo Magic layer"
 
-subtitle = "The factory Magic layer, or only its status lights"
+subtitle = "MoErgo's Magic layer, or only its status lights"
 
 description = '''
-Gives your Glove80 or Go60 its Magic layer as the keyboard ships with it, lights and all, or only the status lights on the Magic layer you have.
+Sets up the Magic layer of your Glove80 or Go60 as MoErgo's firmware has it, or adds only its status lights. It works on the layer named Magic; a layout without one gets a new layer named Magic, held down by the lower-left key of your base layer when that key is free.
 
-- **Which layer:** the layer named Magic. Without one, the layer your base layer's lower-left key holds down; without that, a new layer named Magic, held down by that key when it is free.
-- **Whole layer:** the layer's own lights go first. Then a key for each Bluetooth profile the keyboard has (four on a Glove80, three on a Go60) and USB, the RGB controls, Bootloader and Reboot, and the keys that forget pairings. Every other key on the layer is unbound, and the left half is dark around the lights.
-- **Status lights only:** your keys and your other lights stay; the status lights go where MoErgo puts them.
+- **The Magic layer:** MoErgo's keys on it: one for each Bluetooth profile the keyboard has (four on a Glove80, three on a Go60) and USB, the RGB controls, Bootloader and Reboot, and the keys that forget pairings. Your other keys on the layer stay. Its earlier lights go, and the left half is dark around the status lights.
+- **Only the status lights:** your keys and your other lights stay.
 - **The lights, while you hold it:** which layers are on, Caps, Num and Scroll Lock, each half's battery, each Bluetooth profile and USB, and the maintenance lock on Z (green while the keyboard can be changed, red while locked).
 - The layer wakes the lights while they are off. Running it again puts back what it made.'''
 
@@ -22,37 +21,32 @@ script = '''
 # MoErgo Magic layer
 #
 # Where the keys and lights go is each board's own table in GLIDE4RMK's board
-# registry (model/boards/magic-layer.ts); set_magic_layer writes it. Left to
-# itself, set_magic_layer finds the layer named Magic, or the one MoErgo's key
-# holds down, or adds one: no layer number is assumed. This script only passes
-# the choices on and says what happened.
+# registry (model/boards/magic-layer.ts). set_magic_layer finds the layer named
+# Magic, or the one MoErgo's key holds down, or adds one, and writes it: no
+# layer number is assumed. This script passes the choice on and says what
+# happened.
 #
-# Changed: the Magic layer's status lights and the wake layers; with the whole
-# layer also its keys and its scene, its own earlier lights cleared first.
-# Not changed: other layers' keys and lights, combos, behaviors.
+# Changed: the Magic layer's status lights and the wake layers; with its keys
+# also MoErgo's keys on it and its scene, its own earlier lights cleared first.
+# Not changed: your other keys on it, other layers, combos, behaviors.
 # ==============================================================================
 
-($layer != "auto") as $picked |
 ($what == "layer") as $keys |
 
 if $view.board.magic_layer | not then
   error("Only the Glove80 and the Go60 have MoErgo's Magic layer, so nothing was changed.")
-elif $picked and layer($layer | tonumber) == null then
-  error("Layer \(($layer | tonumber) + 1) is not in this layout, which has \($view.layers | length) layers. Pick one of them, so nothing was changed.")
 else
-  (if $picked then layer($layer | tonumber).name
-   else ((first($view.layers[] | select(.name | ascii_downcase | gsub("^\\s+|\\s+$"; "") == "magic")) | .name) // "The Magic layer")
-   end) as $name |
+  ((first($view.layers[] | select(.name | ascii_downcase | gsub("^\\s+|\\s+$"; "") == "magic")) | .name) // "The Magic layer") as $name |
   {
-    operations: [{name: "set_magic_layer", input: ((if $picked then {layer: ($layer | tonumber)} else {} end) + {keys: $keys})}],
+    operations: [{name: "set_magic_layer", input: {keys: $keys}}],
     report: {
       message: (if $keys then "\($name) is the \($view.board.name)'s Magic layer, with its status lights." else "\($name) has the \($view.board.name)'s status lights; its keys are as they were." end),
-      lines: ((if $keys then [{text: "Bluetooth profile, USB, RGB, Bootloader and Reboot keys", ok: true}] else [] end) + [
+      lines: ((if $keys then [{text: "Bluetooth profile, USB, RGB, Bootloader and Reboot keys; your other keys stay", ok: true}] else [] end) + [
         {text: "Layers, locks, batteries and connections light while it is held", ok: true},
         {text: "Maintenance lock on Z", ok: true},
         {text: "Wakes the lights", ok: true}
       ]),
-      log: ["layer \($layer)", "board \($view.board.id)", "keys \($keys)"]
+      log: ["board \($view.board.id)", "keys \($keys)"]
     }
   }
 end
@@ -66,17 +60,9 @@ keyboards = ["glove80", "go60"]
 requires = ["lighting.rules", "lighting.rules.connection", "lighting.rules.indicators", "lighting.rules.device", "lighting.output"]
 
 [[param]]
-id = "layer"
-label = "On the layer"
-type = "select"
-options = ["auto", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
-labels = ["Find it: the layer named Magic, or a new one", "Layer 1 (first layer)", "Layer 2", "Layer 3", "Layer 4", "Layer 5", "Layer 6", "Layer 7", "Layer 8", "Layer 9", "Layer 10", "Layer 11", "Layer 12", "Layer 13", "Layer 14", "Layer 15", "Layer 16", "Layer 17", "Layer 18", "Layer 19", "Layer 20", "Layer 21", "Layer 22", "Layer 23", "Layer 24", "Layer 25", "Layer 26", "Layer 27", "Layer 28", "Layer 29", "Layer 30", "Layer 31", "Layer 32"]
-default = "auto"
-
-[[param]]
 id = "what"
 label = "Change"
 type = "select"
 options = ["layer", "lights"]
-labels = ["The whole layer: keys and lights", "Only the status lights: keep my keys"]
+labels = ["The Magic layer: MoErgo's keys and its lights", "Only the status lights"]
 default = "layer"
