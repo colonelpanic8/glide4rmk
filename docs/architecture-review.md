@@ -13,7 +13,7 @@ The first review's plan (its full text is in this file's history, at `f4f5f7d`; 
 | 0. Safety net | Done | `ui/every-screen.test.tsx` (`227ae02`); a board without RGB or Bluetooth: `session/mock/plain36.ts` |
 | 1. A core for the workbench | Done | `1d035e0`, ADR 0017; `workbench/` 26 files, 3,144 lines; `ui/state.tsx` 34 lines, off the size list |
 | 2. The draft holds the whole keyboard | Done, with one rest | ADR 0018. But what you want is still assembled from state fields (`wantOf`/`withWant`, 280 lines), not stored: plan item P2 |
-| 3. Operations | Done, two panels left | ADR 0019, 0023; 24 operations in the catalog. Left: the rule panels and lighting presets (todo 11, 12) |
+| 3. Operations | Done, one panel left | ADR 0019, 0023, 0035; the status setups are operations and Flows. Left: the condition rules panel's Apply (todo 11) |
 | 4. Capabilities and `offer()` | Open | 12 capability ids (was 8); screens still decide from raw firmware fields (plan item P4) |
 | 5. The doors | Mostly done | `describe` (`operations/describe.ts`), Flows (ADR 0025, 0027). WebMCP open |
 

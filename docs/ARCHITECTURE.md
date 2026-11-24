@@ -122,7 +122,7 @@ Through `sync/` (fresh read, three-way check, only the difference, read back): S
 Not yet:
 
 - **Direct Live writes** from `workbench/io-*.ts`: `keymap.setKey` (one key), `keymap.setEncoder`, `combos.set` / `morse.set` / `forks.set` (`io.setSlot`), `behavior.set`, `behavior.setHoldTriggerPositions`, `keymap.setDefaultLayer`, `lighting.setState`, `lighting.scenes.setLayerPolicy`, `lighting.setWakeLayers`, `lighting.setExtensionState` / `setExtensionLayers` / `setExtensionParam`. In Draft each of these changes what you want instead.
-- **Whole tables in either mode:** `io.applyScenes` and `io.applyConditionalScenes` (`io-lighting.ts`), used by the condition-rules panel's Apply rules, the lighting key presets and the stock Magic layer; the presets write their keys one by one before the table (todo 10, 11).
+- **The whole rule table in either mode:** `io.applyConditionalScenes` (`io-lighting.ts`), the condition-rules panel's Apply rules (todo 11).
 - **Try-out lights:** `lighting.replaceOverlay` and `clearOverlay` (`io-try-out.ts`), never stored.
 - **The Device screen** calls the session itself for Bluetooth pairings, automatic transport switching and split latency; `io` reboots to the bootloader and resets storage.
 
@@ -137,7 +137,8 @@ Not yet:
 | What protects a layout | `domain/guard.ts`, `ui/guard/guardIo.ts`, ADR 0011 |
 | What a Flow or an assistant can call | `operations/catalog.ts`, `workbench/apply.ts`, ADR 0019 |
 | Importing a file | `config/transfer.ts`, `config/import-layout.ts`, `workbench/io-import.ts`, ADR 0023 |
-| Lighting tools on the keymap | `model/key-selection.ts`, `ui/keymap/useKeySelection.ts`, `ui/keymap/LayerLighting.tsx`, `ui/lighting/keyPick.ts`, `workbench/io-try-out.ts`, ADR 0024 |
+| Lighting tools on the keymap | `model/key-selection.ts`, `ui/keymap/useKeySelection.ts`, `ui/keymap/LayerLighting.tsx`, `workbench/io-try-out.ts`, ADR 0024 |
+| MoErgo's lighting setups as Flows | `model/boards/magic-layer.ts`, `model/lighting/stock-magic-layer.ts`, `flows/glove80/status-cluster.flows`, `flows/shared/moergo-magic-layer.flows`, ADR 0035 |
 | Behavior names and descriptions (labels) | `model/behavior-labels.ts`, `state.labels`, `ui/behaviors/LabelKeeper.tsx`, ADR 0020 |
 | What a keyboard can do | `capabilities/`, ADR 0002 |
 | How a screen gets all this | `ui/state.tsx` (`useWorkbench`), `ui/Workbench.tsx` |

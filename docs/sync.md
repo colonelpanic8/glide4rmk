@@ -83,7 +83,7 @@ The macro region is one stored item, so a region that both shrinks and changes g
 | Layer policy, wake layers | `lighting.scenes.setLayerPolicy`, `lighting.setWakeLayers` |
 | Effect, overlay slot, effect parameters | `lighting.setExtensionState`, `setExtensionLayers`, `setExtensionParam` |
 
-**Whole tables, in either mode** (todo 10, 11): `io.applyScenes` (`lighting.scenes.replaceScenes`) and `io.applyConditionalScenes` (`lighting.conditionalScenes.replace`, then read back). They are used by the condition-rules panel's **Apply rules**, the lighting key presets (key editor → Every action → its lighting tab) and the stock Magic layer; the last two write their keys one by one with `io.setKey` first and are offered only in Live. The Glove80 status cluster writes its keys with `io.setKey` and puts its rules in the draft.
+**The whole rule table, in either mode** (todo 11): `io.applyConditionalScenes` (`lighting.conditionalScenes.replace`, then read back), the condition-rules panel's **Apply rules**. The status setups are operations or Flows, so they go through the write path like any commit (ADR 0035).
 
 **Not stored:** try-out lights replace the keyboard's overlay (`workbench/io-try-out.ts`); they are not part of the draft or Undo. The Device screen calls the session itself to forget Bluetooth pairings, switch transports automatically and set split latency.
 
@@ -149,7 +149,7 @@ Reads cost no flash, but take time over Bluetooth: every send through the write 
 ## Not done yet
 
 - **The direct Live writes** above still bypass the write path: no fresh read, no three-way check.
-- **The whole-table writes** (todo 10, 11): the condition-rules panel's Apply, the lighting key presets and the stock Magic layer.
+- **The whole-table write** (todo 11): the condition-rules panel's Apply.
 - **A macro region that shrinks and changes** is written after the keys (see Write order).
 - **Read only what is needed:** every send reads the whole keyboard before and after. Reading only the parts in the plan would make it faster over Bluetooth.
 - **Starting without the keyboard:** today you keep working when the link is lost. Opening a keyboard you have used before, without connecting it, needs its last read kept per keyboard and a session built from it.
