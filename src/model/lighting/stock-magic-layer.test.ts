@@ -8,6 +8,7 @@ import {
   magicLayerRules,
   withMagicLayerRules,
   withMagicLayerScene,
+  withProfiles,
 } from "./stock-magic-layer";
 
 describe("the Magic layer tables", () => {
@@ -63,6 +64,18 @@ describe("the Magic layer's rules", () => {
     expect(once).not.toContain(stale);
     expect(withMagicLayerRules(once, GLOVE80_MAGIC_LAYER, 2, 3)).toEqual(once);
     expect([...magicLayerLeds(GLOVE80_MAGIC_LAYER)].every((led) => led < 40)).toBe(true);
+  });
+
+  it("leave a profile the keyboard does not have unbound and unlit, and clear a light an earlier Magic layer put on the dark half", () => {
+    const three = withProfiles(GO60_MAGIC_LAYER, 3);
+    expect(connectionLights(three).map(({ led }) => led)).toEqual([20, 15, 10, 21]);
+    expect(magicLayerKeys(three).find((key) => key.row === 3 && key.col === 5)?.action).toBe("No");
+    expect(withProfiles(GLOVE80_MAGIC_LAYER, 4)).toBe(GLOVE80_MAGIC_LAYER);
+    // Profile 4's lights, as the Magic layer made them before it knew the profile count.
+    const stale = magicLayerRules(GO60_MAGIC_LAYER, 3, 4).filter((rule) => rule.cell.led_id === 6);
+    expect(stale).toHaveLength(4);
+    const rules = withMagicLayerRules(stale, three, 3, 4);
+    expect(rules.some((rule) => rule.cell.led_id === 6)).toBe(false);
   });
 
   it("darken the left half on their own layer only", () => {

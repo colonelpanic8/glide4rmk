@@ -43,6 +43,8 @@ In this order; decisions in ADR 0017 and an update of ADR 0002.
 
 32. **A new Go60 layout.** A file opens on the board it is for (ADR 0034), but New layout on the start screen still makes a Glove80: offer the Go60 there too (`openOfflineBoard("go60")` is ready; the button and the untitled name are in `App.tsx` and `ui/ConnectScreen.tsx`).
 
+33. **The Go60's fourth Bluetooth key from MoErgo JSON.** MoErgo's Go60 layouts select four profiles; the Go60's RMK firmware has three and renumbers its `USER` actions after them, so importing the factory layout puts `USER(3)` (next profile) where MoErgo had profile 4. The converter's Go60 import (`nix/patches/moergo-rmk-go60-moergo-json.patch`) should map a fourth profile to nothing, with a note, or to what MoErgo's key means on RMK.
+
 ## Parked
 
 31. **More RMK keyboards.** What it would take, and why the protocol decides it: `docs/more-rmk-keyboards.md`. Waits on a conversation with colonelpanic8 about upstreaming the fork's Rynk additions.

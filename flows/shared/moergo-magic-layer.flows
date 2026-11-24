@@ -9,7 +9,7 @@ subtitle = "The factory Magic layer with its status lights"
 description = '''
 Makes one layer the Magic layer your Glove80 or Go60 ships with, lights and all.
 
-- **Keys:** Bluetooth 1–4 and USB, the RGB controls, Bootloader and Reboot, and the keys that forget pairings. Every other key on the layer is unbound.
+- **Keys:** a key for each Bluetooth profile the keyboard has (four on a Glove80, three on a Go60) and USB, the RGB controls, Bootloader and Reboot, and the keys that forget pairings. Every other key on the layer is unbound.
 - **Lights, while you hold it:** which layers are on, Caps, Num and Scroll Lock, each half's battery, each Bluetooth profile and USB, on the left half, which is otherwise dark.
 - **Maintenance lock:** on Z, lit green while the keyboard can be changed and red while it is locked.
 - The layer wakes the lights while they are off. Running it again puts it back as it was made.'''
@@ -42,7 +42,7 @@ else
     report: {
       message: "\($name) is the \($view.board.name)'s Magic layer, with its status lights.",
       lines: [
-        {text: "Bluetooth 1–4, USB, RGB, Bootloader and Reboot keys", ok: true},
+        {text: "Bluetooth profile, USB, RGB, Bootloader and Reboot keys", ok: true},
         {text: "Layers, locks, batteries and connections light while it is held", ok: true},
         {text: "Maintenance lock on Z", ok: true},
         {text: "Wakes the lights", ok: true}

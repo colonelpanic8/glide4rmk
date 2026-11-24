@@ -41,6 +41,8 @@ A key's light menu (`KeyLightFields.tsx`, `set_key_light`) already gives selecte
 
 ## Consequences
 
+- *Amended 2026-11-24:* not every board has four Bluetooth profiles: the Go60's RMK firmware has three, renumbers its `USER` actions after them (`USER(3)` is next profile there) and refuses a rule for a profile it does not have. Operations take the keyboard's count (`OperationFacts.bleProfiles`): the Magic layer leaves a later profile's key unbound and unlit, a Bluetooth light or connection key for one is refused, an imported file with such a rule is refused at import, and the simulated boards refuse it as the firmware does. The Magic layer also replaces every rule on its dark half, so a light an earlier run left there goes.
+
 - Every lighting setup is one commit: judged once by Guard, one Undo step, waiting for Send in Draft (todo 11), all at once in Live (todo 12). Guard now sees the whole Magic layer and may stop or ask where the per-key writes did not. Before the first Flow, a test on the simulated board checks that a commit whose rule write fails leaves no key changed (the planner writes keys before rules).
 - A connection key is two steps on the key (action, then light), where the picked setup was one.
 - Lost: the layer list's names and its "wakes the lights" mark (a Flow's choice lists slots); the "installed" badge (running a Flow again replaces what it made). A full rule table is reported by the failing step, not before the run.

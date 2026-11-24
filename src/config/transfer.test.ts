@@ -182,7 +182,7 @@ describe("an import over what you want: pointing configuration", () => {
 });
 
 describe("reading an import: lighting preflight", () => {
-  it.each(["capacity", "unsupported", "predicates", "scenes", "layer predicates", "malformed"] as const)(
+  it.each(["capacity", "unsupported", "predicates", "scenes", "layer predicates", "bluetooth profile", "malformed"] as const)(
     "rejects %s before anything changes",
     async (failure) => {
       const session = openOfflineGlove80();
@@ -218,6 +218,15 @@ describe("reading an import: lighting preflight", () => {
           snapshot.lighting!.conditional_scenes![0] = ruleToWire(rule);
           text = renderDocument(snapshot, catalog, "toml");
           bundle.lightingCaps = { ...bundle.lightingCaps!, features: RUNTIME_EFFECTS_CONDITIONS };
+        } else if (failure === "bluetooth profile") {
+          // A light for profile 4 on a keyboard with three: the firmware would refuse it at Send.
+          const rule = ruleFromWire(snapshot.lighting!.conditional_scenes![0]);
+          rule.effects = undefined;
+          rule.connection = { transport: undefined, profile: 3, ble_state: "Connected", bonded: undefined, usb_connected: undefined };
+          snapshot.lighting!.conditional_scenes![0] = ruleToWire(rule);
+          text = renderDocument(snapshot, catalog, "toml");
+          bundle.caps = { ...bundle.caps, ble_enabled: true, num_ble_profiles: 3 };
+          message = /^Conditional rule 1 shows Bluetooth profile 4, and this keyboard has 3 profiles\. No settings were written\.$/;
         } else if (failure === "scenes") {
           snapshot.lighting!.scenes.push({
             layer: 0, led_id: 0, effect: { Solid: { color: { r: 255, g: 0, b: 0 } } },

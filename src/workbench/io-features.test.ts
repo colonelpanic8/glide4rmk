@@ -4,9 +4,10 @@ import { type ConnectedBundle } from "../model/workbench-state";
 
 /** The gating `ioFeaturesFor` had before it read the capability set. Kept here
  *  so the migration is proven to change nothing, for every combination. */
-function legacy(bundle: Pick<ConnectedBundle, "sceneStatus" | "runtimeConditionalStatus" | "lightingExtension" | "pointingConfig" | "lightingState" | "lightingOutputMode">) {
+function legacy(bundle: Pick<ConnectedBundle, "caps" | "sceneStatus" | "runtimeConditionalStatus" | "lightingExtension" | "pointingConfig" | "lightingState" | "lightingOutputMode">) {
   return {
     board: null,
+    bleProfiles: bundle.caps.ble_enabled ? bundle.caps.num_ble_profiles : 0,
     sceneCapacity: bundle.sceneStatus?.capacity ?? null,
     conditionalSceneCapacity: bundle.runtimeConditionalStatus?.capacity ?? null,
     scenesSupported: bundle.sceneStatus !== null,
