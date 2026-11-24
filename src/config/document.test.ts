@@ -226,7 +226,8 @@ describe("parseDocument", () => {
   });
 
   it("opens a layout it saved with a mod-tap that has no timing profile, and saves it the same again", () => {
-    const source = readFileSync("src/test/fixtures/go60-default-rgb.toml", "utf8");
+    // The test catalog's palettes are Amber and Classic; the keymap is what this is about.
+    const source = readFileSync("src/test/fixtures/go60-default-rgb.toml", "utf8").replace('palette = "Afterburn"', 'palette = "Classic"');
     expect(source).toContain("MT(KC_ENT,RAlt)");
     const parsed = parseDocument(source, CATALOG);
     expect(parsed.snapshot.layers[0][7]).toEqual({
