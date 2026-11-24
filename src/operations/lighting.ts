@@ -145,22 +145,25 @@ export const setBatteryBar: Operation<BatteryBarPreset> = {
   },
 };
 
-export const setMagicLayer: Operation<{ layer?: number }> = {
+export const setMagicLayer: Operation<{ layer?: number; keys?: boolean }> = {
   name: "set_magic_layer",
   description:
-    "Makes a layer MoErgo's Magic layer on a Glove80 or a Go60: its keys, its status lights (layers, locks, batteries, Bluetooth, USB, the maintenance lock), the left half dark, and the layer waking the lights.",
-  inputs: [{ name: "layer", kind: "integer", min: 0, optional: true, description: "The layer; the board's own Magic layer when left out." }],
-  run(image, { layer }, facts) {
+    "Makes a layer MoErgo's Magic layer on a Glove80 or a Go60: its keys, its status lights (layers, locks, batteries, Bluetooth, USB, the maintenance lock), the left half dark, and the layer waking the lights. With keys false, only the status lights and the waking: the layer's keys and its other lights stay.",
+  inputs: [
+    { name: "layer", kind: "integer", min: 0, optional: true, description: "The layer; the board's own Magic layer when left out." },
+    { name: "keys", kind: "boolean", optional: true, description: "False: leave the layer's keys and other lights, add the status lights. True when left out." },
+  ],
+  run(image, { layer, keys = true }, facts) {
     const board = facts.board === null ? undefined : profileById(facts.board)?.magicLayer;
     if (!board) return failed("Only the Glove80 and the Go60 have MoErgo's Magic layer.");
     const table = withProfiles(board, facts.bleProfiles);
     const target = layer ?? table.layer;
     if (!image.layers[target]) return failed(`Layer ${target} does not exist`);
-    const bound = withKeys(image, facts.cols, magicLayerKeys(table).map((key) => ({ layer: target, ...key })));
+    const bound = keys ? withKeys(image, facts.cols, magicLayerKeys(table).map((key) => ({ layer: target, ...key }))) : image;
     if (typeof bound === "string") return failed(bound);
     const lit = withLighting(bound, facts, {
-      rules: withMagicLayerRules(bound.runtimeConditionalScenes, table, target, image.layers.length),
-      scenes: facts.sceneCapacity === null ? undefined : withMagicLayerScene(bound.scenes, table, target),
+      rules: withMagicLayerRules(bound.runtimeConditionalScenes, table, target, image.layers.length, keys),
+      scenes: !keys || facts.sceneCapacity === null ? undefined : withMagicLayerScene(bound.scenes, table, target),
     });
     return lit.ok ? { ...lit, image: { ...lit.image, wakeLayers: lit.image.wakeLayers | (1 << target) } } : lit;
   },

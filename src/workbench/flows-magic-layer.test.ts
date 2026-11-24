@@ -111,6 +111,25 @@ describe("MoErgo Magic layer on the Go60", () => {
   });
 });
 
+describe("MoErgo Magic layer, status lights only", () => {
+  it("keeps the layer's keys, its scene and its other lights, and adds the status lights where MoErgo puts them", async () => {
+    await withTestWorkbench({ fixture: "plain" }, { mode: "draft" }, async ({ io, state, flows }) => {
+      // A light of your own on the layer, on a key the Magic layer does not light (LED 38: the left outer column, row 5).
+      expect(await io.apply("set_key_light", { layer: 2, leds: [38], light: { kind: "lock", lock: "caps_lock", on: { r: 0, g: 0, b: 255 }, off: null } })).toEqual({ ok: true });
+      const before = wantOf(state());
+      const run = await io.runFlow(flow, { layer: "auto", what: "lights" }, flows);
+      expect(run).toMatchObject({ ok: true, message: expect.stringContaining("its keys are as they were") });
+      const after = wantOf(state());
+      expect(after.layers[2]).toEqual(before.layers[2]);
+      expect(after.scenes).toEqual(before.scenes);
+      expect(conditionsOn(state(), 2, 38)).toEqual(["lock", "lock"]);
+      expect(conditionsOn(state(), 2, 3)).toEqual(["connection", "connection", "connection", "connection"]);
+      expect(conditionsOn(state(), 2, 32)).toEqual(["maintenance", "maintenance"]);
+      expect(maskHasLayer(after.wakeLayers, 2)).toBe(true);
+    });
+  });
+});
+
 describe("MoErgo Magic layer sent to a Go60", () => {
   it("reaches the keyboard: no light for a Bluetooth profile the Go60's three do not include", async () => {
     await withTestWorkbench({ fixture: "go60" }, { mode: "live" }, async ({ io, state, flows, session }) => {

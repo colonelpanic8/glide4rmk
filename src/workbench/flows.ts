@@ -42,6 +42,7 @@ export function flowBoard(bundle: ConnectedBundle, capabilities: readonly string
     groups: profile?.keyGroups ?? null,
     capabilities,
     extras: profile?.addOns ? addOnKinds(profile.addOns, modules) : undefined,
+    magicLayer: profile?.magicLayer?.layer ?? null,
   };
 }
 
