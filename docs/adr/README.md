@@ -43,6 +43,7 @@ The table is built from each record's `# NNNN. Title` and `**Status:**` line by 
 | [0034](0034-a-file-opens-on-its-own-board.md) | A layout file opens on the board it is for | Accepted |
 | [0035](0035-lighting-setups-as-flows.md) | MoErgo lighting setups become Flows; the rest is done on the key | Accepted, #46 |
 | [0036](0036-guard-reads-saved-files-back.md) | Guard reads every saved file back | Accepted |
+| [0037](0037-board-facts-in-one-place.md) | Board facts in one place | Accepted |
 <!-- /adr-index -->
 
 The glossary is in [../glossary.md](../glossary.md).
