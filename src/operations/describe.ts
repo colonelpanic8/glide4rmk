@@ -30,8 +30,8 @@ export interface DescribedBoard {
   capabilities: string[];
   /** What is fitted to it beyond keys: `pointing` (a trackpad, trackball or touchpad). */
   extras: string[];
-  /** The layer MoErgo's default layout keeps its Magic layer on; null for a board without one (model/boards/). */
-  magic_layer: number | null;
+  /** Whether the board has MoErgo's Magic layer (model/boards/); where it is, the layout says. */
+  magic_layer: boolean;
 }
 
 export interface Description {
@@ -63,8 +63,8 @@ export interface Board {
   capabilities?: readonly string[];
   /** The kinds of add-on fitted (`pointing`); from the capabilities when unknown. */
   extras?: readonly string[];
-  /** Its Magic layer's layer, from the registry. */
-  magicLayer?: number | null;
+  /** Whether it has MoErgo's Magic layer, from the registry. */
+  magicLayer?: boolean;
 }
 
 /** The extras of a board the registry knows nothing about: what its capabilities say. */
@@ -82,7 +82,7 @@ export function describeBoard(board: Board, rows: number): DescribedBoard {
     groups: board.groups ? structuredClone(board.groups) : {},
     capabilities,
     extras: board.extras ? [...board.extras] : extrasOf(capabilities),
-    magic_layer: board.magicLayer ?? null,
+    magic_layer: board.magicLayer ?? false,
   };
 }
 

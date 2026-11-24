@@ -115,7 +115,7 @@ describe("a status setup on keys picked on the board", () => {
       const replace = vi.spyOn(session.lighting.conditionalScenes, "replace").mockRejectedValueOnce(new Error("flash failed"));
 
       const result = await io.apply("set_connection_key", { layer: 1, row: 0, col: 0, led: 3, kind: { type: "usb" } });
-      expect(result).toEqual({ ok: false, message: "flash failed; nothing was changed" });
+      expect(result).toEqual({ ok: false, message: "The lighting rules (14) did not reach the keyboard: flash failed; nothing was changed" });
       expect(keys.mock.invocationCallOrder[0]).toBeLessThan(replace.mock.invocationCallOrder[0]);
       expect((await session.keymap.readAll())[1].actions[0]).toEqual(bound);
       expect(await session.lighting.conditionalScenes.read()).toEqual(rules);

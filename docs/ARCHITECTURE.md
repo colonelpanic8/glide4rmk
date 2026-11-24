@@ -139,7 +139,7 @@ Not yet:
 | Importing a file | `config/transfer.ts`, `config/import-layout.ts`, `workbench/io-import.ts`, ADR 0023 |
 | Lighting tools on the keymap | `model/key-selection.ts`, `ui/keymap/useKeySelection.ts`, `ui/keymap/LayerLighting.tsx`, `workbench/io-try-out.ts`, ADR 0024 |
 | Board facts in one place | `model/boards/` (profiles), `capabilities/` (`bluetooth`), `architecture/board-facts.ts`, ADR 0037 |
-| MoErgo's lighting setups as Flows | `model/boards/magic-layer.ts`, `model/lighting/stock-magic-layer.ts`, `flows/shared/moergo-magic-layer.flows`, ADR 0035 |
+| MoErgo's lighting setups as Flows | `model/boards/magic-layer.ts`, `model/lighting/stock-magic-layer.ts`, `flows/shared/moergo-magic-layer.flows`, `operations/magic-layer.ts`, ADR 0035, 0038 |
 | Behavior names and descriptions (labels) | `model/behavior-labels.ts`, `state.labels`, `ui/behaviors/LabelKeeper.tsx`, ADR 0020 |
 | What a keyboard can do | `capabilities/`, ADR 0002 |
 | How a screen gets all this | `ui/state.tsx` (`useWorkbench`), `ui/Workbench.tsx` |

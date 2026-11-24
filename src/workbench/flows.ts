@@ -42,7 +42,7 @@ export function flowBoard(bundle: ConnectedBundle, capabilities: readonly string
     groups: profile?.keyGroups ?? null,
     capabilities,
     extras: profile?.addOns ? addOnKinds(profile.addOns, modules) : undefined,
-    magicLayer: profile?.magicLayer?.layer ?? null,
+    magicLayer: profile?.magicLayer !== undefined,
   };
 }
 
@@ -113,11 +113,18 @@ export async function runFlow(
     return stop(`Your layout changed while ${flow.title} ran, so nothing was changed. Run it again.`);
   }
   const folded = foldCalls(before, calls, factsOf(context.getState(), context));
-  if (!folded.ok) return stop(`${flow.title} was stopped, so nothing was changed: ${folded.message}. The automation may need fixing by its author.`, "error");
+  if (!folded.ok) {
+    if ("said" in folded && folded.said) {
+      logLine(log, folded.message);
+      return stop(`${folded.said} Nothing was changed.`);
+    }
+    return stop(`${flow.title} was stopped, so nothing was changed: ${folded.message}. The automation may need fixing by its author.`, "error");
+  }
   logLine(log, `${calls.length} operations: ${[...new Set(calls.map(({ name }) => name))].join(", ")}`);
 
   const committed = await commitImage(context, folded.image, { layerOrder: folded.layerOrder, notes: folded.labels && { labels: folded.labels } });
   if (!committed.ok) return stop(committed.message);
   endLog(log, "done", "Applied as one change");
-  return { ok: true, message: report.message || `${flow.title} is done.`, report, log };
+  const noted = { ...report, lines: [...report.lines, ...(folded.notes ?? []).map((text) => ({ text, ok: false }))] };
+  return { ok: true, message: report.message || `${flow.title} is done.`, report: noted, log };
 }

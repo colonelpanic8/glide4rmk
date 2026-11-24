@@ -58,14 +58,28 @@ function thenOrder(first: number[] | undefined, second: number[] | undefined): n
   return second.map((source) => first[source]);
 }
 
+/** A step that failed: `said` is the operation's own sentence for the person,
+ *  when it gave one (a fact of the layout, not a fault of the Flow). */
+export type FoldResult = OperationResult | { ok: false; message: string; said?: string };
+
 /** Runs the calls in order on `image`; the result of the last, or the first failure. */
-export function foldCalls(image: KeyboardImage, calls: readonly FlowCall[], facts: OperationFacts): OperationResult {
+export function foldCalls(image: KeyboardImage, calls: readonly FlowCall[], facts: OperationFacts): FoldResult {
   let result: Extract<OperationResult, { ok: true }> = { ok: true, image };
   for (const [index, call] of calls.entries()) {
     if (!Object.hasOwn(OPERATIONS, call.name)) return { ok: false, message: `Step ${index + 1}: there is no operation called ${call.name}` };
     const next = runOperation(call.name as OperationName, result.image, call.input as never, { ...facts, labels: result.labels ?? facts.labels });
-    if (!next.ok) return { ok: false, message: `Step ${index + 1} (${call.name}): ${next.message}` };
-    result = { ok: true, image: next.image, layerOrder: thenOrder(result.layerOrder, next.layerOrder), labels: next.labels ?? result.labels };
+    if (!next.ok) {
+      const message = `Step ${index + 1} (${call.name}): ${next.message}`;
+      return isPlainFlowMessage(next.message) ? { ok: false, message, said: next.message } : { ok: false, message };
+    }
+    const notes = [...(result.notes ?? []), ...(next.notes ?? [])];
+    result = {
+      ok: true,
+      image: next.image,
+      layerOrder: thenOrder(result.layerOrder, next.layerOrder),
+      labels: next.labels ?? result.labels,
+      ...(notes.length > 0 ? { notes } : {}),
+    };
   }
   return result;
 }

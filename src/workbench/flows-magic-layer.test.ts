@@ -45,7 +45,7 @@ describe("MoErgo Magic layer on the Glove80", () => {
       golden = magicOf(state(), 2);
     });
     await withTestWorkbench({ fixture: "plain" }, { mode: "draft" }, async ({ io, state, flows }) => {
-      const run = await io.runFlow(flow, { layer: "auto" }, flows);
+      const run = await io.runFlow(flow, { layer: "2" }, flows);
       expect(run).toMatchObject({ ok: true, message: expect.stringContaining("Glove80's Magic layer") });
       expect(magicOf(state(), 2)).toEqual(golden);
       expect(state().history.past).toHaveLength(1);
@@ -55,7 +55,7 @@ describe("MoErgo Magic layer on the Glove80", () => {
 
   it("puts the maintenance lock on Z, so the left battery's 80% segment on R shows the battery", async () => {
     await withTestWorkbench({ fixture: "plain" }, { mode: "draft" }, async ({ io, state, flows }) => {
-      await io.runFlow(flow, { layer: "auto" }, flows);
+      await io.runFlow(flow, { layer: "2" }, flows);
       expect(state().layers[2][4 * 14 + 1]).toEqual({ Single: { KeyboardControl: "MaintenanceModeToggle" } });
       expect(state().layers[2][2 * 14 + 4]).toEqual({ Single: { Light: "BacklightUp" } });
       expect(conditionsOn(state(), 2, 32)).toEqual(["maintenance", "maintenance"]);
@@ -117,7 +117,7 @@ describe("MoErgo Magic layer, status lights only", () => {
       // A light of your own on the layer, on a key the Magic layer does not light (LED 38: the left outer column, row 5).
       expect(await io.apply("set_key_light", { layer: 2, leds: [38], light: { kind: "lock", lock: "caps_lock", on: { r: 0, g: 0, b: 255 }, off: null } })).toEqual({ ok: true });
       const before = wantOf(state());
-      const run = await io.runFlow(flow, { layer: "auto", what: "lights" }, flows);
+      const run = await io.runFlow(flow, { layer: "2", what: "lights" }, flows);
       expect(run).toMatchObject({ ok: true, message: expect.stringContaining("its keys are as they were") });
       const after = wantOf(state());
       expect(after.layers[2]).toEqual(before.layers[2]);
@@ -151,6 +151,33 @@ describe("MoErgo Magic layer elsewhere", () => {
       const before = state().layers;
       expect(await io.runFlow(flow, { layer: "31" }, flows)).toMatchObject({ ok: false, message: expect.stringMatching(/^Layer 32 is not in this layout/) });
       expect(state().layers).toBe(before);
+    });
+  });
+});
+
+describe("MoErgo Magic layer found by its name", () => {
+  it("goes on the layer named Magic wherever the layout keeps it, TailorKey's ninth, and leaves the third alone", async () => {
+    await withTestWorkbench({ fixture: "tailorkey" }, { mode: "live" }, async ({ io, state, flows, session }) => {
+      const magic = wantOf(state()).metadata.findIndex((slot) => slot.occupied && slot.name === "Magic");
+      expect(magic).toBe(8);
+      const third = wantOf(state()).layers[2];
+      const run = await io.runFlow(flow, { layer: "auto" }, flows);
+      expect(run).toMatchObject({ ok: true, message: expect.stringContaining("Magic is the Glove80's Magic layer") });
+      expect(wantOf(state()).layers[2]).toEqual(third);
+      expect(magicOf(state(), 8).wakes).toBe(true);
+      expect(magicOf(state(), 8).scene).toHaveLength(40);
+      expect(magicOf(state(), 2).rules).toEqual([]);
+      // What the keyboard holds afterwards: the rules watch the ninth layer only.
+      const rules = await session.lighting.conditionalScenes.read();
+      expect(new Set(rules.map((rule) => rule.cell.conditions.layer?.layer))).toEqual(new Set([8]));
+    });
+  });
+
+  it("says, without blaming the Flow, when the layout has no Magic layer and no room for one", async () => {
+    await withTestWorkbench({ fixture: "plain" }, { mode: "draft" }, async ({ io, flows }) => {
+      const run = await io.runFlow(flow, { layer: "auto" }, flows);
+      expect(run).toMatchObject({ ok: false, message: expect.stringMatching(/^There is no layer named Magic, .*Nothing was changed\.$/) });
+      expect(run.message).not.toMatch(/author/);
     });
   });
 });
