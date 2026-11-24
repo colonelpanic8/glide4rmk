@@ -8,6 +8,8 @@ import { useOs } from "../preferences";
 import { useWorkbench } from "../state";
 import { useLayerNames } from "../layer-names";
 import { labelAt } from "../../model/behavior-labels";
+import { bleProfilesOf } from "../../capabilities";
+import { useCapabilities } from "../use-capabilities";
 import { isKeyIcon, type FaceContext } from "./keyFace";
 import type { KeyIconName } from "./keyIconData";
 
@@ -15,7 +17,7 @@ export function useFaceContext(): FaceContext {
   const os = useOs();
   const { bundle, state } = useWorkbench();
   const labels = state.labels;
-  const bleProfiles = bundle.caps.ble_enabled ? bundle.caps.num_ble_profiles : 0;
+  const bleProfiles = bleProfilesOf(useCapabilities());
   const userActions = bundle.boardProfile?.userActions;
   const layerNames = useLayerNames();
   return useMemo(() => {

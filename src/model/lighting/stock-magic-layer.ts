@@ -170,10 +170,11 @@ export function magicLayerRules(table: MagicLayerTable, layer: number, numLayers
   return rules;
 }
 
-/** `current` with this layer's rules on the table's LEDs and its dark half
- *  replaced (a light an earlier Magic layer put there goes too), everything else kept. */
-export function withMagicLayerRules(current: readonly StatusRule[], table: MagicLayerTable, layer: number, numLayers: number): StatusRule[] {
-  const owned = new Set([...magicLayerLeds(table), ...table.dark]);
+/** `current` with this layer's rules on the table's LEDs replaced, everything
+ *  else kept. With `wholeHalf`, every rule on the dark half goes too (a light an
+ *  earlier Magic layer put there); without it, only the status lights' own LEDs. */
+export function withMagicLayerRules(current: readonly StatusRule[], table: MagicLayerTable, layer: number, numLayers: number, wholeHalf = true): StatusRule[] {
+  const owned = new Set([...magicLayerLeds(table), ...(wholeHalf ? table.dark : [])]);
   const kept = current.filter((entry) => entry.cell.conditions.layer?.layer !== layer || !owned.has(entry.cell.led_id));
   return [...kept, ...magicLayerRules(table, layer, numLayers)];
 }

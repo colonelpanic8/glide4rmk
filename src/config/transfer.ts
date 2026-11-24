@@ -26,6 +26,7 @@ import { withModules } from "./add-ons";
 import { layoutOnto, type ImportedLayout } from "./import-layout";
 import { decorationNotes } from "./decorations";
 import { checkSaved, type SavedCheck } from "./saved-check";
+import { bleProfilesOf, firmwareFactsOf, resolveCapabilities } from "../capabilities";
 
 export type { ImportedLayout } from "./import-layout";
 
@@ -117,7 +118,7 @@ function preflightLighting(
   const tagged = hasLightingFeature(bundle.lightingCaps, RULES);
   const advanced = hasLayerIndicatorConditions(bundle.lightingCaps);
   const extended = advanced || hasConnectionEffectsConditions(bundle.lightingCaps);
-  const profiles = bundle.caps.ble_enabled ? bundle.caps.num_ble_profiles : 0;
+  const profiles = bleProfilesOf(resolveCapabilities(firmwareFactsOf(bundle)));
   for (const [index, rule] of rules.entries()) {
     const unsupported = !tagged && (rule.maintenance !== undefined || rule.split_transport !== undefined || (rule.unknown_predicates?.length ?? 0) > 0)
       ? "maintenance, split-transport, or unknown tagged conditions"

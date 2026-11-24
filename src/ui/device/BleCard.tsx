@@ -7,6 +7,8 @@ import { useDevice, useWorkbench } from "../state";
 import { Button, Chip, Panel, SectionLabel, cx } from "../kit";
 import { BatteryGlyph, BleIcon } from "../icons";
 import { readBleStatus } from "./ble-status";
+import { bleProfilesOf } from "../../capabilities";
+import { useCapabilities } from "../use-capabilities";
 
 const BLE_STATE_LABEL: Record<string, string> = {
   Advertising: "Advertising",
@@ -18,6 +20,7 @@ export function BleCard() {
   const { bundle, dispatch } = useWorkbench();
   const device = useDevice();
   const { caps, session } = bundle;
+  const profiles = bleProfilesOf(useCapabilities());
   const [peripherals, setPeripherals] = useState<Array<PeripheralStatus | null>>([]);
   const [arming, setArming] = useState<number | null>(null);
   const [armingAll, setArmingAll] = useState(false);
@@ -165,7 +168,7 @@ export function BleCard() {
           )}
         </div>
         <div className="mt-1.5 flex flex-col gap-1">
-          {Array.from({ length: caps.num_ble_profiles }, (_, slot) => {
+          {Array.from({ length: profiles }, (_, slot) => {
             const active = status?.profile === slot;
             return (
               <div

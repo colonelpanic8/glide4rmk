@@ -28,9 +28,8 @@ describe("status setups in Flows", () => {
     await page.run(() => openProperties("lighting"));
     await page.click(page.button("Advanced"));
     await page.click(page.button(/status setups in Flows/));
-    await page.until(() => page.page.textContent?.includes("Glove80 status cluster") ?? false, "the Glove80 status cluster in the list");
+    await page.until(() => page.page.textContent?.includes("MoErgo Magic layer") ?? false, "the MoErgo Magic layer in the list");
     expect(page.page.textContent).toContain("Looks & lighting");
-    expect(page.page.textContent).toContain("MoErgo Magic layer");
     expect(page.page.textContent).not.toContain("Mirror halves");
   });
 

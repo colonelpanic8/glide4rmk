@@ -38,6 +38,8 @@ export interface FirmwareFacts {
   forkSlots: number;
   /** Tap-hold profile slots. */
   profileSlots: number;
+  /** Bluetooth host profiles; null without Bluetooth. */
+  bleProfiles: number | null;
 }
 
 /** Anything that carries the connect-time reads: a connect bundle or the
@@ -61,6 +63,8 @@ export interface FactSource {
     macro_space_size: number;
     macros_writable: boolean;
     max_forks: number;
+    ble_enabled: boolean;
+    num_ble_profiles: number;
   };
   morseProfileCapacity: number;
 }
@@ -86,6 +90,7 @@ export function firmwareFactsOf(source: FactSource): FirmwareFacts {
     macrosWritable: source.caps.macros_writable,
     forkSlots: source.caps.max_forks,
     profileSlots: source.morseProfileCapacity,
+    bleProfiles: source.caps.ble_enabled ? source.caps.num_ble_profiles : null,
   };
 }
 
@@ -127,6 +132,7 @@ export function resolveCapabilities(facts: FirmwareFacts): CapabilitySet {
   if (facts.morseSlots > 0) add({ id: "behaviors.morse", slots: facts.morseSlots, reach: "device", readOnly: false });
   if (facts.forkSlots > 0) add({ id: "behaviors.forks", slots: facts.forkSlots, reach: "device", readOnly: false });
   if (facts.profileSlots > 0) add({ id: "behaviors.profiles", slots: facts.profileSlots, reach: "device", readOnly: false });
+  if (facts.bleProfiles !== null) add({ id: "bluetooth", slots: facts.bleProfiles, reach: "device", readOnly: false });
   if (facts.pointing) {
     add({ id: "pointing", reach: "device", readOnly: false });
   }
@@ -138,3 +144,6 @@ export function resolveCapabilities(facts: FirmwareFacts): CapabilitySet {
     list: () => [...found.values()],
   };
 }
+
+/** How many Bluetooth host profiles the keyboard keeps; 0 without Bluetooth. */
+export const bleProfilesOf = (capabilities: Pick<CapabilitySet, "get">): number => capabilities.get("bluetooth")?.slots ?? 0;
