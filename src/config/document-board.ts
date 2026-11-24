@@ -1,21 +1,27 @@
 // Which keyboard a layout file is for, read from the file before it is parsed:
 // a file opens on its own board, so its keys, lights and trackpads land where
 // that board has them. The rule is the converter's (moergo-config-wasm), read
-// here first because parsing a file needs that board's catalog and lights.
+// here first because parsing a file needs that board's catalog and lights. What
+// tells the boards apart (their ids, matrices and MoErgo JSON layer lengths) is
+// each board's profile in the registry (model/boards/).
 
 import { parse } from "smol-toml";
+import { BOARD_PROFILES } from "../model/boards/profiles";
 import type { MoErgoBoard } from "../model/boards/transfer";
 
-const BOARD_NAMES: Record<string, MoErgoBoard> = { glove80: "glove80", go60: "go60" };
+/** The boards whose files GLIDE4RMK reads. */
+const FILE_BOARDS = BOARD_PROFILES.filter((profile) => profile.documents?.codec === "moergo");
+const named = (name: string) => FILE_BOARDS.find((profile) => profile.id === name.toLowerCase())?.id as MoErgoBoard | undefined;
+const withLayerLength = (length: number) =>
+  FILE_BOARDS.find((profile) => profile.documents!.moergoLayerLengths.includes(length))?.id as MoErgoBoard | undefined;
+const shaped = (rows: unknown, cols: unknown) =>
+  FILE_BOARDS.find((profile) => profile.matrix.rows === rows && profile.matrix.cols === cols)?.id as MoErgoBoard | undefined;
 
-/** MoErgo layer lengths, for a file that names no keyboard (as the converter reads it). */
-const BOARD_BY_LAYER_LENGTH: Record<number, MoErgoBoard> = { 80: "glove80", 60: "go60", 62: "go60" };
-
-/** TOML matrix shapes; a file without `rows`/`cols` is a 6x14 Glove80. */
-const BOARD_BY_SHAPE: Record<string, MoErgoBoard> = { "6x14": "glove80", "5x14": "go60" };
+/** A file too broken to tell is opened as the first board's, and its parse says what is wrong. */
+const FALLBACK = FILE_BOARDS[0].id as MoErgoBoard;
 
 const refuse = (board: string): Error =>
-  new Error(`this file is for ${board}; only Glove80 and Go60 layouts open here`);
+  new Error(`this file is for ${board}; only ${FILE_BOARDS.map((profile) => profile.name).join(" and ")} layouts open here`);
 
 type JsonObject = Record<string, unknown>;
 const isObject = (value: unknown): value is JsonObject =>
@@ -32,12 +38,12 @@ function jsonBoard(text: string): MoErgoBoard | undefined {
   const layout = isObject(root.keymap) ? root.keymap : root;
   if (typeof layout.keyboard === "string") {
     const name = layout.keyboard.trim();
-    const board = BOARD_NAMES[name.toLowerCase()];
+    const board = named(name);
     if (!board) throw refuse(`the keyboard "${name}"`);
     return board;
   }
   const first = Array.isArray(layout.layers) ? layout.layers[0] : undefined;
-  return Array.isArray(first) ? BOARD_BY_LAYER_LENGTH[first.length] : undefined;
+  return Array.isArray(first) ? withLayerLength(first.length) : undefined;
 }
 
 function tomlBoard(text: string): MoErgoBoard | undefined {
@@ -47,18 +53,18 @@ function tomlBoard(text: string): MoErgoBoard | undefined {
   } catch {
     return undefined;
   }
+  // The converter reads a file without `rows`/`cols` as 6x14.
   const rows = root.rows ?? 6;
   const cols = root.cols ?? 14;
-  const shape = `${String(rows)}x${String(cols)}`;
-  const board = BOARD_BY_SHAPE[shape];
-  if (!board) throw refuse(`a ${shape} keyboard`);
+  const board = shaped(rows, cols);
+  if (!board) throw refuse(`a ${String(rows)}x${String(cols)} keyboard`);
   return board;
 }
 
-/** The board a layout file is for. Throws, naming the board, for a file a
- *  Glove80 or Go60 cannot open; a file too broken to tell is a Glove80's, and
- *  its parse says what is wrong. */
+/** The board a layout file is for. Throws, naming the board, for a file none
+ *  of these boards can open; a file too broken to tell is opened as the first
+ *  board's, and its parse says what is wrong. */
 export function documentBoard(text: string): MoErgoBoard {
   const json = text.trimStart().startsWith("{");
-  return (json ? jsonBoard(text) : tomlBoard(text)) ?? "glove80";
+  return (json ? jsonBoard(text) : tomlBoard(text)) ?? FALLBACK;
 }

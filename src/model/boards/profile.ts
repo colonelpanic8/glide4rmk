@@ -8,6 +8,8 @@ export interface BoardDocumentTools {
   formats: readonly ("toml" | "moergo-json")[];
   importHint: string;
   migrationTarget?: { id: string; name: string };
+  /** How long a layer of this board's MoErgo JSON is: how a file that names no keyboard is told apart. */
+  moergoLayerLengths: readonly number[];
 }
 
 export type BootloaderTarget =

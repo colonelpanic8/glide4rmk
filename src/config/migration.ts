@@ -1,12 +1,8 @@
 import type { ExtensionCatalog, ImportNote, RuntimeSnapshot } from "./document";
 import { parseDocument, renderDocument } from "./document";
-import {
-  boardForSnapshot,
-  GLOVE80_TRANSFER_MODEL,
-  GO60_TRANSFER_MODEL,
-  transferSnapshot,
-} from "../model/boards/transfer";
+import { boardForMatrix, boardForSnapshot, transferSnapshot } from "../model/boards/transfer";
 import type { MoErgoBoard } from "../model/boards/transfer";
+import { profileById } from "../model/boards/profiles";
 
 export interface MigrationDraft {
   text: string;
@@ -17,7 +13,11 @@ export interface MigrationDraft {
 /** Make a standalone peer-board document without carrying destination state. */
 export function migrationDraft(source: RuntimeSnapshot, catalog: ExtensionCatalog): MigrationDraft {
   const board = boardForSnapshot(source);
-  const target = board.id === "glove80" ? GO60_TRANSFER_MODEL : GLOVE80_TRANSFER_MODEL;
+  // Each board's profile names where its layouts migrate to (model/boards/).
+  const from = profileById(board.id);
+  const to = from?.documents?.migrationTarget && profileById(from.documents.migrationTarget.id);
+  if (!from || !to) throw new Error(`No migration is registered for the ${board.name}.`);
+  const target = boardForMatrix(to.matrix.rows, to.matrix.cols);
   const empty: RuntimeSnapshot = {
     ...source,
     rows: target.rows,
@@ -34,13 +34,14 @@ export function migrationDraft(source: RuntimeSnapshot, catalog: ExtensionCatalo
   const result = transferSnapshot(source, target.rows, target.cols, empty);
   result.snapshot.bluetooth_name = undefined;
   const notes = [...result.notes];
-  if (target.id === "glove80") {
+  // A board without built-in trackpads gets none of their settings: its touchpads are modules a layout turns on.
+  if (!to.addOns?.some((place) => place.kind === "pointing" && place.builtIn)) {
     if (result.snapshot.pointing) {
-      notes.push({ location: "Pointing", message: "Go60 trackpad settings are omitted on Glove80.", approximated: false });
+      notes.push({ location: "Pointing", message: `${from.name} trackpad settings are omitted on ${to.name}.`, approximated: false });
       result.snapshot.pointing = undefined;
     }
     if (result.snapshot.behaviors?.auto_mouse_layers?.length) {
-      notes.push({ location: "Auto-mouse layers", message: "Go60 automatic pointing layers are omitted on Glove80.", approximated: false });
+      notes.push({ location: "Auto-mouse layers", message: `${from.name} automatic pointing layers are omitted on ${to.name}.`, approximated: false });
       result.snapshot.behaviors.auto_mouse_layers = undefined;
     }
   }

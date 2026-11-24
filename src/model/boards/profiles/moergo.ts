@@ -5,11 +5,12 @@ import { GLOVE80_KEY_GROUPS, GO60_KEY_GROUPS } from "../key-groups";
 import { GLOVE80_ADD_ONS, GO60_ADD_ONS } from "../add-ons";
 import { GLOVE80_MAGIC_LAYER, GO60_MAGIC_LAYER } from "../magic-layer";
 
-const documentTools = (id: string, name: string): BoardDocumentTools => ({
+const documentTools = (id: string, name: string, moergoLayerLengths: readonly number[]): BoardDocumentTools => ({
   codec: "moergo",
   formats: ["toml", "moergo-json"],
   importHint: "Import a Glove80 or Go60 TOML, or MoErgo JSON; shared physical keys transfer between boards",
   migrationTarget: { id, name },
+  moergoLayerLengths,
 });
 
 const releaseSource = {
@@ -42,7 +43,7 @@ export const MOERGO_PROFILES: readonly BoardProfile[] = [
     identity: { vendorId: 0x16c0, productId: 0x27db, productName: "Glove80" },
     matrix: { rows: 6, cols: 14 },
     enrichment: glove80Enrichment,
-    documents: documentTools("go60", "Go60"),
+    documents: documentTools("go60", "Go60", [80]),
     userActions: bleUserActions,
     magicLayer: GLOVE80_MAGIC_LAYER,
     // moergo-rmk crates/glove80-rmk/keyboard.toml: ble_profiles_num = 4.
@@ -79,7 +80,8 @@ export const MOERGO_PROFILES: readonly BoardProfile[] = [
     enrichment: go60Enrichment,
     keyGroups: GO60_KEY_GROUPS,
     addOns: GO60_ADD_ONS,
-    documents: documentTools("glove80", "Glove80"),
+    // 62: some exports add the trackpads' two slots to each layer.
+    documents: documentTools("glove80", "Glove80", [60, 62]),
     magicLayer: GO60_MAGIC_LAYER,
     // moergo-rmk crates/go60-rmk/keyboard.toml: ble_profiles_num = 3.
     build: { bleProfiles: 3 },
