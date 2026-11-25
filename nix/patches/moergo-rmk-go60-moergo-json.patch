@@ -1,7 +1,7 @@
-From 86d16b40a9b8c686a140b5c0adc54533c7bbfefa Mon Sep 17 00:00:00 2001
+From aba855b434a4034961bbcbe7cda83b3dbbf175c5 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Mon, 23 Nov 2026 20:46:48 +0100
-Subject: [PATCH] Read and write the Go60's MoErgo JSON
+Subject: [PATCH 2/3] Read and write the Go60's MoErgo JSON
 
 The MoErgo JSON codec knew one board: an 80-key Glove80 table into a
 6x14 matrix. A Go60 layout stopped at "expected 'glove80'", although the
@@ -482,7 +482,7 @@ index 0619150..a48271a 100644
                  .collect::<Vec<_>>()
          );
 diff --git a/crates/moergo-config/src/moergo/raise.rs b/crates/moergo-config/src/moergo/raise.rs
-index 2c5fad8..e50fd15 100644
+index c50e2f7..19b58d4 100644
 --- a/crates/moergo-config/src/moergo/raise.rs
 +++ b/crates/moergo-config/src/moergo/raise.rs
 @@ -22,12 +22,9 @@ use rynk::rmk_types::modifier::{ModifierCombination, ModifierKey};
@@ -584,8 +584,8 @@ index 2c5fad8..e50fd15 100644
                  ));
                  continue;
              };
-@@ -345,7 +340,7 @@ impl<'a> Raising<'a> {
-                 layer: combo.layer.map_or(0, usize::from),
+@@ -347,7 +342,7 @@ impl<'a> Raising<'a> {
+                     .map_or(0, |layer| *layer as usize),
                  layer_name: "combo",
                  editor_index: positions[0],
 -                offset: super::MOERGO_TO_MATRIX[positions[0]],
@@ -593,7 +593,7 @@ index 2c5fad8..e50fd15 100644
              };
              let binding = match combo.output {
                  KeyAction::LayerModTap(layer, modifier, key) => {
-@@ -536,7 +531,7 @@ impl<'a> Raising<'a> {
+@@ -538,7 +533,7 @@ impl<'a> Raising<'a> {
      ) -> Result<Value, Refusal> {
          let what = || format!("tap {} / hold {}", action_text(tap), action_text(hold));
          let unilateral = profile.unilateral_tap() == Some(true);
@@ -602,7 +602,7 @@ index 2c5fad8..e50fd15 100644
  
          let (shape, bindings, params): (&str, [String; 2], [Value; 2]) = match (tap, hold) {
              (Action::Key(KeyCode::Hid(key)), Action::Modifier(modifiers)) => {
-@@ -617,7 +612,7 @@ impl<'a> Raising<'a> {
+@@ -619,7 +614,7 @@ impl<'a> Raising<'a> {
          if unilateral {
              definition.insert(
                  "holdTriggerKeyPositions".into(),
@@ -611,7 +611,7 @@ index 2c5fad8..e50fd15 100644
              );
          }
          let base = match (label, unilateral) {
-@@ -1213,18 +1208,31 @@ mod tests {
+@@ -1223,18 +1218,31 @@ mod tests {
  
      #[test]
      fn trigger_positions_are_the_other_hand_and_own_thumbs() {
@@ -2616,5 +2616,5 @@ index 0000000..f8d3c1b
 +    );
 +}
 -- 
-2.43.0
+2.56.0
 
