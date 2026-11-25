@@ -13,6 +13,7 @@ import type {
   MouseButtons,
   StateBits,
 } from "../vendor/rynk-wasm/rynk_wasm";
+import { EVERY_LAYER } from "./combos";
 
 export function noModifiers(): ModifierCombination {
   return {
@@ -50,7 +51,7 @@ export function noStateBits(): StateBits {
 }
 
 export function emptyCombo(): ComboDefinition {
-  return { Actions: { actions: [], output: "No", layer: undefined } };
+  return { Actions: { actions: [], output: "No", layers: EVERY_LAYER } };
 }
 
 export function emptyMorseProfile(): MorseProfile {

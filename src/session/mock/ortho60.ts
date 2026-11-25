@@ -15,6 +15,7 @@ import type {
 import { emptyMorseProfile } from "../../model/slots";
 import { hid, layerOn, type BoardSpec } from "./board";
 import { buildTopology, type SimLed } from "./topology";
+import { startingProfiles } from "./ble";
 
 const ROWS = 5;
 const COLS = 12;
@@ -90,7 +91,7 @@ const capabilities: DeviceCapabilities = {
   max_combos: 4,
   max_combo_keys: 4,
   macro_space_size: 128,
-  max_morse: 4,
+  max_morses: 4,
   max_patterns_per_key: 4,
   max_forks: 4,
   storage_enabled: true,
@@ -105,6 +106,8 @@ const capabilities: DeviceCapabilities = {
   max_macros: 32,
   macros_writable: true,
   bulk_transfer_supported: true,
+  max_connections: 0,
+  dongle_profile: undefined,
 };
 
 const info: DeviceInfo = {
@@ -125,7 +128,7 @@ export const ortho60Board: BoardSpec = {
   build: { label: "ortho60-rmk v0.3.1 (mockbuil) / RMK rmk-v0.8.2-992-gmockbuil" },
   connection: {
     usb: "Configured",
-    ble: { profile: 0, state: "Inactive", bonded: false, },
+    ...startingProfiles(capabilities.num_ble_profiles),
     preferred: "Usb",
   },
   layout: {
@@ -149,12 +152,8 @@ export const ortho60Board: BoardSpec = {
         device_id: 0,
         mode: {
           Scroll: {
-            multiplier_x: 1,
-            divisor_x: 8,
-            multiplier_y: 1,
-            divisor_y: 8,
-            invert_x: false,
-            invert_y: false,
+            wheel: { multiplier: 1, divisor: 8, invert: false },
+            pan: { multiplier: 1, divisor: 8, invert: false },
           },
         },
       },

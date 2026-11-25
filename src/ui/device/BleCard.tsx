@@ -1,7 +1,7 @@
 // BLE profile slots and split-peripheral status.
 
 import { useEffect, useState } from "react";
-import type { BleStatus, PeripheralStatus } from "../../model/device-state";
+import { selectedBle, type PeripheralStatus } from "../../model/device-state";
 import { errorMessage } from "../../session/errors";
 import { useDevice, useWorkbench } from "../state";
 import { Button, Chip, Panel, SectionLabel, cx } from "../kit";
@@ -28,20 +28,17 @@ export function BleCard() {
   const [clearingAll, setClearingAll] = useState(false);
   const [switching, setSwitching] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [fallback, setFallback] = useState<BleStatus | null>(null);
 
   // The connection topic carries BLE state, so the card reads what the rest of
   // the workbench already has instead of keeping a second, staler copy.
-  const status = device.connection?.ble ?? fallback;
+  const status = device.connection ? selectedBle(device.connection) : null;
 
   useEffect(() => {
     if (device.connection !== null) return;
     let cancelled = false;
     readBleStatus(session).then(
       (result) => {
-        if (cancelled) return;
-        if (result.connection) dispatch({ type: "topicConnection", connection: result.connection });
-        else setFallback(result.ble);
+        if (!cancelled) dispatch({ type: "topicConnection", connection: result.connection });
       },
       (error) => { if (!cancelled) setError(errorMessage(error)); },
     );
@@ -69,8 +66,7 @@ export function BleCard() {
 
   const refreshConnection = async (expectedProfile?: number) => {
     const result = await readBleStatus(session, expectedProfile);
-    if (result.connection) dispatch({ type: "topicConnection", connection: result.connection });
-    else setFallback(result.ble);
+    dispatch({ type: "topicConnection", connection: result.connection });
   };
 
   const busy = switching !== null || clearing !== null || clearingAll;

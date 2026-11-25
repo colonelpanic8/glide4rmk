@@ -97,7 +97,8 @@ describe("runtime rule predicates", () => {
   };
   const connected: ConnectionStatus = {
     usb: "Configured",
-    ble: { profile: 2, state: "Connected", bonded: true, },
+    ble: [0, 1, 2].map((slot) => ({ state: slot === 2 ? "Connected" : "Inactive", bonded: slot === 2 })),
+    selected: 2,
     preferred: "Ble",
   };
   const preview = {

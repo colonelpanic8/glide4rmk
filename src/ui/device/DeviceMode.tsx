@@ -10,6 +10,7 @@ import { KIND_LABEL } from "../session-labels";
 import { LockIndicators } from "../live/LockIndicators";
 import { AutoSwitchToggle } from "./AutoSwitchToggle";
 import { BleCard } from "./BleCard";
+import { selectedBle } from "../../model/device-state";
 import { BuildCard } from "./BuildCard";
 import { DangerZone } from "./DangerZone";
 import { DiagnosticsCard } from "./DiagnosticsCard";
@@ -135,7 +136,7 @@ export function DeviceMode() {
                 <>
                   <Row label="USB">{conn.usb}</Row>
                   <Row label="BLE">
-                    {conn.ble.state} · profile {conn.ble.profile}
+                    {selectedBle(conn).state} · profile {conn.selected}
                   </Row>
                   <Row label="Preferred">{CONNECTION_LABEL[conn.preferred] ?? conn.preferred}</Row>
                 </>

@@ -5,6 +5,7 @@
 
 import type {
   BatteryStatus,
+  BleStatus,
   ConnectionStatus,
   LedIndicator,
   ModifierCombination,
@@ -14,8 +15,10 @@ import type {
 // generated wire package (src/architecture/boundaries.ts).
 export type {
   BatteryStatus,
-  /** The BLE profile in use, its state and whether it is bonded. */
+  /** A BLE profile's state and whether it is bonded. */
   BleStatus,
+  /** USB state, every BLE profile, the selected one and the preferred transport. */
+  ConnectionStatus,
   /** A split half: whether it is linked, and its battery. */
   PeripheralStatus,
 } from "../vendor/rynk-wasm/rynk_wasm";
@@ -34,6 +37,17 @@ export interface DeviceReports {
   ledIndicator: LedIndicator | null;
   /** Authoritative resolved HID modifiers; null enables the legacy matrix fallback. */
   modifierState: ModifierCombination | null;
+}
+
+/** The selected BLE profile: its slot, its state and whether it is bonded. */
+export interface SelectedBle extends BleStatus {
+  profile: number;
+}
+
+/** The profile the keyboard has selected, from its connection report. */
+export function selectedBle(connection: ConnectionStatus): SelectedBle {
+  const own = connection.ble[connection.selected] ?? { state: "Inactive", bonded: false };
+  return { ...own, profile: connection.selected };
 }
 
 /** The keyboard's live reports, as screens and io read them. */

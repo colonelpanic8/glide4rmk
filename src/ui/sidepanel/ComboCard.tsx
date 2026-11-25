@@ -39,7 +39,7 @@ export function ComboCard({
 }: {
   index: number;
   combo: ComboDefinition;
-  /** The layers it works on, one per slot; undefined is every layer. */
+  /** The layers it works on; undefined is every layer. */
   layers: readonly (number | undefined)[];
   twins: number;
   view: "cards" | "list";

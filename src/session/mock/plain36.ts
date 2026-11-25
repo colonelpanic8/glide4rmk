@@ -15,6 +15,7 @@ import type {
 import { emptyMorseProfile } from "../../model/slots";
 import { hid, layerOn, type BoardSpec } from "./board";
 import { buildTopology } from "./topology";
+import { startingProfiles } from "./ble";
 
 const ROWS = 3;
 const COLS = 12;
@@ -68,7 +69,7 @@ const capabilities: DeviceCapabilities = {
   max_combos: 8,
   max_combo_keys: 4,
   macro_space_size: 256,
-  max_morse: 8,
+  max_morses: 8,
   max_patterns_per_key: 8,
   max_forks: 8,
   storage_enabled: true,
@@ -83,6 +84,8 @@ const capabilities: DeviceCapabilities = {
   max_macros: 16,
   macros_writable: true,
   bulk_transfer_supported: true,
+  max_connections: 0,
+  dongle_profile: undefined,
 };
 
 const info: DeviceInfo = {
@@ -103,7 +106,7 @@ export const plain36Board: BoardSpec = {
   build: { label: "plain36-rmk v0.1.0 (plainbui) / RMK rmk-v0.8.2-992-gplainbui" },
   connection: {
     usb: "Configured",
-    ble: { profile: 0, state: "Inactive", bonded: false },
+    ...startingProfiles(capabilities.num_ble_profiles),
     preferred: "Usb",
   },
   layout: {

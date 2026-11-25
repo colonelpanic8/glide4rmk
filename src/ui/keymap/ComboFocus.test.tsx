@@ -17,7 +17,7 @@ import { useComboFocus } from "./useComboFocus";
 
 const ESC = { Single: { Key: { Hid: "Escape" } } } as unknown as KeyAction;
 const combo = (keys: number, output: KeyAction = ESC): ComboDefinition => ({
-  Positions: { positions: Array.from({ length: keys }, (_, col) => ({ row: 1, col })), output, layer: undefined },
+  Positions: { positions: Array.from({ length: keys }, (_, col) => ({ row: 1, col })), output, layers: 0xffffffff },
 });
 
 let session: RynkSession;
@@ -97,7 +97,7 @@ describe("the combo list", () => {
   });
 
   it("edits a combo stored once per layer as one combo, naming its layers", () => {
-    const on = (layer: number): ComboDefinition => ({ Positions: { positions: [{ row: 1, col: 0 }, { row: 1, col: 1 }], output: ESC, layer } });
+    const on = (layer: number): ComboDefinition => ({ Positions: { positions: [{ row: 1, col: 0 }, { row: 1, col: 1 }], output: ESC, layers: 1 << layer } });
     const html = render(<Focus />, [on(0), emptyCombo(), on(1)], 2);
     expect(html).toMatch(/<option value="several" disabled="" selected="">[^<]+, [^<]+<\/option>/);
     expect(render(<ComboList />, [on(0), emptyCombo(), on(1)], 2).match(/data-testid="combo-row"/g)).toHaveLength(1);

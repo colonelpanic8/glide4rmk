@@ -10,6 +10,7 @@
 // time reported twice, fields left unset) is set aside first. Pure.
 
 import { sameValue } from "../model/deep-equal";
+import { comboIsEmpty } from "../model/combos";
 import { parseDocument } from "./document";
 import type { ConfigFormat, ExtensionCatalog, RuntimeSnapshot } from "./document";
 import type { LightingTopology } from "../session/types";
@@ -63,7 +64,8 @@ function used<T>(table: readonly T[] | undefined, unused: (slot: T) => boolean =
   return kept;
 }
 
-/** A fork with no trigger is unused, whatever its defaults (every layer, bindable). */
+/** A combo with no keys and no action is unused, whatever its layers. A fork with no
+ *  trigger is unused, whatever its defaults (every layer, bindable). */
 const noTrigger = (fork: NonNullable<Behaviors["forks"]>[number]) => vacant(fork.trigger);
 
 /** The snapshot as far as the format can hold it, with what a file does not keep set aside. */
@@ -84,7 +86,7 @@ function comparableBehaviors(behaviors: Behaviors, format: ConfigFormat): Behavi
   const kept: Behaviors = {
     ...behaviors,
     morses: used(behaviors.morses),
-    combos: used(behaviors.combos),
+    combos: used(behaviors.combos, comboIsEmpty),
     forks: used(behaviors.forks, noTrigger),
     macros: used(behaviors.macros),
     morse_profiles: used(behaviors.morse_profiles),

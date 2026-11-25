@@ -41,7 +41,7 @@ function editor(binding: KeyAction | null, { morse = [] as Morse[], forks = [] a
   PREFERENCES.os.set(os);
   const workbench = testWorkbench({
     bundle: {
-      caps: { num_cols: 2, num_layers: 2, max_morse: morseSlots, max_patterns_per_key: 8 },
+      caps: { num_cols: 2, num_layers: 2, max_morses: morseSlots, max_patterns_per_key: 8 },
       model: { keys: [{ row: 0, col: 0, address: "LH-C1R1" }] },
       session: { kind: "offline" },
       lightingState: null,

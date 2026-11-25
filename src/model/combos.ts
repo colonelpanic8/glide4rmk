@@ -21,8 +21,29 @@ export function comboOutput(definition: ComboDefinition): KeyAction {
   return comboIsActions(definition) ? definition.Actions.output : definition.Positions.output;
 }
 
+/** The layer mask RMK stores for a combo when it works on every layer. */
+export const EVERY_LAYER = 0xffffffff;
+
+/** The combo's layer mask, unsigned: bit N is layer N. */
+export function comboMask(definition: ComboDefinition): number {
+  return (comboIsActions(definition) ? definition.Actions.layers : definition.Positions.layers) >>> 0;
+}
+
+/** The layers a combo works on, lowest first; undefined when it works on every layer. */
+export function comboLayers(definition: ComboDefinition): number[] | undefined {
+  const mask = comboMask(definition);
+  if (mask === EVERY_LAYER) return undefined;
+  return Array.from({ length: 32 }, (_, layer) => layer).filter((layer) => ((mask >>> layer) & 1) === 1);
+}
+
+/** The combo's own layer (its lowest one), or undefined when it works on every layer. */
 export function comboLayer(definition: ComboDefinition): number | undefined {
-  return comboIsActions(definition) ? definition.Actions.layer : definition.Positions.layer;
+  return comboLayers(definition)?.[0];
+}
+
+/** The mask for one layer, or for every layer. */
+export function layerMask(layer: number | undefined): number {
+  return layer === undefined ? EVERY_LAYER : (1 << layer) >>> 0;
 }
 
 export function comboTriggerCount(definition: ComboDefinition): number {
@@ -44,13 +65,18 @@ export function comboWithOutput(
     : { Positions: { ...definition.Positions, output } };
 }
 
+export function comboWithMask(definition: ComboDefinition, mask: number): ComboDefinition {
+  const layers = mask >>> 0;
+  return comboIsActions(definition)
+    ? { Actions: { ...definition.Actions, layers } }
+    : { Positions: { ...definition.Positions, layers } };
+}
+
 export function comboWithLayer(
   definition: ComboDefinition,
   layer: number | undefined,
 ): ComboDefinition {
-  return comboIsActions(definition)
-    ? { Actions: { ...definition.Actions, layer } }
-    : { Positions: { ...definition.Positions, layer } };
+  return comboWithMask(definition, layerMask(layer));
 }
 
 export function samePosition(a: MatrixPosition, b: MatrixPosition): boolean {
@@ -59,7 +85,7 @@ export function samePosition(a: MatrixPosition, b: MatrixPosition): boolean {
 
 /** A new combo made on the canvas: it matches keys by their place. */
 export function newPositionCombo(): ComboDefinition {
-  return { Positions: { positions: [], output: "No", layer: undefined } };
+  return { Positions: { positions: [], output: "No", layers: EVERY_LAYER } };
 }
 
 /** Whether the key is one of the combo's keys: by its place, or, for a combo
@@ -129,12 +155,11 @@ export function comboTwins(combos: readonly ComboDefinition[], index: number): n
     comboIsActions(definition)
       ? definition.Actions.actions.map((action) => JSON.stringify(action)).sort().join("|")
       : definition.Positions.positions.map((p) => `${p.row}:${p.col}`).sort().join("|");
-  const overlaps = (a: number | undefined, b: number | undefined) => a === undefined || b === undefined || a === b;
   return combos.flatMap((other, i) =>
     i !== index &&
     comboIsActions(other) === comboIsActions(own) &&
     keyOf(other) === keyOf(own) &&
-    overlaps(comboLayer(other), comboLayer(own))
+    (comboMask(other) & comboMask(own)) !== 0
       ? [i]
       : [],
   );
@@ -149,19 +174,20 @@ function comboShape(definition: ComboDefinition): string {
 }
 
 /** The combos as a person sees them: one combo on several layers, as GLIDE
- *  shows a combo with its layers. RMK stores a combo per layer (a layout file
- *  repeats it for each), so slots with the same keys and action, each on a
- *  layer of its own, are one group; a combo on every layer stays alone. Each
- *  group lists its slots in order, the first leading. Empty slots are left out. */
+ *  shows a combo with its layers. A slot can name several layers, and a
+ *  layout file may also repeat a combo per layer, so slots with the same keys
+ *  and action on layers of their own are one group; a combo on every layer
+ *  stays alone. Each group lists its slots in order, the first leading. Empty
+ *  slots are left out. */
 export function comboGroups(combos: readonly ComboDefinition[]): number[][] {
   const groups: number[][] = [];
   const byShape = new Map<string, number[]>();
   combos.forEach((combo, index) => {
     if (comboIsEmpty(combo)) return;
-    const layer = comboLayer(combo);
-    const shape = layer === undefined ? null : comboShape(combo);
+    const mask = comboMask(combo);
+    const shape = mask === EVERY_LAYER ? null : comboShape(combo);
     const group = shape === null ? undefined : byShape.get(shape);
-    if (group && !group.some((slot) => comboLayer(combos[slot]) === layer)) {
+    if (group && !group.some((slot) => (comboMask(combos[slot]) & mask) !== 0)) {
       group.push(index);
       return;
     }
@@ -170,6 +196,17 @@ export function comboGroups(combos: readonly ComboDefinition[]): number[][] {
     if (shape !== null && !group) byShape.set(shape, fresh);
   });
   return groups;
+}
+
+/** The layers of the combo stored in `slots`, lowest first; undefined when it works on every layer. */
+export function groupLayers(combos: readonly ComboDefinition[], slots: readonly number[]): number[] | undefined {
+  const layers: number[] = [];
+  for (const slot of slots) {
+    const own = comboLayers(combos[slot]);
+    if (own === undefined) return undefined;
+    layers.push(...own);
+  }
+  return [...new Set(layers)].sort((a, b) => a - b);
 }
 
 /** The other slots of the combo at `index` (its copies on other layers). */

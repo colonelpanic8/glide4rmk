@@ -217,7 +217,7 @@ describe("compositeScenes: the keyboard's own condition rules", () => {
   const table = (rules: RuntimeLightingRule[], reports: Partial<RuleTable> = {}): RuleTable => ({
     rules, connection: null, indicators: null, effectsEnabled: null, ...reports,
   });
-  const usb: NonNullable<DeviceReports["connection"]> = { usb: "Configured", ble: { profile: 0, state: "Advertising", bonded: false }, preferred: "Usb" };
+  const usb: NonNullable<DeviceReports["connection"]> = { usb: "Configured", ble: [{ state: "Advertising", bonded: false }], selected: 0, preferred: "Usb" };
   const compiledOnLed1: LightingConditionalSceneCell = { conditions: { layer: undefined, battery: undefined, output_mode: undefined }, led_id: 1, effect: solid(10) };
   const composite = (rules: RuleTable | null) => compositeScenes([], [], {}, [0], 0, null, null, [compiledOnLed1], new Map(), null, rules);
 
