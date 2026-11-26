@@ -1,6 +1,20 @@
 import { describe, expect, it } from "vitest";
 import type { ComboDefinition, KeyAction } from "../vendor/rynk-wasm/rynk_wasm";
-import { actionThrough, comboCopies, comboGroups, comboHasKey, comboNeeds, comboTwins, newPositionCombo, toggleComboKey } from "./combos";
+import {
+  EVERY_LAYER,
+  actionThrough,
+  comboCopies,
+  comboGroups,
+  comboHasKey,
+  comboLayers,
+  comboNeeds,
+  comboTwins,
+  comboWithLayer,
+  groupLayers,
+  layerMask,
+  newPositionCombo,
+  toggleComboKey,
+} from "./combos";
 import { emptyCombo } from "./slots";
 
 const A = { Single: { Key: { Hid: "A" } } } as unknown as KeyAction;
@@ -8,14 +22,14 @@ const B = { Single: { Key: { Hid: "B" } } } as unknown as KeyAction;
 const ESC = { Single: { Key: { Hid: "Escape" } } } as unknown as KeyAction;
 const at = (row: number, col: number) => ({ row, col });
 const places = (layer: number | undefined, ...keys: Array<[number, number]>): ComboDefinition => ({
-  Positions: { positions: keys.map(([row, col]) => at(row, col)), output: ESC, layer },
+  Positions: { positions: keys.map(([row, col]) => at(row, col)), output: ESC, layers: layerMask(layer) },
 });
-const actions = (...list: KeyAction[]): ComboDefinition => ({ Actions: { actions: list, output: ESC, layer: undefined } });
+const actions = (...list: KeyAction[]): ComboDefinition => ({ Actions: { actions: list, output: ESC, layers: EVERY_LAYER } });
 
 describe("combos on the canvas", () => {
   it("starts an empty slot as a combo that matches places", () => {
     const result = toggleComboKey(emptyCombo(), at(1, 2), A, 4);
-    expect(result).toEqual({ ok: true, combo: { Positions: { positions: [at(1, 2)], output: "No", layer: undefined } } });
+    expect(result).toEqual({ ok: true, combo: { Positions: { positions: [at(1, 2)], output: "No", layers: EVERY_LAYER } } });
   });
 
   it("adds a key, and takes it out on a second click", () => {
@@ -41,7 +55,7 @@ describe("combos on the canvas", () => {
 
   it("says what a combo still needs", () => {
     expect(comboNeeds(places(undefined, [0, 0]))).toBe("keys");
-    expect(comboNeeds({ Positions: { positions: [at(0, 0), at(0, 1)], output: "No", layer: undefined } })).toBe("action");
+    expect(comboNeeds({ Positions: { positions: [at(0, 0), at(0, 1)], output: "No", layers: EVERY_LAYER } })).toBe("action");
     expect(comboNeeds(places(undefined, [0, 0], [0, 1]))).toBeNull();
     expect(comboNeeds(newPositionCombo())).toBe("keys");
   });
@@ -70,15 +84,15 @@ describe("what a key does for a combo", () => {
   });
 
   it("marks an action combo's keys on a layer that only passes them through", () => {
-    const combo: ComboDefinition = { Actions: { actions: [J], output: "No", layer: undefined } } as ComboDefinition;
+    const combo: ComboDefinition = { Actions: { actions: [J], output: "No", layers: EVERY_LAYER } } as ComboDefinition;
     expect(comboHasKey(combo, { row: 0, col: 0 }, actionThrough(layers, 1, 0))).toBe(true);
   });
 });
 
 describe("comboGroups", () => {
   const combo = (positions: { row: number; col: number }[], output: string, layer: number | undefined) =>
-    ({ Positions: { positions, output: { Single: { Key: { Hid: output } } }, layer } }) as ComboDefinition;
-  const none = { Actions: { actions: [], output: "No", layer: undefined } } as ComboDefinition;
+    ({ Positions: { positions, output: { Single: { Key: { Hid: output } } }, layers: layerMask(layer) } }) as ComboDefinition;
+  const none = { Actions: { actions: [], output: "No", layers: EVERY_LAYER } } as ComboDefinition;
 
   it("shows a combo stored once per layer as one combo, its slots in order", () => {
     const combos = [
@@ -99,8 +113,25 @@ describe("comboGroups", () => {
       combo([at(0, 1), at(0, 2)], "B", 1),
       combo([at(0, 1), at(0, 2)], "A", undefined),
       combo([at(0, 1), at(0, 2)], "A", 0),
-      { Actions: { actions: [], output: { Single: { Key: { Hid: "A" } } }, layer: 1 } } as ComboDefinition,
+      { Actions: { actions: [], output: { Single: { Key: { Hid: "A" } } }, layers: 1 << 1 } } as ComboDefinition,
     ];
     expect(comboGroups(combos)).toEqual([[0], [1], [2], [3], [4]]);
+  });
+
+  it("reads a slot on several layers as one combo with all of them, and groups it with its copies", () => {
+    const several = combo([at(0, 1), at(0, 2)], "A", 0);
+    const combos = [{ Positions: { ...(several as { Positions: object }).Positions, layers: 0b101 } } as ComboDefinition, combo([at(0, 1), at(0, 2)], "A", 3)];
+    expect(comboLayers(combos[0])).toEqual([0, 2]);
+    expect(comboGroups(combos)).toEqual([[0, 1]]);
+    expect(groupLayers(combos, [0, 1])).toEqual([0, 2, 3]);
+  });
+});
+
+describe("layer masks", () => {
+  it("keeps layer 31 unsigned and reads every layer as no layer", () => {
+    const top = comboWithLayer(newPositionCombo(), 31);
+    expect("Positions" in top && top.Positions.layers).toBe(2 ** 31);
+    expect(comboLayers(top)).toEqual([31]);
+    expect(comboLayers(newPositionCombo())).toBeUndefined();
   });
 });

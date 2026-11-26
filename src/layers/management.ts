@@ -14,6 +14,7 @@ import type {
 import type { LayerMetadata, RuntimeLightingRule } from "../session/types";
 import { mapActionLayers, mapKeyActionLayers } from "../domain";
 import { layerName } from "../model/layer-names";
+import { EVERY_LAYER } from "../model/combos";
 
 export interface LayerRewriteSnapshot {
   metadata: LayerMetadata[];
@@ -116,10 +117,7 @@ function remapCombo(
           remapKeyAction(action, mapping, `combo ${index} trigger ${actionIndex}`),
         ),
         output: remapKeyAction(combo.output, mapping, `combo ${index} output`),
-        layer:
-          combo.layer === undefined
-            ? undefined
-            : mapLayer(combo.layer, mapping, `combo ${index}`),
+        layers: remapComboLayers(combo.layers, mapping, index),
       },
     };
   }
@@ -129,12 +127,20 @@ function remapCombo(
       ...combo,
       positions: structuredClone(combo.positions),
       output: remapKeyAction(combo.output, mapping, `combo ${index} output`),
-      layer:
-        combo.layer === undefined
-          ? undefined
-          : mapLayer(combo.layer, mapping, `combo ${index}`),
+      layers: remapComboLayers(combo.layers, mapping, index),
     },
   };
+}
+
+/** A combo's layer mask after the move; every layer it names must survive. */
+function remapComboLayers(mask: number, mapping: Map<number, number>, index: number): number {
+  if (mask >>> 0 === EVERY_LAYER) return EVERY_LAYER;
+  let remapped = 0;
+  for (let layer = 0; layer < 32; layer += 1) {
+    if (((mask >>> layer) & 1) === 0) continue;
+    remapped |= 1 << mapLayer(layer, mapping, `combo ${index}`);
+  }
+  return remapped >>> 0;
 }
 
 function remapMask(mask: number, mapping: Map<number, number>): number {

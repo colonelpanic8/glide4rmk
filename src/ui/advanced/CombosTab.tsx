@@ -3,10 +3,7 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
-import type {
-  KeyAction,
-  MatrixPosition,
-} from "../../vendor/rynk-wasm/rynk_wasm";
+import type { KeyAction, MatrixPosition } from "../../model/action-types";
 import type { KeyView } from "../../model/keyboard";
 import { BoardWell, KeyboardCanvas } from "../KeyboardCanvas";
 import type { KeyDecor } from "../KeyboardCanvas";
@@ -27,6 +24,8 @@ import { useSlotEditor } from "./use-slot-editor";
 import {
   comboIsActions,
   comboLayer,
+  comboLayers,
+  comboMask,
   comboOutput,
   comboTriggerCount,
   comboWithLayer,
@@ -230,9 +229,9 @@ export function CombosTab({
                 <span className="mx-1.5 text-faint">→</span>
                 {keyText.glyph(comboOutput(index === sel && draft ? draft : combo)).text || "·"}
               </span>
-              {comboLayer(index === sel && draft ? draft : combo) !== undefined && (
+              {comboLayers(index === sel && draft ? draft : combo) !== undefined && (
                 <Chip className="tnum shrink-0">
-                  L{comboLayer(index === sel && draft ? draft : combo)}
+                  L{comboLayers(index === sel && draft ? draft : combo)?.join(",")}
                 </Chip>
               )}
             </button>
@@ -252,10 +251,10 @@ export function CombosTab({
                   value={comboIsActions(draft) ? "actions" : "positions"}
                   onChange={(event) => {
                     const output = comboOutput(draft);
-                    const layer = comboLayer(draft);
+                    const layers = comboMask(draft);
                     setDraft(event.target.value === "actions"
-                      ? { Actions: { actions: [], output, layer } }
-                      : { Positions: { positions: [], output, layer } });
+                      ? { Actions: { actions: [], output, layers } }
+                      : { Positions: { positions: [], output, layers } });
                     setPickerOpen(false);
                   }}
                   className="rounded-lg border border-line bg-well px-2 py-1 text-body text-ink"
@@ -322,13 +321,18 @@ export function CombosTab({
             <label className="flex items-center justify-between gap-3 text-body text-mute">
               Only on layer
               <select
-                value={comboLayer(draft) ?? "any"}
+                value={(comboLayers(draft)?.length ?? 0) > 1 ? "several" : (comboLayer(draft) ?? "any")}
                 onChange={(e) => setDraft(comboWithLayer(
                   draft,
                   e.target.value === "any" ? undefined : Number(e.target.value),
                 ))}
                 className="rounded-lg border border-line bg-well px-2 py-1 text-body text-ink"
               >
+                {(comboLayers(draft)?.length ?? 0) > 1 && (
+                  <option value="several" disabled>
+                    Layers {comboLayers(draft)?.join(", ")}
+                  </option>
+                )}
                 <option value="any">Any layer</option>
                 {Array.from({ length: caps.num_layers }, (_, n) => (
                   <option key={n} value={n}>

@@ -24,6 +24,7 @@ import { emptyFork, emptyMorse, emptyMorseProfile, noModifiers, noStateBits } fr
 import { profileById } from "../../model/boards/profiles";
 import { hid, layerOn, type BoardSpec } from "./board";
 import { buildTopology, type SimLed } from "./topology";
+import { startingProfiles } from "./ble";
 
 // Placement + LED-chain data is the shared board table in model/boards —
 // the same real geometry current firmware serves through GetLayout.
@@ -159,7 +160,7 @@ const capabilities: DeviceCapabilities = {
   max_combos: 32,
   max_combo_keys: 4,
   macro_space_size: 512,
-  max_morse: 16,
+  max_morses: 16,
   max_patterns_per_key: 8,
   max_forks: 16,
   storage_enabled: true,
@@ -174,6 +175,8 @@ const capabilities: DeviceCapabilities = {
   max_macros: 32,
   macros_writable: true,
   bulk_transfer_supported: true,
+  max_connections: 1,
+  dongle_profile: undefined,
 };
 
 // A few pre-programmed advanced slots so the editors open onto real data;
@@ -181,7 +184,7 @@ const capabilities: DeviceCapabilities = {
 
 // J+K chorded together produce Escape (the classic vim combo).
 const seedCombos: ComboDefinition[] = [
-  { Actions: { actions: [hid("J"), hid("K")], output: hid("Escape"), layer: undefined } },
+  { Actions: { actions: [hid("J"), hid("K")], output: hid("Escape"), layers: 0xffffffff } },
 ];
 
 // Morse slot 0: tap (pattern 0b1·0) types Escape, hold (0b1·1) enables layer 1.
@@ -491,7 +494,7 @@ export const glove80Board: BoardSpec = {
   build: { label: "config 0e70aaf9 / glove80-rmk v0.1.0 (mockbuil) / RMK rmk-v0.8.2-992-gmockbuil" },
   connection: {
     usb: "Suspended",
-    ble: { profile: 0, state: "Connected", bonded: true, },
+    ...startingProfiles(capabilities.num_ble_profiles, { state: "Connected", bonded: true }),
     preferred: "Ble",
   },
   layout: {

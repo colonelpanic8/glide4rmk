@@ -4,11 +4,11 @@
 
 ## 1. The protocol decides it
 
-GLIDE4RMK speaks Rynk as `colonelpanic8/rmk` (branch `assembled`, pinned in `flake.nix`) builds it. Upstream RMK (`rmk-rs/rmk`) has Rynk too, but the two have drifted. Read from both on 2026-11-23 (fork `6b1ac3d`, upstream `19590a8`):
+GLIDE4RMK speaks Rynk as `colonelpanic8/rmk` (branch `assembled`, pinned in `flake.nix`) builds it. Upstream RMK (`rmk-rs/rmk`) has Rynk too. Read from both on 2026-11-23 (fork `6b1ac3d`, upstream `19590a8`); the fork has since moved onto upstream's base (`1385c13`):
 
-- **Versions:** the fork is Rynk 0.2, upstream 0.3. While the major version is 0, hosts require an exact match (`rmk-types/src/protocol/rynk/mod.rs`).
-- **The handshake already differs:** upstream's `DeviceCapabilities` has two more fields (`max_connections`, `dongle_profile`; `max_morses` where the fork has `max_morse`), and hosts reject trailing response bytes.
-- **The fork has about three times upstream's commands:** lighting, pointing, layer names and layer state, modifier state, tap-hold profiles, behavior options, the split link and maintenance mode are fork-only. One command id clashes: `0x0706` is `DisconnectBleProfile` upstream and `GetSplitCentralLatency` in the fork.
+- **Versions:** both are Rynk 0.3 now. While the major version is 0, hosts require an exact match (`rmk-types/src/protocol/rynk/mod.rs`).
+- **The handshake matches:** the fork's `DeviceCapabilities` is upstream's (`max_morses`, `max_connections`, `dongle_profile`), and so are the connection report (a status per BLE profile and the selected one) and combo layer masks.
+- **The fork has about three times upstream's commands:** lighting, pointing, layer names and layer state, modifier state, tap-hold profiles, behavior options, the split link and maintenance mode are fork-only. The fork moved its split latency commands off `0x0706`, which is `DisconnectBleProfile` in both.
 - **Opening a keyboard needs `GetLayerState`** (`workbench/open.ts`), which upstream does not have.
 - **Most RMK keyboards run Vial,** RMK's default; Rynk is experimental there and mutually exclusive with Vial. Upstream's docs also say browser USB is not available yet for Rynk (WebHID over Bluetooth only); whether GLIDE4RMK's USB connection depends on the fork is not checked.
 

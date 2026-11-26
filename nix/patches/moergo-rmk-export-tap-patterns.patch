@@ -1,8 +1,8 @@
-From 37be9a5a94651038619af0310ee91c8a19445ee0 Mon Sep 17 00:00:00 2001
+From a30dfa2aa99eb21c69844c043bb2911252c11031 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Mon, 23 Nov 2026 19:03:10 +0100
-Subject: [PATCH] Export tap patterns, macros, combos and mod-morphs to MoErgo
- JSON
+Subject: [PATCH 1/3] Export tap patterns, macros, combos and mod-morphs to
+ MoErgo JSON
 
 snapshot_to_moergo_json wrote only what a VIA keycode can carry, so a
 layout with a morse (TD(n)), a macro, an autoshift tap-hold or several
@@ -39,12 +39,12 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01QpAvhekAu35RCnRCUtmvDL
 ---
  crates/moergo-config/src/moergo/behaviors.rs  |   21 +-
- crates/moergo-config/src/moergo/lower.rs      |   76 +-
+ crates/moergo-config/src/moergo/lower.rs      |   77 +-
  crates/moergo-config/src/moergo/mod.rs        |   94 +-
- crates/moergo-config/src/moergo/raise.rs      | 1241 ++++++++++
+ crates/moergo-config/src/moergo/raise.rs      | 1251 ++++++++++
  .../fixtures/glove80-tailorkey-qwerty.toml    | 2161 +++++++++++++++++
  crates/moergo-config/tests/moergo_export.rs   |  421 ++++
- 6 files changed, 3991 insertions(+), 23 deletions(-)
+ 6 files changed, 4001 insertions(+), 24 deletions(-)
  create mode 100644 crates/moergo-config/src/moergo/raise.rs
  create mode 100644 crates/moergo-config/tests/fixtures/glove80-tailorkey-qwerty.toml
  create mode 100644 crates/moergo-config/tests/moergo_export.rs
@@ -109,7 +109,7 @@ index 02414b0..4ccedd6 100644
          self.mod_morphs.iter().find(|morph| morph.name == name)
      }
 diff --git a/crates/moergo-config/src/moergo/lower.rs b/crates/moergo-config/src/moergo/lower.rs
-index cefbe54..61dfc36 100644
+index 1e1e219..5977bc8 100644
 --- a/crates/moergo-config/src/moergo/lower.rs
 +++ b/crates/moergo-config/src/moergo/lower.rs
 @@ -301,6 +301,9 @@ impl<'a> Lowering<'a> {
@@ -184,19 +184,20 @@ index cefbe54..61dfc36 100644
      /// Lowers the combo table.
      ///
      /// ZMK matches a combo on key *positions*, and so does Rynk's
-@@ -693,8 +740,9 @@ impl<'a> Lowering<'a> {
+@@ -707,9 +754,9 @@ impl<'a> Lowering<'a> {
          out
      }
  
--    /// A mod-morph case's output as a VIA keycode, through the same converter
--    /// the keymap path uses so a nested `LS(N9)` resolves identically.
-+    /// A mod-morph case's or tap-dance step's output as a VIA keycode, through
-+    /// the same converter the keymap path uses so a nested `LS(N9)` resolves
-+    /// identically.
+-    /// A `&kp` or mod-morph case's output as a VIA keycode, through the same
+-    /// converter the keymap path uses so a nested `LS(N9)` resolves
+-    /// identically.
++    /// A `&kp`, mod-morph case's or tap-dance step's output as a VIA keycode,
++    /// through the same converter the keymap path uses so a nested `LS(N9)`
++    /// resolves identically.
      fn convert_binding(&mut self, binding: &Binding, here: &dyn Fn() -> String) -> Result<u16> {
          match binding.name() {
              "&kp" => {
-@@ -707,7 +755,20 @@ impl<'a> Lowering<'a> {
+@@ -722,7 +769,20 @@ impl<'a> Lowering<'a> {
                      .with_context(|| format!("{} &kp is missing its keycode", here()))?;
                  super::zmk_keycode_param_to_via(&param, &here())
              }
@@ -218,18 +219,18 @@ index cefbe54..61dfc36 100644
          }
      }
  
-@@ -735,7 +796,9 @@ impl<'a> Lowering<'a> {
-             "&to" => binding
-                 .param_u8(0)
-                 .and_then(|layer| self.remap_layer(layer as usize))
--                .map(|layer| KeyAction::Single(Action::DefaultLayer(layer))),
-+                // ZMK's `&to` keeps only the default layer and this one on,
-+                // which is RMK's `TO`, exactly as a keymap cell reads it.
-+                .map(|layer| KeyAction::Single(Action::LayerToggleOnly(layer))),
-             "&sl" => binding
-                 .param_u8(0)
-                 .and_then(|layer| self.remap_layer(layer as usize))
-@@ -769,6 +832,7 @@ impl<'a> Lowering<'a> {
+@@ -748,7 +808,9 @@ impl<'a> Lowering<'a> {
+                 let modifier = super::zmk_modifier(&modifier)?;
+                 from_via_keycode(keycodes::parse_keycode(&format!("OSM({modifier})"))?)
+             }
+-            "&to" => KeyAction::Single(Action::DefaultLayer(layer(self, 0)?)),
++            // ZMK's `&to` keeps only the default layer and this one on,
++            // which is RMK's `TO`, exactly as a keymap cell reads it.
++            "&to" => KeyAction::Single(Action::LayerToggleOnly(layer(self, 0)?)),
+             "&sl" => from_via_keycode(keycodes::parse_keycode(&format!(
+                 "OSL({})",
+                 layer(self, 0)?
+@@ -781,6 +843,7 @@ impl<'a> Lowering<'a> {
              }
              other
                  if self.tables.hold_tap(other).is_some()
@@ -378,10 +379,10 @@ index e97df50..0619150 100644
  }
 diff --git a/crates/moergo-config/src/moergo/raise.rs b/crates/moergo-config/src/moergo/raise.rs
 new file mode 100644
-index 0000000..2c5fad8
+index 0000000..c50e2f7
 --- /dev/null
 +++ b/crates/moergo-config/src/moergo/raise.rs
-@@ -0,0 +1,1241 @@
+@@ -0,0 +1,1251 @@
 +//! Raising of Rynk runtime behaviors back into MoErgo editor definitions.
 +//!
 +//! This is the inverse of [`super::lower`]. A keymap cell that holds a morse
@@ -726,7 +727,9 @@ index 0000000..2c5fad8
 +                continue;
 +            };
 +            let cell = Cell {
-+                layer: combo.layer.map_or(0, usize::from),
++                layer: combo_layers(combo.layers)
++                    .first()
++                    .map_or(0, |layer| *layer as usize),
 +                layer_name: "combo",
 +                editor_index: positions[0],
 +                offset: super::MOERGO_TO_MATRIX[positions[0]],
@@ -744,7 +747,7 @@ index 0000000..2c5fad8
 +                    continue;
 +                }
 +            };
-+            let layers = json!([combo.layer.map_or(-1, i64::from)]);
++            let layers = json!(combo_layers(combo.layers));
 +            let same = self.template_combos.iter().find(|entry| {
 +                entry.get("binding") == Some(&binding)
 +                    && entry.get("keyPositions") == Some(&json!(positions))
@@ -1504,6 +1507,14 @@ index 0000000..2c5fad8
 +    } else {
 +        crate::keycodes::format_keycode(code)
 +    }
++}
++
++/// A combo's layer mask as MoErgo's `layers`: `[-1]` for every layer.
++fn combo_layers(mask: u32) -> Vec<i64> {
++    if mask == u32::MAX {
++        return vec![-1];
++    }
++    (0..32).filter(|layer| mask & 1 << layer != 0).collect()
 +}
 +
 +/// A combo name: ZMK node names are a letter, then letters, digits and
@@ -3792,7 +3803,7 @@ index 0000000..8f6a141
 +charge = "charging"
 diff --git a/crates/moergo-config/tests/moergo_export.rs b/crates/moergo-config/tests/moergo_export.rs
 new file mode 100644
-index 0000000..836b63c
+index 0000000..62fff91
 --- /dev/null
 +++ b/crates/moergo-config/tests/moergo_export.rs
 @@ -0,0 +1,421 @@
@@ -4016,8 +4027,8 @@ index 0000000..836b63c
 +    }
 +}
 +
-+/// A combo's keys (row, column), its layer, and what it sends.
-+type ComboMeaning = (Vec<(u8, u8)>, Option<u8>, Meaning);
++/// A combo's keys (row, column), its layer mask, and what it sends.
++type ComboMeaning = (Vec<(u8, u8)>, u32, Meaning);
 +
 +/// Keys and chords TailorKey for RMK has that ZMK has not.
 +fn has_no_zmk_equivalent(action: KeyAction) -> bool {
@@ -4116,7 +4127,7 @@ index 0000000..836b63c
 +            .map(|combo| match combo {
 +                ComboDefinition::Positions(combo) => (
 +                    combo.positions.iter().map(|p| (p.row, p.col)).collect(),
-+                    combo.layer,
++                    combo.layers,
 +                    meaning(snapshot, default, combo.output),
 +                ),
 +                ComboDefinition::Actions(_) => panic!("TailorKey combos are positional"),
@@ -4218,5 +4229,5 @@ index 0000000..836b63c
 +    );
 +}
 -- 
-2.43.0
+2.56.0
 

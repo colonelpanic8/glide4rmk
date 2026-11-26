@@ -172,7 +172,7 @@ function mapCombo(spec: TransformSpec, combo: ComboDefinition): ComboDefinition 
       Actions: {
         actions: combo.Actions.actions.map((a) => mapKeyAction(spec, a)),
         output: mapKeyAction(spec, combo.Actions.output),
-        layer: combo.Actions.layer,
+        layers: combo.Actions.layers,
       },
     };
   }

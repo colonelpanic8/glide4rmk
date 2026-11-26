@@ -39,7 +39,7 @@ export const CAPS_FIELDS: Record<keyof DeviceCapabilities, "geometry" | "feature
   max_macros: "feature",
   macro_space_size: "feature",
   macros_writable: "feature",
-  max_morse: "feature",
+  max_morses: "feature",
   max_patterns_per_key: "feature",
   max_forks: "feature",
   storage_enabled: "feature",
@@ -52,6 +52,8 @@ export const CAPS_FIELDS: Record<keyof DeviceCapabilities, "geometry" | "feature
   max_bulk_keys: "feature",
   max_bulk_items: "feature",
   bulk_transfer_supported: "feature",
+  max_connections: "feature",
+  dongle_profile: "feature",
 };
 
 const FEATURE_FIELDS = Object.entries(CAPS_FIELDS)

@@ -4,7 +4,7 @@
 // edits or deletes it.
 
 import { useState, useSyncExternalStore } from "react";
-import { comboGroups, comboIsEmpty, comboLayer, comboOutput, comboTriggerCount, comboTwins } from "../../model/combos";
+import { comboGroups, comboIsEmpty, comboOutput, comboTriggerCount, comboTwins, groupLayers } from "../../model/combos";
 import { emptyCombo } from "../../model/slots";
 
 import { layerName } from "../layer-names";
@@ -61,8 +61,8 @@ export function ComboList() {
     .map((slots) => ({ slots, index: slots[0], combo: state.combos[slots[0]] }))
     .filter(({ combo, slots }) => comboTriggerCount(combo) > 0 || (editing !== null && slots.includes(editing)))
     .filter(({ slots }) => {
-      const layers = slots.map((slot) => comboLayer(state.combos[slot]));
-      return layerFilter === null || layers.includes(undefined) || layers.includes(layerFilter);
+      const layers = groupLayers(state.combos, slots);
+      return layerFilter === null || layers === undefined || layers.includes(layerFilter);
     })
     .filter(
       ({ combo, slots }) =>
@@ -130,7 +130,7 @@ export function ComboList() {
           key={index}
           index={index}
           combo={combo}
-          layers={slots.map((slot) => comboLayer(state.combos[slot]))}
+          layers={groupLayers(state.combos, slots) ?? [undefined]}
           twins={comboTwins(state.combos, index).length}
           view={view}
           open={editing !== null && slots.includes(editing)}

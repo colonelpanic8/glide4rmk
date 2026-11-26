@@ -29,8 +29,8 @@
   "ui-never-probes-capability-fields src/ui/device/DeviceMode.tsx -> caps.storage_enabled#1",
   "ui-never-probes-capability-fields src/ui/keymap/ActionEditor.tsx -> caps.macro_space_size#1",
   "ui-never-probes-capability-fields src/ui/keymap/ActionEditor.tsx -> caps.macro_space_size#2",
-  "ui-never-probes-capability-fields src/ui/keymap/ActionEditor.tsx -> caps.max_morse#1",
-  "ui-never-probes-capability-fields src/ui/keymap/ActionEditor.tsx -> caps.max_morse#2",
+  "ui-never-probes-capability-fields src/ui/keymap/ActionEditor.tsx -> caps.max_morses#1",
+  "ui-never-probes-capability-fields src/ui/keymap/ActionEditor.tsx -> caps.max_morses#2",
   "ui-never-probes-capability-fields src/ui/keymap/useComboFocus.ts -> caps.max_combo_keys#1",
   "ui-never-probes-capability-fields src/ui/keymap/useKeyLights.ts -> caps.is_split#1",
   "ui-never-probes-capability-fields src/ui/lighting/ConditionalRulesPanel.tsx -> caps.num_split_peripherals#1",
@@ -41,8 +41,8 @@
   "ui-never-probes-capability-fields src/ui/properties/DetailsSection.tsx -> caps.max_forks#2",
   "ui-never-probes-capability-fields src/ui/properties/DetailsSection.tsx -> caps.max_macros#1",
   "ui-never-probes-capability-fields src/ui/properties/DetailsSection.tsx -> caps.max_macros#2",
-  "ui-never-probes-capability-fields src/ui/properties/DetailsSection.tsx -> caps.max_morse#1",
-  "ui-never-probes-capability-fields src/ui/properties/DetailsSection.tsx -> caps.max_morse#2",
+  "ui-never-probes-capability-fields src/ui/properties/DetailsSection.tsx -> caps.max_morses#1",
+  "ui-never-probes-capability-fields src/ui/properties/DetailsSection.tsx -> caps.max_morses#2",
   "ui-never-probes-capability-fields src/ui/properties/DetailsSection.tsx -> caps.num_split_peripherals#1",
   "ui-never-probes-capability-fields src/ui/sidepanel/ComboList.tsx -> caps.max_combos#1"
 ]

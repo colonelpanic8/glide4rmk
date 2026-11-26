@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type {
   CaretConfig,
   CursorConfig,
@@ -35,6 +35,12 @@ import { layerName } from "../layer-names";
 import { useBusy, useWorkbench } from "../state";
 import { askConfirm } from "../messages/store";
 import { PickKeycode } from "./PickKey";
+
+/** Scroll mode's two outputs: pan is made from X motion, the wheel from Y. */
+const SCROLL_AXES = [
+  { axis: "pan", name: "Pan (X)" },
+  { axis: "wheel", name: "Wheel (Y)" },
+] as const;
 
 const BASE_MODE_KINDS: PointingModeKind[] = ["Cursor", "Scroll", "Sniper", "Caret", "Drag", "Press"];
 
@@ -199,12 +205,17 @@ function PointingModeEditor({ value, allowKeypad, allowCursorRemap, onChange }: 
       {"Cursor" in value && <CursorFields value={value.Cursor} onChange={(Cursor) => onChange({ Cursor })} />}
       {"Scroll" in value && (
         <div className="flex flex-col gap-1.5">
-          <NumberField label="X multiplier" min={0} max={255} value={value.Scroll.multiplier_x} onChange={(multiplier_x) => onChange({ Scroll: { ...value.Scroll, multiplier_x: bounded(multiplier_x, 0, 255) } })} />
-          <NumberField label="X divisor" min={0} max={255} value={value.Scroll.divisor_x} onChange={(divisor_x) => onChange({ Scroll: { ...value.Scroll, divisor_x: bounded(divisor_x, 0, 255) } })} />
-          <NumberField label="Y multiplier" min={0} max={255} value={value.Scroll.multiplier_y} onChange={(multiplier_y) => onChange({ Scroll: { ...value.Scroll, multiplier_y: bounded(multiplier_y, 0, 255) } })} />
-          <NumberField label="Y divisor" min={0} max={255} value={value.Scroll.divisor_y} onChange={(divisor_y) => onChange({ Scroll: { ...value.Scroll, divisor_y: bounded(divisor_y, 0, 255) } })} />
-          <Toggle label="Invert X" value={value.Scroll.invert_x} onChange={(invert_x) => onChange({ Scroll: { ...value.Scroll, invert_x } })} />
-          <Toggle label="Invert Y" value={value.Scroll.invert_y} onChange={(invert_y) => onChange({ Scroll: { ...value.Scroll, invert_y } })} />
+          {SCROLL_AXES.map(({ axis, name }) => {
+            const own = value.Scroll[axis];
+            const set = (next: Partial<typeof own>) => onChange({ Scroll: { ...value.Scroll, [axis]: { ...own, ...next } } });
+            return (
+              <Fragment key={axis}>
+                <NumberField label={`${name} multiplier`} min={0} max={255} value={own.multiplier} onChange={(multiplier) => set({ multiplier: bounded(multiplier, 0, 255) })} />
+                <NumberField label={`${name} divisor`} min={0} max={255} value={own.divisor} onChange={(divisor) => set({ divisor: bounded(divisor, 0, 255) })} />
+                <Toggle label={`Invert ${name.toLowerCase()}`} value={own.invert} onChange={(invert) => set({ invert })} />
+              </Fragment>
+            );
+          })}
         </div>
       )}
       {"Sniper" in value && (

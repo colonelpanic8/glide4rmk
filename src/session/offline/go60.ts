@@ -61,7 +61,7 @@ const capabilities: DeviceCapabilities = {
   num_rows: GO60_ROWS,
   num_cols: GO60_COLS,
   max_combos: 32,
-  max_morse: 64,
+  max_morses: 64,
   num_ble_profiles: profileById("go60")!.build!.bleProfiles,
 };
 

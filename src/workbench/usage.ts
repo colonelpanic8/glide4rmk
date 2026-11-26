@@ -16,7 +16,7 @@ import type { LayerMetadata } from "../session/types";
 import { layerName as nameOfLayer } from "../model/layer-names";
 import { activators, attributedEdges, buildGraph, keyActionIsBound, keyActionReferences, layerRef, reachableLayers, referencedBy } from "../domain";
 import type { Attributed, Ref } from "../domain";
-import { comboIsEmpty } from "../model/combos";
+import { comboIsEmpty, comboLayer, comboLayers } from "../model/combos";
 import { forkIsEmpty, morseIsEmpty } from "../model/slots";
 import { decodeMacros, macroPreview } from "../model/macros";
 
@@ -136,10 +136,10 @@ function comboParts(combo: ComboDefinition): {
     return {
       triggers: combo.Actions.actions,
       output: combo.Actions.output,
-      layer: combo.Actions.layer ?? null,
+      layer: comboLayer(combo) ?? null,
     };
   }
-  return { triggers: [], output: combo.Positions.output, layer: combo.Positions.layer ?? null };
+  return { triggers: [], output: combo.Positions.output, layer: comboLayer(combo) ?? null };
 }
 
 /** Names places in the report's words and says where they are. A place is a key
@@ -339,8 +339,9 @@ export function analyzeUsage(input: UsageInput, decode: typeof decodeMacros = de
         `Combo ${index} has ${unboundTriggers} trigger action(s) not bound on any layer.`,
       );
     }
-    if (layer !== null && layer < input.layers.length && !reachable.has(layer)) {
-      warnings.push(`Combo ${index} is scoped to unreachable ${layerName(layer)}.`);
+    const scoped = comboLayers(combo)?.filter((one) => one < input.layers.length);
+    if (scoped !== undefined && scoped.length > 0 && !scoped.some((one) => reachable.has(one))) {
+      warnings.push(`Combo ${index} is scoped to unreachable ${scoped.map(layerName).join(", ")}.`);
     }
     return { index, layer, unboundTriggers };
   });

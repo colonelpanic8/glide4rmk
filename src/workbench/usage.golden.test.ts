@@ -30,6 +30,19 @@ const golden = JSON.parse(
 type OldStep = { kind: SendKind; code: HidKeyCode };
 const fakeDecode = ((macros: OldStep[][]) => macros.map((steps) => ({ steps: steps.map((step) => hidStep(step.kind, step.code)) }))) as never;
 
+// The cases hold each combo as it was then: one `layer`, absent for every
+// layer. Today a combo carries a layer mask.
+type OldCombo = Record<string, { layer?: number }>;
+function withLayerMasks(input: unknown): UsageInput {
+  const old = input as UsageInput & { combos?: OldCombo[] };
+  const combos = (old.combos ?? []).map((combo) =>
+    Object.fromEntries(
+      Object.entries(combo).map(([kind, { layer, ...rest }]) => [kind, { ...rest, layers: layer === undefined ? 0xffffffff : 2 ** layer }]),
+    ),
+  );
+  return { ...old, combos } as unknown as UsageInput;
+}
+
 /** The report as the earlier implementation gave it: without macro previews and
  *  without the structured sites added since (checked separately below). */
 function asBefore(report: UsageReport): unknown {
@@ -48,7 +61,7 @@ describe("usage analysis: golden cases", () => {
 
   for (const testCase of golden) {
     it(testCase.name, () => {
-      const report = analyzeUsage(testCase.input as UsageInput, fakeDecode);
+      const report = analyzeUsage(withLayerMasks(testCase.input), fakeDecode);
       expect(asBefore(report)).toEqual(testCase.expected);
 
       // The structured sites say the same as the plain ones.

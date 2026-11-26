@@ -11,6 +11,7 @@ import type {
 } from "../../vendor/rynk-wasm/rynk_wasm";
 import type { RuntimeLightingRule } from "../../session/types";
 import type { TableCapability } from "../../capabilities";
+import { selectedBle } from "../device-state";
 
 /** Whether this firmware has a mutable ordered conditional table at all.
  *  Firmware without one reports no table (the status read is rejected, which
@@ -71,7 +72,7 @@ function usbReady(status: ConnectionStatus): boolean {
 /** Mirror of `ConnectionStatus::decide_active`. */
 function activeTransport(status: ConnectionStatus): ConnectionType | undefined {
   const usb = usbReady(status);
-  const ble = status.ble.state === "Connected";
+  const ble = selectedBle(status).state === "Connected";
   if (usb && ble) return status.preferred;
   if (usb) return "Usb";
   if (ble) return "Ble";
@@ -118,8 +119,8 @@ function connectionMatches(
     const named = active === undefined ? "NoneActive" : active === "Usb" ? "Usb" : "Ble";
     if (named !== condition.transport) return false;
   }
-  if (condition.profile !== undefined && status.ble.profile !== condition.profile) return false;
-  if (condition.ble_state !== undefined && status.ble.state !== condition.ble_state) return false;
+  if (condition.profile !== undefined && status.selected !== condition.profile) return false;
+  if (condition.ble_state !== undefined && selectedBle(status).state !== condition.ble_state) return false;
   if (condition.usb_connected !== undefined && usbReady(status) !== condition.usb_connected) {
     return false;
   }

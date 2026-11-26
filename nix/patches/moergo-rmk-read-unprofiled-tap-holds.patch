@@ -1,7 +1,7 @@
-From afcd9b2ef470a176b0d971c6cf30bb7d3f8ce9e1 Mon Sep 17 00:00:00 2001
+From 5709380bdbd9ba7a73384ef4b16859f8063b70cd Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Tue, 24 Nov 2026 09:29:05 +0100
-Subject: [PATCH] Read tap-holds without a profile back from TOML
+Subject: [PATCH 3/3] Read tap-holds without a profile back from TOML
 
 A tap-hold with no named profile is written as MT(key, mods) or
 TH(tap, hold), two arguments, key first, as RMK's keyboard.toml writes
@@ -17,10 +17,10 @@ and LT(layer, kc) still go to the keycode parser.
  1 file changed, 50 insertions(+), 8 deletions(-)
 
 diff --git a/crates/moergo-config/src/config.rs b/crates/moergo-config/src/config.rs
-index ba88cf7..8f7f778 100644
+index 314b6a9..500c032 100644
 --- a/crates/moergo-config/src/config.rs
 +++ b/crates/moergo-config/src/config.rs
-@@ -3630,14 +3630,20 @@ fn parse_key_action(token: &str, profile_names: &[String]) -> Result<KeyAction>
+@@ -3663,14 +3663,20 @@ fn parse_key_action(token: &str, profile_names: &[String]) -> Result<KeyAction>
              continue;
          };
          let arguments = split_call_arguments(inner)?;
@@ -49,7 +49,7 @@ index ba88cf7..8f7f778 100644
          let (tap, hold) = match kind {
              0 => (
                  single_action(&arguments[0])?,
-@@ -3661,6 +3667,25 @@ fn parse_key_action(token: &str, profile_names: &[String]) -> Result<KeyAction>
+@@ -3694,6 +3700,25 @@ fn parse_key_action(token: &str, profile_names: &[String]) -> Result<KeyAction>
      ))
  }
  
@@ -75,7 +75,7 @@ index ba88cf7..8f7f778 100644
  fn single_action(text: &str) -> Result<Action> {
      match crate::rynk_keycode::from_via_keycode(crate::keycodes::parse_keycode(text)?) {
          KeyAction::Single(action) => Ok(action),
-@@ -5493,6 +5518,23 @@ primary_button = 2
+@@ -5526,6 +5551,23 @@ primary_button = 2
          assert_eq!(parse_key_actions(&rendered, &profiles).unwrap(), parsed);
      }
  
@@ -100,5 +100,5 @@ index ba88cf7..8f7f778 100644
      fn combo_triggers_preserve_parameterized_tap_holds() {
          let profiles = vec!["autoshift".to_owned(), "thumb".to_owned()];
 -- 
-2.43.0
+2.56.0
 

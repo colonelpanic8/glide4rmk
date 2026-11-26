@@ -9,11 +9,14 @@ import {
   comboCopies,
   comboIsEmpty,
   comboLayer,
+  comboMask,
   comboNeeds,
   comboTriggerCount,
   comboTwins,
   comboWithLayer,
+  comboWithMask,
   comboWithOutput,
+  groupLayers,
   newPositionCombo,
   toggleComboKey,
 } from "../../model/combos";
@@ -31,11 +34,12 @@ export function useComboFocus() {
   const maxKeys = bundle.caps.max_combo_keys;
   const copies = comboCopies(state.combos, index);
   const slots = [index, ...copies];
-  /** The change on this slot and on each copy, each keeping its own layer. */
+  /** The change on this slot and on each copy, each keeping its own layers. */
   const write = (next: typeof combo) =>
     copies.length === 0
       ? io.setSlot("combos", index, next)
-      : io.apply("set_combos", { combos: slots.map((slot) => ({ slot, combo: comboWithLayer(next, comboLayer(state.combos[slot])) })) });
+      : io.apply("set_combos", { combos: slots.map((slot) => ({ slot, combo: comboWithMask(next, comboMask(state.combos[slot])) })) });
+  const layers = groupLayers(state.combos, slots) ?? [];
   const removeAll = () => io.apply("set_combos", { combos: slots.map((slot) => ({ slot, combo: emptyCombo() })) });
   const close = () => dispatch({ type: "select", selection: null });
 
@@ -46,8 +50,8 @@ export function useComboFocus() {
     keys: comboTriggerCount(combo),
     needs: comboNeeds(combo),
     twins: comboTwins(state.combos, index),
-    /** The layers of a combo stored once per layer; empty when it is stored once. */
-    layers: copies.length === 0 ? [] : slots.map((slot) => comboLayer(state.combos[slot]) ?? 0).sort((a, b) => a - b),
+    /** The layers of a combo on several layers; empty when it is on one, or on every layer. */
+    layers: layers.length > 1 ? layers : [],
     /** The layer the combo's keys are shown on: its own, else the one in view. */
     layer: comboLayer(combo) ?? state.uiLayer,
 

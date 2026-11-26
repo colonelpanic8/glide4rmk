@@ -12,7 +12,6 @@ import type {
   BatteryStatus,
   BehaviorConfig,
   BehaviorOptions,
-  BleStatus,
   BuildInfo,
   ComboDefinition,
   ConnectionStatus,
@@ -91,6 +90,7 @@ import { unsupported } from "../unsupported";
 import { emptyCombo, emptyFork, emptyMorse, emptyMorseProfile, noModifiers } from "../../model/slots";
 import { absentSurface } from "./absent";
 import { latency } from "./latency";
+import { copyBleProfiles, forgetEveryProfile, forgetProfile, selectProfile, type BleProfiles } from "./ble";
 
 export interface BoardSpec {
   title: string;
@@ -329,7 +329,7 @@ class MockSession implements RynkSession {
   private autoMouseLayers: AutoMouseLayerConfig[];
   private pointingConfig: PointingConfig | null;
   private readonly indicator: LedIndicator;
-  private ble: BleStatus;
+  private ble: BleProfiles;
   private readonly matrixBitmap: Uint8Array;
   private readonly modifiers = noModifiers();
   private splitLatency: SplitCentralLatencyState | null;
@@ -381,7 +381,7 @@ class MockSession implements RynkSession {
     }
     const caps = spec.capabilities;
     this.comboTable = buildSlots(caps.max_combos, emptyCombo, cloneCombo, spec.seedCombos);
-    this.morseTable = buildSlots(caps.max_morse, emptyMorse, cloneMorse, spec.seedMorse);
+    this.morseTable = buildSlots(caps.max_morses, emptyMorse, cloneMorse, spec.seedMorse);
     this.forkTable = buildSlots(caps.max_forks, emptyFork, cloneFork, spec.seedForks);
     this.macroOps = structuredClone(spec.seedMacros ?? []);
     this.layerPolicy = spec.initialLayerPolicy ?? "EffectiveOnly";
@@ -393,7 +393,7 @@ class MockSession implements RynkSession {
     this.autoMouseLayers = structuredClone(spec.seedAutoMouseLayers ?? []);
     this.pointingConfig = spec.pointingConfig ? structuredClone(spec.pointingConfig) : null;
     this.indicator = { ...spec.ledIndicator };
-    this.ble = { ...spec.connection.ble };
+    this.ble = copyBleProfiles(spec.connection);
     this.matrixBitmap = new Uint8Array(caps.num_rows * Math.ceil(caps.num_cols / 8));
     this.splitLatency = splitLatencyDefaults(spec);
     this.batteryTimer = setInterval(() => this.pushBattery(), BATTERY_PUSH_MS);
@@ -421,22 +421,13 @@ class MockSession implements RynkSession {
         this.restoreSpecDefaults();
         this.endForReboot();
       }),
-    bleStatus: () => latency(() => ({ ...this.ble })),
-    clearBleProfile: (slot) =>
-      latency(() => {
-        this.checkBleProfile(slot);
-      }),
+    clearBleProfile: (slot) => latency(() => this.changeBle(forgetProfile(this.ble, this.checkBleProfile(slot)))),
     clearAllBleProfiles: () =>
       latency(() => {
         this.checkBleProfile(0);
+        this.changeBle(forgetEveryProfile(this.ble));
       }),
-    switchBleProfile: (slot) =>
-      latency(() => {
-        this.checkBleProfile(slot);
-        // Selecting a slot drops any live link and re-advertises on it.
-        this.ble = { profile: slot, state: "Advertising", bonded: false, };
-        this.emit({ ConnectionChange: this.connectionStatus() });
-      }),
+    switchBleProfile: (slot) => latency(() => this.changeBle(selectProfile(this.ble, this.checkBleProfile(slot)))),
     peripheralStatus: (slot) =>
       latency(() => {
         const { num_split_peripherals } = this.spec.capabilities;
@@ -917,7 +908,7 @@ class MockSession implements RynkSession {
       0,
       this.morseTable.length,
       ...buildSlots(
-        this.spec.capabilities.max_morse,
+        this.spec.capabilities.max_morses,
         emptyMorse,
         cloneMorse,
         this.spec.seedMorse,
@@ -942,13 +933,18 @@ class MockSession implements RynkSession {
     this.pointingConfig = this.spec.pointingConfig
       ? structuredClone(this.spec.pointingConfig)
       : null;
-    this.ble = { ...this.spec.connection.ble };
+    this.ble = copyBleProfiles(this.spec.connection);
     this.splitLatency = splitLatencyDefaults(this.spec);
     this.matrixBitmap.fill(0);
   }
 
   private connectionStatus(): ConnectionStatus {
-    return { ...this.spec.connection, ble: { ...this.ble } };
+    return { ...this.spec.connection, ...copyBleProfiles(this.ble) };
+  }
+
+  private changeBle(profiles: BleProfiles): void {
+    this.ble = profiles;
+    this.emit({ ConnectionChange: this.connectionStatus() });
   }
 
   private emit(event: TopicEvent): void {
@@ -1308,11 +1304,12 @@ class MockSession implements RynkSession {
     }
   }
 
-  private checkBleProfile(slot: number): void {
+  private checkBleProfile(slot: number): number {
     const { num_ble_profiles } = this.spec.capabilities;
     if (!Number.isInteger(slot) || slot < 0 || slot >= num_ble_profiles) {
       throw new Error(`BLE profile ${slot} out of range`);
     }
+    return slot;
   }
 
   /** The firmware's per-cell bounds (handlers/lighting.rs): a real LED, a layer
